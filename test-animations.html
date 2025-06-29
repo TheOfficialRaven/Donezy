@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Donezy - Animáció Teszt</title>
+    <link rel="stylesheet" href="css/tailwind.css">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/modules/base.css">
+    <link rel="stylesheet" href="css/modules/components.css">
+    <link rel="stylesheet" href="css/modules/layout.css">
+</head>
+<body class="bg-donezy-dark text-white min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center mb-8">🎮 Donezy Animáció Teszt</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- XP Animáció Teszt -->
+            <div class="bg-donezy-card rounded-lg p-6 border border-donezy-accent">
+                <h2 class="text-xl font-bold mb-4">⭐ XP Animációk</h2>
+                <div class="space-y-3">
+                    <button onclick="testXPAnimation(5, 'Gyors feladat')" 
+                            class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
+                        +5 XP (Gyors feladat)
+                    </button>
+                    <button onclick="testXPAnimation(10, 'Feladat teljesítés')" 
+                            class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
+                        +10 XP (Feladat teljesítés)
+                    </button>
+                    <button onclick="testXPAnimation(25, 'Napi cél')" 
+                            class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
+                        +25 XP (Napi cél)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Essence Animáció Teszt -->
+            <div class="bg-donezy-card rounded-lg p-6 border border-donezy-accent">
+                <h2 class="text-xl font-bold mb-4">💎 Essence Animációk</h2>
+                <div class="space-y-3">
+                    <button onclick="testEssenceAnimation(10, 'Szint emelkedés')" 
+                            class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
+                        +10 Essence (Szint emelkedés)
+                    </button>
+                    <button onclick="testEssenceAnimation(25, 'Badge elérés')" 
+                            class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
+                        +25 Essence (Badge elérés)
+                    </button>
+                    <button onclick="testEssenceAnimation(50, 'Heti cél')" 
+                            class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
+                        +50 Essence (Heti cél)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Level Up Animáció Teszt -->
+            <div class="bg-donezy-card rounded-lg p-6 border border-donezy-accent">
+                <h2 class="text-xl font-bold mb-4">🎉 Szint Emelkedés</h2>
+                <div class="space-y-3">
+                    <button onclick="testLevelUpAnimation(1, 2)" 
+                            class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
+                        Szint 1 → 2
+                    </button>
+                    <button onclick="testLevelUpAnimation(5, 6)" 
+                            class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
+                        Szint 5 → 6
+                    </button>
+                    <button onclick="testLevelUpAnimation(9, 10)" 
+                            class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
+                        Szint 9 → 10
+                    </button>
+                </div>
+            </div>
+
+            <!-- Kombinált Teszt -->
+            <div class="bg-donezy-card rounded-lg p-6 border border-donezy-accent">
+                <h2 class="text-xl font-bold mb-4">🚀 Kombinált Teszt</h2>
+                <div class="space-y-3">
+                    <button onclick="testCombinedAnimation()" 
+                            class="w-full bg-gradient-to-r from-orange-600 to-purple-600 hover:from-orange-700 hover:to-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
+                        XP + Essence + Level Up
+                    </button>
+                    <button onclick="testMultipleXP()" 
+                            class="w-full bg-gradient-to-r from-orange-600 to-yellow-600 hover:from-orange-700 hover:to-yellow-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
+                        Több XP egyszerre
+                    </button>
+                </div>
+            </div>
+
+            <!-- Progress Bar Teszt -->
+            <div class="bg-donezy-card rounded-lg p-6 border border-donezy-accent">
+                <h2 class="text-xl font-bold mb-4">📊 Progress Bar</h2>
+                <div class="space-y-4">
+                    <div class="bg-donezy-accent rounded-full h-4 overflow-hidden">
+                        <div id="xp-progress" class="bg-gradient-to-r from-orange-500 to-orange-600 h-full transition-all duration-1000" style="width: 45%"></div>
+                    </div>
+                    <button onclick="animateProgressBar()" 
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
+                        Animate Progress Bar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Essence Counter Teszt -->
+            <div class="bg-donezy-card rounded-lg p-6 border border-donezy-accent">
+                <h2 class="text-xl font-bold mb-4">💎 Essence Counter</h2>
+                <div class="space-y-4">
+                    <div id="essence-counter" class="text-2xl font-bold text-center essence-display">
+                        <img src="imgs/Essence.svg" alt="Essence" class="inline w-6 h-6 align-middle"> 150
+                    </div>
+                    <button onclick="animateEssenceCounter()" 
+                            class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
+                        Animate Counter
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vissza a főoldalra -->
+        <div class="text-center mt-8">
+            <a href="index.html" class="bg-donezy-orange hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200">
+                ← Vissza a főoldalra
+            </a>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/modules/NotificationService.js"></script>
+    <script>
+        // Teszt funkciók
+        function testXPAnimation(amount, reason) {
+            if (window.NotificationService && window.NotificationService.showXPAnimation) {
+                window.NotificationService.showXPAnimation(amount, reason);
+            } else {
+                alert('NotificationService not available');
+            }
+        }
+
+        function testEssenceAnimation(amount, reason) {
+            if (window.NotificationService && window.NotificationService.showEssenceAnimation) {
+                window.NotificationService.showEssenceAnimation(amount, reason);
+            } else {
+                alert('NotificationService not available');
+            }
+        }
+
+        function testLevelUpAnimation(oldLevel, newLevel) {
+            if (window.NotificationService && window.NotificationService.showLevelUpAnimation) {
+                window.NotificationService.showLevelUpAnimation(oldLevel, newLevel);
+            } else {
+                alert('NotificationService not available');
+            }
+        }
+
+        function testCombinedAnimation() {
+            setTimeout(() => testXPAnimation(15, 'Feladat teljesítés'), 0);
+            setTimeout(() => testEssenceAnimation(20, 'Szint emelkedés'), 500);
+            setTimeout(() => testLevelUpAnimation(3, 4), 1000);
+        }
+
+        function testMultipleXP() {
+            setTimeout(() => testXPAnimation(5, 'Gyors feladat'), 0);
+            setTimeout(() => testXPAnimation(10, 'Feladat teljesítés'), 300);
+            setTimeout(() => testXPAnimation(15, 'Napi cél'), 600);
+        }
+
+        function animateProgressBar() {
+            const progressBar = document.getElementById('xp-progress');
+            if (progressBar) {
+                progressBar.style.width = '75%';
+                progressBar.classList.add('xp-progress-animation');
+                setTimeout(() => {
+                    progressBar.classList.remove('xp-progress-animation');
+                }, 1000);
+            }
+        }
+
+        function animateEssenceCounter() {
+            const counter = document.getElementById('essence-counter');
+            if (counter) {
+                counter.classList.add('essence-counter-animation');
+                setTimeout(() => {
+                    counter.classList.remove('essence-counter-animation');
+                }, 600);
+            }
+        }
+
+        // Initialize NotificationService
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof NotificationService !== 'undefined') {
+                window.NotificationService = new NotificationService();
+                console.log('NotificationService initialized for testing');
+            } else {
+                console.error('NotificationService not available');
+            }
+        });
+    </script>
+</body>
+</html> 

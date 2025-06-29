@@ -1,0 +1,35 @@
+{
+  "name": "donezy-study-center",
+  "version": "1.0.0",
+  "description": "Egy játékos, MMORPG-hangulatú produktivitás dashboard, amely a \"Tanulmányi Központ\" szerepét tölti be.",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "dev": "python -m http.server 8000",
+    "serve": "python -m http.server 8000"
+  },
+  "keywords": [
+    "productivity",
+    "dashboard",
+    "study",
+    "mmorpg",
+    "vanilla-js",
+    "tailwind-css"
+  ],
+  "author": "Donezy Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/donezy-study-center.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/donezy-study-center/issues"
+  },
+  "homepage": "https://github.com/your-username/donezy-study-center#readme",
+  "devDependencies": {
+    "tailwindcss": "^4.1.11"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
