@@ -106,7 +106,7 @@ window.ListsRenderer = (function() {
      * Rendereli egy lista oszlopát (kártya)
      */
     function renderListColumn(list) {
-        const tasks = Object.values(list.tasks);
+        const tasks = Object.values(list.tasks || {});
         const slug = getCategorySlug(list.category);
         const emoji = getCategoryEmoji(list.category);
         const categoryBadge = list.category ? `<span class="category-badge ${slug}">${emoji} ${list.category}</span>` : '';
@@ -164,9 +164,9 @@ window.ListsRenderer = (function() {
         const detailContainer = document.getElementById('list-detail');
         if (!detailContainer) return;
 
-        const tasks = Object.values(list.tasks);
-        const completedTasks = tasks.filter(task => task.done);
-        const pendingTasks = tasks.filter(task => !task.done);
+        const tasks = Object.values(list.tasks || {});
+        const completedTasks = tasks.filter(task => task && task.done);
+        const pendingTasks = tasks.filter(task => task && !task.done);
 
         detailContainer.innerHTML = `
             <div class="bg-donezy-card rounded-lg p-6 shadow-lg border border-donezy-accent">
@@ -418,6 +418,10 @@ window.ListsRenderer = (function() {
                 const success = await window.ListsService.toggleListPin(listId);
                 if (success) {
                     refreshListsDisplay();
+                    // Frissítjük a dashboard-ot is, hogy a kiemelt feladat azonnal megjelenjen
+                    if (window.DashboardService && window.DashboardService.updateFeaturedItems) {
+                        await window.DashboardService.updateFeaturedItems();
+                    }
                 }
             });
         });
@@ -430,6 +434,10 @@ window.ListsRenderer = (function() {
                 const success = await window.ListsService.toggleTaskPin(listId, taskId);
                 if (success) {
                     refreshListsDisplay();
+                    // Frissítjük a dashboard-ot is, hogy a kiemelt feladat azonnal megjelenjen
+                    if (window.DashboardService && window.DashboardService.updateFeaturedItems) {
+                        await window.DashboardService.updateFeaturedItems();
+                    }
                 }
             });
         });

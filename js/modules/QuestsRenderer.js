@@ -70,7 +70,7 @@ window.QuestsRenderer = (function() {
                 <div class="text-center py-12">
                     <div class="text-6xl mb-4">🎯</div>
                     <h3 class="text-xl font-bold text-donezy-orange mb-2">Nincsenek küldetések</h3>
-                    <p class="text-gray-400">Várj a következő küldetésekre!</p>
+                    <p class="text-secondary">Várj a következő küldetésekre!</p>
                 </div>
             `;
         }
@@ -108,35 +108,35 @@ window.QuestsRenderer = (function() {
         else if (quest.title.toLowerCase().includes('koncentr')) questTypeLabel = 'koncentráció';
         const icon = iconMap[questTypeLabel] || iconMap['alapértelmezett'];
         // XP badge
-        const xpBadge = `<span class="bg-orange-600 text-white px-2 py-1 rounded text-xs font-bold ml-2">⭐ ${quest.rewardXP} XP</span>`;
+        const xpBadge = `<span class="bg-orange-hover text-white px-2 py-1 rounded text-xs font-bold ml-2">⭐ ${quest.rewardXP} XP</span>`;
         // Essence badge (kép ikon)
-        const essenceBadge = `<span class="bg-purple-700 text-white px-2 py-1 rounded text-xs font-bold ml-2 flex items-center gap-1"><img src="imgs/Essence.svg" alt="Essence" class="inline w-4 h-4 align-middle" style="display:inline;vertical-align:middle;"/> ${quest.rewardEssence}</span>`;
+        const essenceBadge = `<span class="bg-purple text-white px-2 py-1 rounded text-xs font-bold ml-2 flex items-center gap-1"><img src="imgs/Essence.svg" alt="Essence" class="inline w-4 h-4 align-middle" style="display:inline;vertical-align:middle;"/> ${quest.rewardEssence}</span>`;
         // Idő badge (ha van)
         const timeMatch = quest.description.match(/(\d+\s*perc)/i);
-        const timeBadge = timeMatch ? `<span class="bg-gray-700 text-gray-200 px-2 py-1 rounded text-xs font-medium ml-2">⏱️ ${timeMatch[1]}</span>` : '';
+        const timeBadge = timeMatch ? `<span class="bg-secondary text-primary px-2 py-1 rounded text-xs font-medium ml-2">⏱️ ${timeMatch[1]}</span>` : '';
         // Status badge
         let statusBadge = '';
         if (isCompleted) {
-            statusBadge = '<span class="bg-green-600 text-white px-2 py-1 rounded text-xs font-medium">✅ Teljesítve</span>';
+            statusBadge = '<span class="bg-success text-white px-2 py-1 rounded text-xs font-medium">✅ Teljesítve</span>';
         } else if (isAccepted) {
-            statusBadge = '<span class="bg-orange-500 text-white px-2 py-1 rounded text-xs font-medium">⏳ Folyamatban</span>';
+            statusBadge = '<span class="bg-orange text-white px-2 py-1 rounded text-xs font-medium">⏳ Folyamatban</span>';
         } else if (isAvailable) {
-            statusBadge = '<span class="bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium">🆕 Új</span>';
+            statusBadge = '<span class="bg-info text-white px-2 py-1 rounded text-xs font-medium">🆕 Új</span>';
         } else {
-            statusBadge = '<span class="bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium">⏰ Lejárt</span>';
+            statusBadge = '<span class="bg-secondary text-white px-2 py-1 rounded text-xs font-medium">⏰ Lejárt</span>';
         }
         // Progress bar
         let progressBar = '';
         if (quest.goal > 1 && !isCompleted) {
             const isProgressComplete = quest.progress >= quest.goal;
-            const progressColor = isProgressComplete ? 'bg-green-500' : 'bg-donezy-orange';
+            const progressColor = isProgressComplete ? 'bg-success' : 'bg-donezy-orange';
             progressBar = `
-                <div class="w-full bg-gray-700 rounded-full h-2 mb-2">
+                <div class="w-full bg-secondary rounded-full h-2 mb-2">
                     <div class="${progressColor} h-2 rounded-full transition-all duration-300" style="width: ${progressPercent}%"></div>
                 </div>
-                <p class="text-xs text-gray-400 mb-3">
+                <p class="text-xs text-muted mb-3">
                     ${quest.progress} / ${quest.goal} teljesítve
-                    ${isProgressComplete ? ' <span class=\"text-green-400\">✅ Kész!</span>' : ''}
+                    ${isProgressComplete ? ' <span class=\"text-success\">✅ Kész!</span>' : ''}
                 </p>
             `;
         }
@@ -144,7 +144,7 @@ window.QuestsRenderer = (function() {
         let actionButton = '';
         if (isCompleted) {
             actionButton = `
-                <button class="w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg opacity-75 cursor-not-allowed" disabled>
+                <button class="w-full bg-success text-white font-bold py-2 px-4 rounded-lg opacity-75 cursor-not-allowed" disabled>
                     ✅ Kész
                 </button>
             `;
@@ -152,28 +152,28 @@ window.QuestsRenderer = (function() {
             const canComplete = quest.progress >= quest.goal;
             if (canComplete) {
                 actionButton = `
-                    <button class="quest-complete-btn w-full bg-donezy-orange hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200"
+                    <button class="quest-complete-btn w-full bg-donezy-orange hover:bg-orange-hover text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200"
                             data-quest-id="${quest.id}" data-quest-type="${type}">
                         ✅ Teljesítés
                     </button>
                 `;
             } else {
                 actionButton = `
-                    <button class="w-full bg-gray-600 text-white font-bold py-2 px-4 rounded-lg opacity-75 cursor-not-allowed" disabled>
+                    <button class="w-full bg-secondary text-white font-bold py-2 px-4 rounded-lg opacity-75 cursor-not-allowed" disabled>
                         ⏳ Még nem teljesíthető (${quest.progress}/${quest.goal})
                     </button>
                 `;
             }
         } else if (isAvailable) {
             actionButton = `
-                <button class="quest-accept-btn w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200"
+                <button class="quest-accept-btn w-full bg-info hover:bg-info-hover text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200"
                         data-quest-id="${quest.id}" data-quest-type="${type}">
                     ➕ Elfogadás
                 </button>
             `;
         } else {
             actionButton = `
-                <button class="w-full bg-gray-600 text-white font-bold py-2 px-4 rounded-lg opacity-75 cursor-not-allowed" disabled>
+                <button class="w-full bg-secondary text-white font-bold py-2 px-4 rounded-lg opacity-75 cursor-not-allowed" disabled>
                     ⏰ Lejárt
                 </button>
             `;
@@ -193,7 +193,7 @@ window.QuestsRenderer = (function() {
               ${essenceBadge}
             </div>
             <!-- Leírás -->
-            <div class="mb-2 text-gray-300 text-center text-sm">${quest.description}</div>
+            <div class="mb-2 text-secondary text-center text-sm">${quest.description}</div>
             <!-- Idő badge, ha van -->
             ${timeBadge ? `<div class='flex justify-center mb-2'>${timeBadge}</div>` : ''}
             <div class="flex-1"></div>
@@ -274,12 +274,12 @@ window.QuestsRenderer = (function() {
                             if (canComplete) {
                                 // Gomb kattinthatóvá tétele
                                 button.disabled = false;
-                                button.className = 'quest-complete-btn w-full bg-donezy-orange hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200';
+                                button.className = 'quest-complete-btn w-full bg-donezy-orange hover:bg-orange-hover text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200';
                                 button.textContent = '✅ Teljesítés';
                             } else {
                                 // Gomb letiltása
                                 button.disabled = true;
-                                button.className = 'w-full bg-gray-600 text-white font-bold py-2 px-4 rounded-lg opacity-75 cursor-not-allowed';
+                                button.className = 'w-full bg-secondary text-white font-bold py-2 px-4 rounded-lg opacity-75 cursor-not-allowed';
                                 button.textContent = `⏳ Még nem teljesíthető (${quest.progress}/${quest.goal})`;
                             }
                         }

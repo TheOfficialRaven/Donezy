@@ -288,8 +288,8 @@ class DonezyApp {
     setupNavigation() {
         console.log('Setting up navigation...');
         
-        // Get all navigation tabs (desktop and mobile)
-        const navTabs = document.querySelectorAll('[data-tab]');
+        // Get all navigation tabs (desktop only now)
+        const navTabs = document.querySelectorAll('.nav-tab[data-tab]');
         console.log('Found navigation tabs:', navTabs.length);
         
         navTabs.forEach((tab, index) => {
@@ -315,14 +315,23 @@ class DonezyApp {
         // Update current tab
         this.currentTab = tabName;
 
-        // Remove active class from all tabs
-        document.querySelectorAll('.nav-tab, .nav-tab-mobile').forEach(tab => {
+        // Remove active class from all desktop tabs
+        document.querySelectorAll('.nav-tab').forEach(tab => {
             tab.classList.remove('active');
         });
         
-        // Add active class to selected tab
-        document.querySelectorAll(`[data-tab="${tabName}"]`).forEach(tab => {
+        // Add active class to selected desktop tab
+        document.querySelectorAll(`.nav-tab[data-tab="${tabName}"]`).forEach(tab => {
             tab.classList.add('active');
+        });
+
+        // Update mobile navigation active state
+        document.querySelectorAll('.mobile-nav-link').forEach(link => {
+            link.classList.remove('active');
+        });
+        
+        document.querySelectorAll(`.mobile-nav-link[data-tab="${tabName}"]`).forEach(link => {
+            link.classList.add('active');
         });
         
         // Hide all content sections by removing active class
@@ -428,6 +437,9 @@ class DonezyApp {
         // Quest progress tracking
         this.setupQuestProgressTracking();
         
+        // Mobile navigation
+        this.setupMobileNavigation();
+        
         console.log('Event listeners setup completed!');
     }
 
@@ -485,18 +497,12 @@ class DonezyApp {
             });
             
             if (shouldUpdate) {
-                // Késleltetett frissítés, hogy ne legyen túl gyakori
-                clearTimeout(this.questProgressTimeout);
-                this.questProgressTimeout = setTimeout(updateQuestProgress, 1000);
+                updateQuestProgress();
             }
         });
 
-        // Figyeljük a listák és jegyzetek konténereket
-        const listsGrid = document.getElementById('lists-grid');
-        const notesList = document.getElementById('notes-list');
-        
-        if (listsGrid) {
-            observer.observe(listsGrid, {
+        // Figyeljük a DOM változásokat
+        observer.observe(document.body, {
                 childList: true,
                 subtree: true,
                 attributes: true,
@@ -504,20 +510,243 @@ class DonezyApp {
             });
         }
         
-        if (notesList) {
-            observer.observe(notesList, {
-                childList: true,
-                subtree: true
-            });
-        }
+    /**
+     * Beállítja a mobil navigációt
+     */
+    setupMobileNavigation() {
+        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+        const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
+        const mobileMenuClose = document.getElementById('mobile-menu-close');
+        const mobileNavLinks = document.querySelectorAll('.mobile-nav-link');
+        const mobileThemeToggle = document.getElementById('mobile-theme-toggle');
+        const mobileSettings = document.getElementById('mobile-settings');
+        const mobileHelp = document.getElementById('mobile-help');
+        const mobileChangeTargetGroupBtn = document.getElementById('mobile-change-target-group-btn');
 
-        // Progress frissítés amikor a küldetések tab-ra váltunk
-        const originalSwitchTab = this.switchTab.bind(this);
-        this.switchTab = async (tabName) => {
-            await originalSwitchTab(tabName);
-            if (tabName === 'missions') {
-                await updateQuestProgress();
+        // Hamburger menü megnyitása
+        mobileMenuToggle?.addEventListener('click', () => {
+            this.openMobileMenu();
+        });
+
+        // Mobil menü bezárása X gombbal
+        mobileMenuClose?.addEventListener('click', () => {
+            this.closeMobileMenu();
+        });
+
+        // Mobil menü bezárása háttérre kattintással
+        mobileMenuOverlay?.addEventListener('click', (e) => {
+            if (e.target === mobileMenuOverlay) {
+                this.closeMobileMenu();
             }
+        });
+
+        // Mobil navigációs linkek kezelése
+        mobileNavLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetTab = link.getAttribute('data-tab');
+                
+                // Aktív állapot frissítése
+                mobileNavLinks.forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+                
+                // Tab váltás
+                this.switchTab(targetTab);
+                
+                // Mobil menü bezárása
+                this.closeMobileMenu();
+            });
+        });
+
+        // Mobil téma váltás
+        mobileThemeToggle?.addEventListener('click', () => {
+            this.toggleTheme();
+            // Haptic feedback (ha elérhető)
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+        });
+
+        // Mobil beállítások
+        mobileSettings?.addEventListener('click', () => {
+            this.showNotification('Beállítások megnyitása...', 'info');
+            this.closeMobileMenu();
+            // Haptic feedback
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+        });
+
+        // Mobil súgó
+        mobileHelp?.addEventListener('click', () => {
+            this.showNotification('Súgó megnyitása...', 'info');
+            this.closeMobileMenu();
+            // Haptic feedback
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+        });
+
+        // Mobil célcsoport váltás
+        mobileChangeTargetGroupBtn?.addEventListener('click', () => {
+            this.showTargetAudienceSelector();
+            this.closeMobileMenu();
+            // Haptic feedback
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+        });
+
+        // ESC billentyűvel bezárás
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && mobileMenuOverlay?.classList.contains('active')) {
+                this.closeMobileMenu();
+            }
+        });
+
+        // Swipe gesture támogatás (opcionális)
+        this.setupMobileSwipeGestures();
+
+        // Mobile menu footer actions
+        document.querySelectorAll('.mobile-footer-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            const action = this.getAttribute('data-action');
+            switch(action) {
+              case 'theme-toggle':
+                // Toggle theme functionality
+                console.log('Theme toggle clicked');
+                break;
+              case 'settings':
+                // Settings functionality
+                console.log('Settings clicked');
+                break;
+              case 'help':
+                // Help functionality
+                console.log('Help clicked');
+                break;
+            }
+          });
+        });
+
+        // Mobile logout button
+        document.getElementById('mobile-logout-btn').addEventListener('click', function() {
+          if (typeof window.donezyLogout === 'function') {
+            window.donezyLogout();
+          } else {
+            console.log('Logout functionality not available');
+          }
+        });
+
+        // Desktop logout button
+        document.getElementById('desktop-logout-btn').addEventListener('click', function() {
+          if (typeof window.donezyLogout === 'function') {
+            window.donezyLogout();
+          } else {
+            console.log('Logout functionality not available');
+          }
+        });
+
+        console.log('Mobile navigation setup completed!');
+    }
+
+    /**
+     * Beállítja a mobil swipe gesture-öket
+     */
+    setupMobileSwipeGestures() {
+        const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
+        let startX = 0;
+        let startY = 0;
+        let isDragging = false;
+
+        mobileMenuOverlay?.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            isDragging = true;
+        });
+
+        mobileMenuOverlay?.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            
+            const currentX = e.touches[0].clientX;
+            const currentY = e.touches[0].clientY;
+            const deltaX = currentX - startX;
+            const deltaY = currentY - startY;
+
+            // Csak vízszintes swipe-ot figyeljük
+            if (Math.abs(deltaX) > Math.abs(deltaY) && deltaX > 50) {
+                this.closeMobileMenu();
+                isDragging = false;
+            }
+        });
+
+        mobileMenuOverlay?.addEventListener('touchend', () => {
+            isDragging = false;
+        });
+    }
+
+    /**
+     * Megnyitja a mobil menüt
+     */
+    openMobileMenu() {
+        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+        const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
+        
+        if (mobileMenuToggle && mobileMenuOverlay) {
+            mobileMenuToggle.classList.add('active');
+            mobileMenuOverlay.classList.add('active');
+            document.body.classList.add('mobile-menu-open');
+            document.body.style.overflow = 'hidden'; // Scroll letiltása
+            console.log('Mobile menu opened');
+        }
+    }
+
+    /**
+     * Bezárja a mobil menüt
+     */
+    closeMobileMenu() {
+        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+        const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
+        
+        if (mobileMenuToggle && mobileMenuOverlay) {
+            mobileMenuToggle.classList.remove('active');
+            mobileMenuOverlay.classList.remove('active');
+            document.body.classList.remove('mobile-menu-open');
+            document.body.style.overflow = ''; // Scroll visszaállítása
+            console.log('Mobile menu closed');
+        }
+    }
+
+    /**
+     * Lekéri a csoport információit
+     */
+    getGroupInfo(groupId) {
+        const groupInfoMap = {
+            'student': {
+                name: 'Tanuló',
+                icon: '👨‍🎓',
+                description: 'Iskolai tanulók számára'
+            },
+            'freelancer': {
+                name: 'Freelancer',
+                icon: '💼',
+                description: 'Szabadúszók számára'
+            },
+            'employee': {
+                name: 'Alkalmazott',
+                icon: '👔',
+                description: 'Munkahelyi felhasználók számára'
+            },
+            'entrepreneur': {
+                name: 'Vállalkozó',
+                icon: '🚀',
+                description: 'Vállalkozók számára'
+            }
+        };
+
+        return groupInfoMap[groupId] || {
+            name: 'Ismeretlen csoport',
+            icon: '👤',
+            description: 'Nincs leírás'
         };
     }
 
@@ -979,28 +1208,24 @@ class DonezyApp {
 
     // Update profile menu content
     updateProfileMenuContent() {
+        // Update desktop profile menu
         const currentTargetGroup = document.getElementById('current-target-group');
         const currentGroupIcon = document.getElementById('current-group-icon');
 
         if (currentTargetGroup && currentGroupIcon) {
-            const userGroup = this.getUserGroup();
-            console.log('Updating profile menu with user group:', userGroup);
-
-            if (userGroup) {
-                // Get group info from target audience selector
-                const groupInfo = this.targetAudienceSelector?.getGroupInfo(userGroup);
-                
-                if (groupInfo) {
+            const groupInfo = this.getGroupInfo(this.userGroup);
                     currentTargetGroup.textContent = groupInfo.name;
                     currentGroupIcon.textContent = groupInfo.icon;
-                } else {
-                    currentTargetGroup.textContent = 'Ismeretlen csoport';
-                    currentGroupIcon.textContent = '👤';
-                }
-            } else {
-                currentTargetGroup.textContent = 'Nincs kiválasztva';
-                currentGroupIcon.textContent = '❓';
-            }
+        }
+
+        // Update mobile target group display
+        const mobileCurrentTargetGroup = document.getElementById('mobile-current-target-group');
+        const mobileCurrentGroupIcon = document.getElementById('mobile-current-group-icon');
+        
+        if (mobileCurrentTargetGroup && mobileCurrentGroupIcon) {
+            const groupInfo = this.getGroupInfo(this.userGroup);
+            mobileCurrentTargetGroup.textContent = groupInfo.name;
+            mobileCurrentGroupIcon.textContent = groupInfo.icon;
         }
     }
 

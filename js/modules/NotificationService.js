@@ -12,16 +12,16 @@ class NotificationService {
         // Set background color based on type
         switch (type) {
             case 'success':
-                notification.classList.add('bg-green-600', 'text-white');
+                notification.classList.add('bg-success', 'text-primary');
                 break;
             case 'error':
-                notification.classList.add('bg-red-600', 'text-white');
+                notification.classList.add('bg-error', 'text-primary');
                 break;
             case 'warning':
-                notification.classList.add('bg-yellow-600', 'text-white');
+                notification.classList.add('bg-warning', 'text-primary');
                 break;
             default:
-                notification.classList.add('bg-blue-600', 'text-white');
+                notification.classList.add('bg-info', 'text-primary');
         }
         
         notification.textContent = message;
@@ -96,9 +96,9 @@ class NotificationService {
         const loadingId = `loading-${Date.now()}`;
         const loading = document.createElement('div');
         loading.id = loadingId;
-        loading.className = 'fixed top-4 right-4 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center space-x-2';
+        loading.className = 'fixed top-4 right-4 bg-info text-primary px-6 py-3 rounded-lg shadow-lg z-50 flex items-center space-x-2';
         loading.innerHTML = `
-            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
             <span>${message}</span>
         `;
         

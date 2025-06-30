@@ -251,7 +251,8 @@ class FirebaseService {
             const snapshot = await itemsRef.once('value');
             
             if (snapshot.exists()) {
-                return Object.values(snapshot.val());
+                const data = snapshot.val();
+                return Object.values(data || {});
             } else {
                 return [];
             }

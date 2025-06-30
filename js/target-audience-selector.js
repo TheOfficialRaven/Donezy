@@ -80,48 +80,44 @@ class TargetAudienceSelector {
     // Show the target audience selector modal
     showSelector() {
         const modalOverlay = document.createElement('div');
-        modalOverlay.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 modal-backdrop';
+        modalOverlay.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-start md:items-center justify-center z-50 modal-backdrop overflow-y-auto';
         modalOverlay.id = 'target-audience-modal';
 
         const modalContent = document.createElement('div');
-        modalContent.className = 'bg-donezy-card rounded-lg p-8 shadow-lg border border-donezy-accent max-w-4xl w-full mx-4 fade-in max-h-[90vh] overflow-y-auto';
+        modalContent.className = 'bg-donezy-card rounded-lg p-4 md:p-8 shadow-lg border border-donezy-accent w-full max-w-2xl mx-2 my-4 md:my-0 fade-in min-h-fit';
 
         modalContent.innerHTML = `
-            <div class="text-center mb-8">
-                <h2 class="text-3xl font-bold text-donezy-orange mb-4">Üdvözöl a Donezy-ben! 🎉</h2>
-                <p class="text-gray-300 text-lg">Válaszd ki a célcsoportodat, hogy személyre szabott élményt nyújthassunk neked!</p>
+            <div class="text-center mb-4 md:mb-6">
+                <h2 class="text-xl md:text-3xl font-bold text-donezy-orange mb-2 md:mb-4">Üdvözöl a Donezy-ben! 🎉</h2>
+                <p class="text-secondary text-sm md:text-lg px-2">Válaszd ki a célcsoportodat, hogy személyre szabott élményt nyújthassunk neked!</p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <div class="space-y-3 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-6 md:space-y-0 mb-4 md:mb-6">
                 ${this.targetGroups.map(group => `
-                    <div class="target-group-card bg-donezy-accent rounded-lg p-6 border-2 border-transparent cursor-pointer transition-all duration-300 hover:scale-105 card-hover" 
+                    <div class="target-group-card bg-donezy-accent rounded-lg p-4 md:p-6 border-2 border-transparent cursor-pointer transition-all duration-300 hover:scale-105 card-hover select-none min-h-[200px] md:min-h-0 flex flex-col justify-center" 
                          data-group-id="${group.id}">
                         <div class="text-center">
-                            <div class="text-4xl mb-4">${group.icon}</div>
-                            <h3 class="text-xl font-bold text-white mb-2">${group.name}</h3>
-                            <p class="text-gray-300 text-sm mb-4">${group.description}</p>
-                            
-                            <div class="space-y-2">
+                            <div class="text-4xl md:text-4xl mb-3 md:mb-4">${group.icon}</div>
+                            <h3 class="text-lg md:text-xl font-bold text-primary mb-2 md:mb-2">${group.name}</h3>
+                            <p class="text-secondary text-sm md:text-sm mb-3 md:mb-4 leading-relaxed">${group.description}</p>
+                            <div class="space-y-1 md:space-y-2 text-left">
                                 ${group.features.map(feature => `
                                     <div class="flex items-center space-x-2">
-                                        <span class="text-xs">✓</span>
-                                        <span class="text-xs text-gray-400">${feature}</span>
+                                        <span class="text-xs text-donezy-orange">✓</span>
+                                        <span class="text-xs md:text-xs text-muted">${feature}</span>
                                     </div>
                                 `).join('')}
                             </div>
-                        </div>
-                        
-                        <div class="mt-4 text-center">
-                            <button class="select-group-btn bg-donezy-orange hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 w-full ${group.hoverColor}">
-                                Kiválasztás
-                            </button>
                         </div>
                     </div>
                 `).join('')}
             </div>
 
-            <div class="text-center">
-                <p class="text-gray-400 text-sm">
+            <div class="text-center mt-4 md:mt-2 mb-2">
+                <button id="confirm-group-btn" class="bg-donezy-orange hover:bg-orange-hover text-white font-bold py-4 md:py-3 px-8 md:px-6 rounded-lg transition-colors duration-200 text-lg w-full md:w-auto opacity-50 cursor-not-allowed disabled:opacity-50 disabled:cursor-not-allowed" disabled>Kiválasztás</button>
+            </div>
+            <div class="text-center mt-2">
+                <p class="text-muted text-xs md:text-sm px-2">
                     Később bármikor módosíthatod a beállításokat a profil menüben.
                 </p>
             </div>
@@ -130,97 +126,62 @@ class TargetAudienceSelector {
         modalOverlay.appendChild(modalContent);
         document.body.appendChild(modalOverlay);
 
-        // Add event listeners
+        // Prevent body scroll on mobile
+        document.body.style.overflow = 'hidden';
+        
         this.setupEventListeners();
     }
 
     // Setup event listeners for the selector
     setupEventListeners() {
         const modal = document.getElementById('target-audience-modal');
-        
-        // Group card selection - make entire card clickable
         const groupCards = modal.querySelectorAll('.target-group-card');
+        const confirmBtn = modal.querySelector('#confirm-group-btn');
+        let selectedCard = null;
+        this.selectedGroup = null;
+
         groupCards.forEach(card => {
-            // Add click handler to entire card
-            card.addEventListener('click', async (e) => {
-                // Don't trigger if clicking on the button (button has its own handler)
-                if (e.target.classList.contains('select-group-btn') || e.target.closest('.select-group-btn')) {
-                    return;
-                }
-                
-                console.log('Card clicked:', card.getAttribute('data-group-id'));
-                
+            card.addEventListener('click', (e) => {
                 // Remove active state from all cards
                 groupCards.forEach(c => {
                     c.classList.remove('border-donezy-orange', 'bg-donezy-card');
                     c.classList.add('border-transparent', 'bg-donezy-accent');
                 });
-
                 // Add active state to clicked card
                 card.classList.remove('border-transparent', 'bg-donezy-accent');
                 card.classList.add('border-donezy-orange', 'bg-donezy-card');
-
                 // Store selected group
                 this.selectedGroup = card.getAttribute('data-group-id');
-                console.log('Selected group set to:', this.selectedGroup);
-                
-                // Auto-select the group after a short delay
-                setTimeout(async () => {
-                    console.log('Auto-selecting group:', this.selectedGroup);
-                    await this.selectGroup(this.selectedGroup);
-                }, 300);
+                selectedCard = card;
+                // Enable confirm button
+                confirmBtn.disabled = false;
+                confirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                confirmBtn.classList.add('opacity-100');
             });
         });
 
-        // Select button click - improved with better feedback
-        const selectButtons = modal.querySelectorAll('.select-group-btn');
-        selectButtons.forEach(button => {
-            button.addEventListener('click', async (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                
-                console.log('Button clicked!');
-                
-                const card = button.closest('.target-group-card');
-                let groupId = card ? card.getAttribute('data-group-id') : null;
-                
-                // Fallback to selected group if button doesn't have group ID
-                if (!groupId && this.selectedGroup) {
-                    groupId = this.selectedGroup;
-                    console.log('Using selected group as fallback:', groupId);
-                }
-                
-                console.log('Select button clicked for group:', groupId);
-                console.log('Selected group from instance:', this.selectedGroup);
-                
-                if (groupId) {
-                    // Show immediate feedback
-                    button.innerHTML = `
-                        <div class="flex items-center justify-center space-x-2">
-                            <div class="loading-spinner w-4 h-4"></div>
-                            <span>Mentés...</span>
-                        </div>
-                    `;
-                    button.disabled = true;
-                    
-                    console.log('Calling selectGroup with:', groupId);
-                    await this.selectGroup(groupId);
-                } else {
-                    console.error('No group ID found for button');
-                    console.error('Card:', card);
-                    console.error('Selected group:', this.selectedGroup);
-                    this.showError('Hiba: Nem található a kiválasztott csoport. Kérjük, válassz ki egy csoportot.');
-                }
-            });
+        confirmBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (!this.selectedGroup) return;
+            confirmBtn.innerHTML = `<div class="flex items-center justify-center space-x-2"><div class="loading-spinner w-4 h-4"></div><span>Mentés...</span></div>`;
+            confirmBtn.disabled = true;
+            await this.selectGroup(this.selectedGroup);
         });
 
-        // Prevent modal close on card click
+        // Prevent modal close on overlay click
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
-                // Don't close modal on overlay click - require explicit selection
                 return;
             }
         });
+
+        // Restore body scroll when modal is closed
+        const restoreScroll = () => {
+            document.body.style.overflow = '';
+        };
+
+        // Store restore function for cleanup
+        this.restoreScroll = restoreScroll;
     }
 
     // Handle group selection
@@ -276,11 +237,13 @@ class TargetAudienceSelector {
         const modal = document.getElementById('target-audience-modal');
         if (!modal) return;
         
-        const selectButtons = modal.querySelectorAll('.select-group-btn');
-        selectButtons.forEach(button => {
-            button.innerHTML = 'Kiválasztás';
-            button.disabled = false;
-        });
+        const confirmBtn = modal.querySelector('#confirm-group-btn');
+        if (confirmBtn) {
+            confirmBtn.innerHTML = 'Kiválasztás';
+            confirmBtn.disabled = true;
+            confirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            confirmBtn.classList.remove('opacity-100');
+        }
     }
 
     // Hide modal with animation
@@ -292,6 +255,11 @@ class TargetAudienceSelector {
         if (modal) {
             console.log('Adding fade-out class...');
             modal.classList.add('fade-out');
+            
+            // Restore body scroll
+            if (this.restoreScroll) {
+                this.restoreScroll();
+            }
             
             setTimeout(() => {
                 console.log('Removing modal from DOM...');

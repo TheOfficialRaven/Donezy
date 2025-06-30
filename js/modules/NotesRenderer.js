@@ -16,7 +16,7 @@ window.NotesRenderer = (function() {
         header.innerHTML = `
             <div class="flex items-center justify-between mb-8">
                 <h2 class="text-3xl font-bold text-donezy-orange flex items-center gap-2">📝 Jegyzetek</h2>
-                <button id="open-create-note-modal" class="bg-donezy-orange hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-lg shadow-lg transition-colors duration-200 text-lg">Új jegyzet</button>
+                <button id="open-create-note-modal" class="bg-donezy-orange hover:bg-orange-hover text-white font-bold py-2 px-6 rounded-lg shadow-lg transition-colors duration-200 text-lg">Új jegyzet</button>
             </div>
         `;
     }
@@ -24,9 +24,9 @@ window.NotesRenderer = (function() {
     function renderNotesList(notes) {
         const list = document.getElementById('notes-list');
         if (!list) return;
-        const notesArr = Object.values(notes).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        const notesArr = Object.values(notes || {}).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         if (notesArr.length === 0) {
-            list.innerHTML = `<div class="text-center py-12 text-gray-400">Nincs még jegyzeted.</div>`;
+            list.innerHTML = `<div class="text-center py-12 text-muted">Nincs még jegyzeted.</div>`;
             return;
         }
         list.innerHTML = `
@@ -70,7 +70,7 @@ window.NotesRenderer = (function() {
                     <div class="card-footer flex items-center gap-2 mt-auto pt-4">
                         <button class="note-pin-btn btn btn-ghost text-donezy-orange" title="${isPinned ? 'Kitűzés feloldása' : 'Kitűzés'}" data-note-id="${note.id}">${isPinned ? '📍' : '📌'}</button>
                         <button class="note-edit-btn btn btn-ghost text-donezy-orange" title="Szerkesztés" data-note-id="${note.id}">✏️</button>
-                        <button class="note-delete-btn btn btn-ghost text-red-400 hover:text-red-600" title="Törlés" data-note-id="${note.id}">🗑️</button>
+                        <button class="note-delete-btn btn btn-ghost text-error hover:text-error-hover" title="Törlés" data-note-id="${note.id}">🗑️</button>
                         <span class="ml-auto text-xs text-donezy-text-secondary">${new Date(note.createdAt).toLocaleString('hu-HU')}</span>
                     </div>
                 </div>
@@ -87,20 +87,20 @@ window.NotesRenderer = (function() {
         if (note.isEncrypted) {
             contentHtml = `
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Jelszó a jegyzet feloldásához</label>
-                    <input type="password" id="decrypt-password" class="w-full bg-donezy-accent border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-donezy-orange" placeholder="Jelszó...">
-                    <div id="decrypt-error" class="text-red-400 text-sm mt-2"></div>
+                    <label class="block text-sm font-medium text-primary mb-2">Jelszó a jegyzet feloldásához</label>
+                    <input type="password" id="decrypt-password" class="w-full bg-donezy-accent border border-secondary rounded-lg px-3 py-2 text-white focus:outline-none focus:border-donezy-orange" placeholder="Jelszó...">
+                    <div id="decrypt-error" class="text-error text-sm mt-2"></div>
                 </div>
-                <button id="decrypt-note-btn" class="w-full bg-donezy-orange hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 mb-2">Feloldás</button>
+                <button id="decrypt-note-btn" class="w-full bg-donezy-orange hover:bg-orange-hover text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 mb-2">Feloldás</button>
             `;
         } else {
-            contentHtml = `<div class="whitespace-pre-line text-gray-200">${note.content}</div>`;
+            contentHtml = `<div class="whitespace-pre-line text-primary">${note.content}</div>`;
         }
         modal.innerHTML = `
             <div class="bg-donezy-card rounded-lg p-6 shadow-lg border border-donezy-accent max-w-lg w-full mx-4">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-bold text-donezy-orange">📝 ${note.title}</h3>
-                    <button id="close-note-modal" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+                    <button id="close-note-modal" class="text-muted hover:text-primary text-2xl">&times;</button>
                 </div>
                 ${contentHtml}
             </div>
@@ -137,12 +137,11 @@ window.NotesRenderer = (function() {
             modal.querySelector('.bg-donezy-card').innerHTML = `
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-bold text-donezy-orange">📝 ${currentOpenNote.title}</h3>
-                    <button id="close-note-modal" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+                    <button id="close-note-modal" class="text-muted hover:text-primary text-2xl">&times;</button>
                 </div>
-                <div class="whitespace-pre-line text-gray-200 mb-4">${decrypted}</div>
-                <div class="flex gap-2 mt-2">
-                    <button id="edit-note-btn" class="btn btn-ghost text-donezy-orange">✏️ Szerkesztés</button>
-                    <button id="delete-note-btn" class="btn btn-ghost text-red-400 hover:text-red-600">🗑️ Törlés</button>
+                <div class="whitespace-pre-line text-primary mb-4">${decrypted}</div>
+                <div class="flex justify-between items-center">
+                    <button id="delete-note-btn" class="btn btn-ghost text-error hover:text-error-hover">🗑️ Törlés</button>
                 </div>
             `;
             document.getElementById('close-note-modal').addEventListener('click', closeNoteModal);
@@ -266,6 +265,10 @@ window.NotesRenderer = (function() {
                     if (note) {
                         btn.textContent = note.pinned ? '📍' : '📌';
                         btn.title = note.pinned ? 'Kitűzés feloldása' : 'Kitűzés';
+                    }
+                    // Frissítjük a dashboard-ot is, hogy a kiemelt jegyzet azonnal megjelenjen
+                    if (window.DashboardService && window.DashboardService.updateFeaturedItems) {
+                        await window.DashboardService.updateFeaturedItems();
                     }
                 }
             });

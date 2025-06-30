@@ -539,10 +539,12 @@ window.QuestsService = (function() {
             if (window.ListsService) {
                 const lists = window.ListsService.getAllLists();
                 let completedTasks = 0;
-                Object.values(lists).forEach(list => {
-                    Object.values(list.tasks).forEach(task => {
-                        if (task.done) completedTasks++;
-                    });
+                Object.values(lists || {}).forEach(list => {
+                    if (list && list.tasks) {
+                        Object.values(list.tasks).forEach(task => {
+                            if (task && task.done) completedTasks++;
+                        });
+                    }
                 });
                 const progress = Math.min(completedTasks, quest.goal);
                 console.log(`Task quest progress: ${completedTasks} completed tasks found, progress: ${progress}/${quest.goal}`);

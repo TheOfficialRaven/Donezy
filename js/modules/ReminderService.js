@@ -129,13 +129,13 @@ class ReminderService {
                     <div class="text-4xl mb-4">⏰</div>
                     <h2 class="text-xl font-bold text-donezy-orange mb-2">Esemény emlékeztető</h2>
                     <div class="text-lg font-semibold text-white mb-2">${event.title}</div>
-                    <div class="text-gray-300 mb-4">${event.time} - ${event.date}</div>
-                    ${event.description ? `<p class="text-gray-400 mb-4">${event.description}</p>` : ''}
+                    <div class="text-secondary mb-4">${event.time} - ${event.date}</div>
+                    ${event.description ? `<p class="text-muted mb-4">${event.description}</p>` : ''}
                     <div class="flex gap-2">
-                        <button id="reminder-ok" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                        <button id="reminder-ok" class="flex-1 bg-success hover:bg-success-hover text-white font-bold py-3 px-4 rounded-lg transition-colors">
                             ✅ Oké
                         </button>
-                        <button id="reminder-snooze" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                        <button id="reminder-snooze" class="flex-1 bg-info hover:bg-info-hover text-white font-bold py-3 px-4 rounded-lg transition-colors">
                             🔁 Késleltetés 5 perc
                         </button>
                     </div>

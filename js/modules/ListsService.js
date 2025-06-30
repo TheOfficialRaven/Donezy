@@ -294,6 +294,7 @@ window.ListsService = (function() {
                 createdAt: new Date().toISOString()
             };
 
+            if (!currentLists[listId].tasks) currentLists[listId].tasks = {};
             currentLists[listId].tasks[taskId] = newTask;
             currentLists[listId].updatedAt = new Date().toISOString();
 
@@ -398,17 +399,19 @@ window.ListsService = (function() {
      * @returns {Object} - Statisztikák
      */
     function getListsStats() {
-        const lists = Object.values(currentLists);
+        const lists = Object.values(currentLists || {});
         const totalLists = lists.length;
-        const activeLists = lists.filter(list => list.status === LIST_STATUS.ACTIVE).length;
+        const activeLists = lists.filter(list => list && list.status === LIST_STATUS.ACTIVE).length;
         
         let totalTasks = 0;
         let completedTasks = 0;
         
         lists.forEach(list => {
-            const tasks = Object.values(list.tasks);
-            totalTasks += tasks.length;
-            completedTasks += tasks.filter(task => task.done).length;
+            if (list && list.tasks) {
+                const tasks = Object.values(list.tasks);
+                totalTasks += tasks.length;
+                completedTasks += tasks.filter(task => task && task.done).length;
+            }
         });
 
         return {
@@ -425,8 +428,8 @@ window.ListsService = (function() {
      * @returns {Array<string>}
      */
     function getAllCategories() {
-        const categories = Object.values(currentLists)
-            .map(list => (list.category || '').trim())
+        const categories = Object.values(currentLists || {})
+            .map(list => list ? (list.category || '').trim() : '')
             .filter(cat => cat.length > 0);
         return Array.from(new Set(categories)).sort((a, b) => a.localeCompare(b, 'hu'));
     }
@@ -437,16 +440,17 @@ window.ListsService = (function() {
      * @returns {Array} - Szűrt listák tömbje
      */
     function filterLists({ searchText = '', category = '' } = {}) {
-        let lists = Object.values(currentLists);
+        let lists = Object.values(currentLists || {});
         if (category && category.trim() !== '') {
-            lists = lists.filter(list => (list.category || '').toLowerCase() === category.trim().toLowerCase());
+            lists = lists.filter(list => list && (list.category || '').toLowerCase() === category.trim().toLowerCase());
         }
         if (searchText && searchText.trim() !== '') {
             const text = searchText.trim().toLowerCase();
             lists = lists.filter(list => {
+                if (!list) return false;
                 const inTitle = (list.title || '').toLowerCase().includes(text);
                 const inCategory = (list.category || '').toLowerCase().includes(text);
-                const inTasks = Object.values(list.tasks || {}).some(task => (task.name || '').toLowerCase().includes(text));
+                const inTasks = Object.values(list.tasks || {}).some(task => task && (task.name || '').toLowerCase().includes(text));
                 return inTitle || inCategory || inTasks;
             });
         }

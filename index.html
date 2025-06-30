@@ -28,20 +28,20 @@
         <!-- Login Form -->
         <form id="login-form" class="space-y-6">
           <h2 class="text-2xl font-bold text-donezy-orange text-center mb-2">Bejelentkezés</h2>
-          <input type="email" id="login-email" class="w-full px-4 py-3 rounded-lg bg-donezy-accent text-white focus:outline-none focus:border-donezy-orange border border-gray-600" placeholder="E-mail" required>
-          <input type="password" id="login-password" class="w-full px-4 py-3 rounded-lg bg-donezy-accent text-white focus:outline-none focus:border-donezy-orange border border-gray-600" placeholder="Jelszó" required>
-          <button type="submit" class="w-full bg-donezy-orange hover:bg-orange-600 text-white font-bold py-3 rounded-lg transition">Bejelentkezés</button>
-          <p class="text-center text-gray-400">Nincs fiókod? <a href="#" id="show-register" class="text-donezy-orange hover:underline">Regisztráció</a></p>
-          <p id="login-error" class="text-red-400 text-center"></p>
+          <input type="email" id="login-email" class="w-full px-4 py-3 rounded-lg bg-donezy-accent text-white focus:outline-none focus:border-donezy-orange border border-secondary" placeholder="E-mail" required>
+          <input type="password" id="login-password" class="w-full px-4 py-3 rounded-lg bg-donezy-accent text-white focus:outline-none focus:border-donezy-orange border border-secondary" placeholder="Jelszó" required>
+          <button type="submit" class="w-full bg-donezy-orange hover:bg-orange-hover text-white font-bold py-3 rounded-lg transition">Bejelentkezés</button>
+          <p class="text-center text-secondary">Nincs fiókod? <a href="#" id="show-register" class="text-donezy-orange hover:underline">Regisztráció</a></p>
+          <p id="login-error" class="text-error text-center"></p>
         </form>
         <!-- Register Form -->
         <form id="register-form" class="space-y-6 hidden">
           <h2 class="text-2xl font-bold text-donezy-orange text-center mb-2">Regisztráció</h2>
-          <input type="email" id="register-email" class="w-full px-4 py-3 rounded-lg bg-donezy-accent text-white focus:outline-none focus:border-donezy-orange border border-gray-600" placeholder="E-mail" required>
-          <input type="password" id="register-password" class="w-full px-4 py-3 rounded-lg bg-donezy-accent text-white focus:outline-none focus:border-donezy-orange border border-gray-600" placeholder="Jelszó" required>
-          <button type="submit" class="w-full bg-donezy-orange hover:bg-orange-600 text-white font-bold py-3 rounded-lg transition">Fiók létrehozása</button>
-          <p class="text-center text-gray-400">Van már fiókod? <a href="#" id="show-login" class="text-donezy-orange hover:underline">Bejelentkezés</a></p>
-          <p id="register-error" class="text-red-400 text-center"></p>
+          <input type="email" id="register-email" class="w-full px-4 py-3 rounded-lg bg-donezy-accent text-white focus:outline-none focus:border-donezy-orange border border-secondary" placeholder="E-mail" required>
+          <input type="password" id="register-password" class="w-full px-4 py-3 rounded-lg bg-donezy-accent text-white focus:outline-none focus:border-donezy-orange border border-secondary" placeholder="Jelszó" required>
+          <button type="submit" class="w-full bg-donezy-orange hover:bg-orange-hover text-white font-bold py-3 rounded-lg transition">Fiók létrehozása</button>
+          <p class="text-center text-secondary">Van már fiókod? <a href="#" id="show-login" class="text-donezy-orange hover:underline">Bejelentkezés</a></p>
+          <p id="register-error" class="text-error text-center"></p>
         </form>
       </div>
     </div>
@@ -58,7 +58,7 @@
               <div class="w-8 h-8 bg-donezy-orange rounded-lg flex items-center justify-center">
                 <span class="text-white font-bold text-lg">D</span>
               </div>
-              <span class="text-xl font-bold text-donezy-orange hidden sm:block">Donezy</span>
+              <span class="text-xl font-bold text-donezy-orange">Donezy</span>
             </div>
 
             <!-- Navigation Tabs - Desktop -->
@@ -92,30 +92,28 @@
             <!-- Right Side Controls -->
             <div class="flex items-center space-x-3 flex-shrink-0">
               <!-- Connection Status Indicator -->
-              <div id="connection-status" class="flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium transition-all duration-300">
-                <div class="w-2 h-2 rounded-full bg-gray-400"></div>
+              <div id="connection-status" class="hidden lg:flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium transition-all duration-300">
+                <div class="w-2 h-2 rounded-full bg-secondary"></div>
                 <span class="hidden sm:inline">Kapcsolat...</span>
               </div>
               
               <!-- Essence Display -->
-              <div class="essence-display bg-gradient-to-r from-purple-600 to-purple-800 text-white px-3 py-2 rounded-lg font-bold text-sm shadow-lg border border-purple-400 text-center">
-                <span class="hidden sm:inline"><img src="imgs/Essence.svg" alt="Essence" class="inline w-5 h-5 align-middle" style="display:inline;vertical-align:middle;"/> 50</span>
-                <span class="sm:hidden"><img src="imgs/Essence.svg" alt="Essence" class="inline w-5 h-5 align-middle" style="display:inline;vertical-align:middle;"/></span>
+              <div class="essence-display hidden lg:flex bg-gradient-to-r from-purple to-purple-hover text-white px-3 py-2 rounded-lg font-bold text-sm shadow-lg border border-purple text-center">
+                <span><img src="imgs/Essence.svg" alt="Essence" class="inline w-5 h-5 align-middle" style="display:inline;vertical-align:middle;"/> 50</span>
               </div>
               
               <!-- Language Selector -->
-              <button class="bg-donezy-accent hover:bg-donezy-card text-white px-3 py-2 rounded-lg transition-colors duration-200 btn-hover-effect">
-                <span class="hidden sm:inline">HU</span>
-                <span class="sm:hidden">🌐</span>
+              <button class="hidden lg:flex bg-donezy-accent hover:bg-donezy-card text-white px-3 py-2 rounded-lg transition-colors duration-200 btn-hover-effect">
+                <span>HU</span>
               </button>
               
               <!-- Theme Toggle -->
-              <button id="theme-toggle" class="bg-donezy-accent hover:bg-donezy-card text-white px-3 py-2 rounded-lg transition-colors duration-200 btn-hover-effect">
+              <button id="theme-toggle" class="hidden lg:flex bg-donezy-accent hover:bg-donezy-card text-white px-3 py-2 rounded-lg transition-colors duration-200 btn-hover-effect">
                 🎨
               </button>
               
               <!-- Profile -->
-              <div class="relative">
+              <div class="relative hidden lg:block">
                 <button id="profile-menu-btn" class="bg-donezy-accent hover:bg-donezy-card text-white px-3 py-2 rounded-lg transition-colors duration-200 btn-hover-effect">
                   👤
                 </button>
@@ -125,24 +123,24 @@
                   <div class="p-4">
                     <div class="border-b border-donezy-accent pb-3 mb-3">
                       <h3 class="text-lg font-bold text-donezy-orange">Profil</h3>
-                      <p class="text-sm text-gray-400">Felhasználói beállítások</p>
+                      <p class="text-sm text-secondary">Felhasználói beállítások</p>
                     </div>
                     
                     <div class="space-y-2">
                       <!-- Current Target Group Display -->
                       <div class="flex items-center justify-between p-2 bg-donezy-accent rounded-lg">
                         <div>
-                          <span class="text-sm text-gray-400">Jelenlegi célcsoport:</span>
-                          <div id="current-target-group" class="font-bold text-white">Betöltés...</div>
+                          <span class="text-sm text-secondary">Jelenlegi célcsoport:</span>
+                          <div id="current-target-group" class="font-bold text-primary">Betöltés...</div>
                         </div>
                         <span id="current-group-icon" class="text-2xl">👤</span>
                       </div>
                       
                       <!-- Essence Display -->
-                      <div class="flex items-center justify-between p-2 bg-gradient-to-r from-purple-600 to-purple-800 rounded-lg border border-purple-400">
+                      <div class="flex items-center justify-between p-2 bg-gradient-to-r from-purple to-purple-hover rounded-lg border border-purple">
                         <div>
-                          <span class="text-sm text-gray-300">Essence:</span>
-                          <div class="essence-display font-bold text-white"><img src="imgs/Essence.svg" alt="Essence" class="inline w-5 h-5 align-middle" style="display:inline;vertical-align:middle;"/> 50</div>
+                          <span class="text-sm text-primary">Essence:</span>
+                          <div class="essence-display font-bold text-primary"><img src="imgs/Essence.svg" alt="Essence" class="inline w-5 h-5 align-middle" style="display:inline;vertical-align:middle;"/> 50</div>
                         </div>
                         <span class="text-2xl"><img src="imgs/Essence.svg" alt="Essence" class="inline w-5 h-5 align-middle" style="display:inline;vertical-align:middle;"/></span>
                       </div>
@@ -164,46 +162,165 @@
                         <span>❓</span>
                         <span>Súgó</span>
                       </button>
+                      
+                      <!-- Separator -->
+                      <div class="border-t border-donezy-accent my-3"></div>
+                      
+                      <!-- Logout Button -->
+                      <button id="desktop-logout-btn" class="w-full bg-error hover:bg-error-hover text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2 btn-hover-effect">
+                        <span>🚪</span>
+                        <span>Kijelentkezés</span>
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
-              <!-- Kijelentkezés gomb -->
-              <button id="logout-btn" onclick="window.donezyLogout()" class="bg-donezy-orange hover:bg-orange-600 text-white px-3 py-2 rounded-lg ml-2 hidden">Kijelentkezés</button>
-            </div>
-          </div>
-
-          <!-- Mobile Navigation (Stacked) -->
-          <div class="lg:hidden py-3 border-t border-donezy-accent">
-            <div class="grid grid-cols-6 gap-1">
-              <button id="nav-dashboard-mobile" class="nav-tab-mobile active" data-tab="dashboard">
-                <span class="block text-lg mb-1">📊</span>
-                <span class="text-xs">Dashboard</span>
-              </button>
-              <button id="nav-results-mobile" class="nav-tab-mobile" data-tab="results">
-                <span class="block text-lg mb-1">🏆</span>
-                <span class="text-xs">Eredmények</span>
-              </button>
-              <button id="nav-missions-mobile" class="nav-tab-mobile" data-tab="missions">
-                <span class="block text-lg mb-1">⚔️</span>
-                <span class="text-xs">Küldetések</span>
-              </button>
-              <button id="nav-lists-mobile" class="nav-tab-mobile" data-tab="lists">
-                <span class="block text-lg mb-1">📋</span>
-                <span class="text-xs">Listák</span>
-              </button>
-              <button id="nav-notes-mobile" class="nav-tab-mobile" data-tab="notes">
-                <span class="block text-lg mb-1">📝</span>
-                <span class="text-xs">Jegyzetfüzet</span>
-              </button>
-              <button id="nav-calendar-mobile" class="nav-tab-mobile" data-tab="calendar">
-                <span class="block text-lg mb-1">📅</span>
-                <span class="text-xs">Naptár</span>
-              </button>
             </div>
           </div>
         </div>
       </nav>
+
+      <!-- Mobile Navigation -->
+      <div class="mobile-nav-container lg:hidden">
+        <!-- Hamburger Menu Button -->
+        <button id="mobile-menu-toggle" class="mobile-hamburger-btn" aria-label="Nyissa meg a mobil menüt">
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+        </button>
+
+        <!-- Mobile Menu Overlay -->
+        <div id="mobile-menu-overlay" class="mobile-menu-overlay">
+          <div class="mobile-menu-content">
+            <!-- Mobile Menu Header -->
+            <div class="mobile-menu-header">
+              <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 bg-donezy-orange rounded-lg flex items-center justify-center">
+                  <span class="text-white font-bold text-lg">D</span>
+                </div>
+                <span class="text-xl font-bold text-donezy-orange">Donezy</span>
+              </div>
+              <button id="mobile-menu-close" class="mobile-close-btn" aria-label="Zárja be a mobil menüt">
+                <span class="close-icon">×</span>
+              </button>
+            </div>
+
+            <!-- Mobile User Info Section - Compact -->
+            <div class="mobile-user-info-compact">
+              <div class="mobile-user-card-compact">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-donezy-orange to-orange-600 rounded-full flex items-center justify-center">
+                      <span class="text-white font-bold text-lg">👤</span>
+                    </div>
+                    <div>
+                      <h3 class="text-white font-semibold text-sm">Felhasználó</h3>
+                      <div class="flex items-center space-x-2">
+                        <div class="w-2 h-2 rounded-full bg-success animate-pulse"></div>
+                        <span class="text-secondary text-xs">Online</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <div class="mobile-essence-display-compact">
+                      <div class="flex items-center space-x-1 bg-gradient-to-r from-purple to-purple-hover px-2 py-1 rounded-lg border border-purple">
+                        <img src="imgs/Essence.svg" alt="Essence" class="w-4 h-4" />
+                        <span class="text-white font-bold text-sm">50</span>
+                      </div>
+                    </div>
+                    <button id="mobile-change-target-group-btn" class="mobile-target-group-btn-compact">
+                      <span class="mobile-action-icon">🔄</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Mobile Navigation Links -->
+            <nav class="mobile-nav-links">
+              <div class="mobile-nav-section">
+                <h4 class="mobile-nav-section-title">Főmenü</h4>
+                <a href="#" class="mobile-nav-link active" data-tab="dashboard">
+                  <span class="mobile-nav-icon">📊</span>
+                  <span class="mobile-nav-text">Dashboard</span>
+                  <span class="mobile-nav-arrow">→</span>
+                </a>
+                <a href="#" class="mobile-nav-link" data-tab="results">
+                  <span class="mobile-nav-icon">🏆</span>
+                  <span class="mobile-nav-text">Eredmények</span>
+                  <span class="mobile-nav-arrow">→</span>
+                </a>
+                <a href="#" class="mobile-nav-link" data-tab="missions">
+                  <span class="mobile-nav-icon">⚔️</span>
+                  <span class="mobile-nav-text">Küldetések</span>
+                  <span class="mobile-nav-arrow">→</span>
+                </a>
+              </div>
+
+              <div class="mobile-nav-section">
+                <h4 class="mobile-nav-section-title">Eszközök</h4>
+                <a href="#" class="mobile-nav-link" data-tab="lists">
+                  <span class="mobile-nav-icon">📋</span>
+                  <span class="mobile-nav-text">Listák</span>
+                  <span class="mobile-nav-arrow">→</span>
+                </a>
+                <a href="#" class="mobile-nav-link" data-tab="notes">
+                  <span class="mobile-nav-icon">📝</span>
+                  <span class="mobile-nav-text">Jegyzetfüzet</span>
+                  <span class="mobile-nav-arrow">→</span>
+                </a>
+                <a href="#" class="mobile-nav-link" data-tab="calendar">
+                  <span class="mobile-nav-icon">📅</span>
+                  <span class="mobile-nav-text">Naptár</span>
+                  <span class="mobile-nav-arrow">→</span>
+                </a>
+              </div>
+
+              <!-- Additional Navigation Section -->
+              <div class="mobile-nav-section">
+                <h4 class="mobile-nav-section-title">Gyors műveletek</h4>
+                <a href="#" class="mobile-nav-link mobile-quick-action" data-action="quick-task">
+                  <span class="mobile-nav-icon">➕</span>
+                  <span class="mobile-nav-text">Gyors feladat</span>
+                  <span class="mobile-nav-arrow">→</span>
+                </a>
+                <a href="#" class="mobile-nav-link mobile-quick-action" data-action="quick-note">
+                  <span class="mobile-nav-icon">📝</span>
+                  <span class="mobile-nav-text">Gyors jegyzet</span>
+                  <span class="mobile-nav-arrow">→</span>
+                </a>
+                <a href="#" class="mobile-nav-link mobile-quick-action" data-action="quick-event">
+                  <span class="mobile-nav-icon">📅</span>
+                  <span class="mobile-nav-text">Gyors esemény</span>
+                  <span class="mobile-nav-arrow">→</span>
+                </a>
+              </div>
+            </nav>
+
+            <!-- Mobile Menu Footer - Compact -->
+            <div class="mobile-menu-footer-compact">
+              <div class="mobile-footer-actions">
+                <button class="mobile-footer-btn" data-action="theme-toggle">
+                  <span class="mobile-footer-icon">🌙</span>
+                  <span class="mobile-footer-text">Téma</span>
+                </button>
+                <button class="mobile-footer-btn" data-action="settings">
+                  <span class="mobile-footer-icon">⚙️</span>
+                  <span class="mobile-footer-text">Beállítások</span>
+                </button>
+                <button class="mobile-footer-btn" data-action="help">
+                  <span class="mobile-footer-icon">❓</span>
+                  <span class="mobile-footer-text">Súgó</span>
+                </button>
+              </div>
+              <button id="mobile-logout-btn" class="mobile-logout-btn-compact">
+                <span class="mobile-logout-icon">🚪</span>
+                <span class="mobile-logout-text">Kijelentkezés</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Main Content Area -->
       <main class="pt-32 pb-8 lg:pt-36">
@@ -212,7 +329,7 @@
           <div id="dashboard-student" class="dashboard-section active">
             <div class="mb-8">
               <h1 id="dashboard-title" class="text-3xl font-bold text-donezy-orange mb-4"></h1>
-              <p class="text-gray-300 text-lg">Üdvözöl a tanulmányi központod! Itt áttekintheted a teljesítményedet és a napi feladataidat.</p>
+              <p class="text-secondary text-lg">Üdvözöl a tanulmányi központod! Itt áttekintheted a teljesítményedet és a napi feladataidat.</p>
             </div>
 
             <!-- Dashboard Grid Layout -->
@@ -240,17 +357,17 @@
               <div class="bg-donezy-card rounded-lg p-6 shadow-lg border border-donezy-accent card-hover">
                 <h2 class="text-xl font-bold text-donezy-orange mb-4">Gyors műveletek</h2>
                 <div class="flex flex-col gap-3">
-                  <button id="quick-task-btn" class="bg-donezy-orange hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2 btn-hover-effect w-full">
+                  <button id="quick-task-btn" class="bg-donezy-orange hover:bg-orange-hover text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2 btn-hover-effect w-full">
                     <span>➕</span>
                     <span>Gyors feladat</span>
                   </button>
-                  <button id="quick-note-btn" class="bg-donezy-orange hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2 btn-hover-effect w-full">
+                  <button id="quick-note-btn" class="bg-donezy-orange hover:bg-orange-hover text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2 btn-hover-effect w-full">
                     <span>📝</span>
                     <span>Gyors jegyzet</span>
                   </button>
-                  <button id="quick-event-btn" class="bg-donezy-orange hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2 btn-hover-effect w-full">
+                  <button id="quick-event-btn" class="bg-donezy-orange hover:bg-orange-hover text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2 btn-hover-effect w-full">
                     <span>📅</span>
-                    <span>Esemény</span>
+                    <span>Gyors esemény</span>
                   </button>
                 </div>
               </div>
@@ -262,7 +379,7 @@
                   <p id="motivational-quote" class="text-lg italic text-center">
                     "A tudás az egyetlen kincs, amit soha nem vehetnek el tőled."
                   </p>
-                  <p class="text-sm text-gray-400 text-center mt-2">- Ismeretlen</p>
+                  <p class="text-sm text-secondary text-center mt-2">- Ismeretlen</p>
                 </div>
               </div>
             </div>
@@ -274,7 +391,7 @@
                 <h2 class="text-xl font-bold text-donezy-orange mb-4">Mai események</h2>
                 <div id="today-events" class="space-y-3">
                   <div class="bg-donezy-accent rounded-lg p-3">
-                    <p class="text-gray-300">Nincs mai esemény</p>
+                    <p class="text-secondary">Nincs mai esemény</p>
                   </div>
                 </div>
               </div>
@@ -285,11 +402,11 @@
                 <div class="space-y-4">
                   <div class="bg-donezy-accent rounded-lg p-4 card-hover">
                     <h3 class="font-bold text-donezy-orange mb-2">📝</h3>
-                    <p class="text-gray-300 text-sm"></p>
+                    <p class="text-secondary text-sm"></p>
                   </div>
                   <div class="bg-donezy-accent rounded-lg p-4 card-hover">
                     <h3 class="font-bold text-donezy-orange mb-2">✅</h3>
-                    <p class="text-gray-300 text-sm"></p>
+                    <p class="text-secondary text-sm"></p>
                   </div>
                 </div>
               </div>
@@ -299,7 +416,7 @@
                 <h2 class="text-xl font-bold text-donezy-orange mb-4">Sürgős feladatok</h2>
                 <div id="urgent-tasks" class="space-y-3">
                   <div class="bg-donezy-accent rounded-lg p-3">
-                    <p class="text-gray-300">Nincs sürgős feladat!</p>
+                    <p class="text-secondary">Nincs sürgős feladat!</p>
                   </div>
                 </div>
               </div>
@@ -309,7 +426,7 @@
           <div id="dashboard-freelancer" class="dashboard-section hidden">
             <div class="mb-8">
               <h1 class="text-3xl font-bold text-donezy-orange mb-4">💼 Dashboard – Freelancer Központ</h1>
-              <p class="text-gray-300 text-lg">Ez a felület a freelancer célcsoport számára lesz elérhető.</p>
+              <p class="text-secondary text-lg">Ez a felület a freelancer célcsoport számára lesz elérhető.</p>
             </div>
           </div>
 
@@ -331,22 +448,22 @@
                   <div class="stat-card">
                     <div class="text-4xl mb-2 text-center">🗂️</div>
                     <div class="text-2xl font-bold text-center" id="stat-lists">0</div>
-                    <div class="text-gray-400 text-sm text-center">Lista</div>
+                    <div class="text-secondary text-sm text-center">Lista</div>
                   </div>
                   <div class="stat-card">
                     <div class="text-4xl mb-2 text-center">📝</div>
                     <div class="text-2xl font-bold text-center" id="stat-notes">0</div>
-                    <div class="text-gray-400 text-sm text-center">Jegyzet</div>
+                    <div class="text-secondary text-sm text-center">Jegyzet</div>
                   </div>
                   <div class="stat-card">
                     <div class="text-4xl mb-2 text-center">✅</div>
                     <div class="text-2xl font-bold text-center" id="stat-tasks">0</div>
-                    <div class="text-gray-400 text-sm text-center">Kész</div>
+                    <div class="text-secondary text-sm text-center">Kész</div>
                   </div>
                   <div class="stat-card">
                     <div class="text-4xl mb-2 text-center">🎯</div>
                     <div class="text-2xl font-bold text-center" id="stat-completion">0%</div>
-                    <div class="text-gray-400 text-sm text-center">Teljesítés</div>
+                    <div class="text-secondary text-sm text-center">Teljesítés</div>
                   </div>
                 </div>
               </div>
@@ -360,9 +477,9 @@
                   <div class="w-full bg-donezy-accent rounded-full h-3 mb-2 overflow-hidden">
                     <div id="xp-progress-bar" class="bg-donezy-orange h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
                   </div>
-                  <div class="flex justify-between text-sm text-gray-400">
-                    <span id="xp-text">0 / 100 XP</span>
-                    <span id="xp-to-next">Még 100 XP a következő szintig!</span>
+                  <div class="flex justify-between text-sm text-secondary">
+                    <span>Jelenlegi sorozat:</span>
+                    <span id="current-streak">0 nap</span>
                   </div>
                 </div>
               </div>
@@ -378,15 +495,15 @@
                   <div class="flex-1 grid grid-cols-2 md:grid-cols-3 gap-4 mt-4 md:mt-0">
                     <div class="activity-stat">
                       <div class="text-lg font-bold text-center" id="stat-total-days">0</div>
-                      <div class="text-gray-400 text-xs text-center">Összes nap</div>
+                      <div class="text-secondary text-xs text-center">Összes nap</div>
                     </div>
                     <div class="activity-stat">
                       <div class="text-lg font-bold text-center" id="stat-best-streak">0</div>
-                      <div class="text-gray-400 text-xs text-center">Leghosszabb sorozat</div>
+                      <div class="text-secondary text-xs text-center">Leghosszabb sorozat</div>
                     </div>
                     <div class="activity-stat">
                       <div class="text-lg font-bold text-center" id="stat-avg">0</div>
-                      <div class="text-gray-400 text-xs text-center">Átlag/nap</div>
+                      <div class="text-secondary text-xs text-center">Átlag/nap</div>
                     </div>
                   </div>
                 </div>
@@ -405,7 +522,7 @@
                 <h2 class="text-xl font-bold text-donezy-orange mb-4 flex items-center gap-2">
                   <span>📝</span> Produktivitási betekintés
                 </h2>
-                <ul class="text-gray-300 space-y-2 text-sm" id="summary-list">
+                <ul class="text-primary space-y-2 text-sm" id="summary-list">
                   <!-- Összegzés JS-ből -->
                 </ul>
               </div>
@@ -422,26 +539,26 @@
             </div>
 
             <!-- Kiemelt szekció: Mai Diák Küldetések -->
-            <div class="bg-donezy-accent border-2 border-green-400 rounded-xl p-6 mb-8 shadow-lg">
+            <div class="bg-donezy-accent border-2 border-success rounded-xl p-6 mb-8 shadow-lg">
               <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
-                <h2 class="text-xl font-bold text-green-300 flex items-center gap-2 mb-2 md:mb-0">
+                <h2 class="text-xl font-bold text-success flex items-center gap-2 mb-2 md:mb-0">
                   <span>🪄</span> Mai Diák Küldetések
                 </h2>
-                <span id="missions-progress" class="text-sm font-bold text-green-200 bg-green-900 px-3 py-1 rounded-full">0/3 teljesítve</span>
+                <span id="missions-progress" class="text-sm font-bold text-success bg-success-dark px-3 py-1 rounded-full">0/3 teljesítve</span>
               </div>
-              <blockquote class="italic text-gray-300 text-center md:text-left mt-2 mb-0">A tudás az egyetlen kincs, amit soha nem vehetnek el tőled.</blockquote>
+              <blockquote class="italic text-primary text-center md:text-left mt-2 mb-0">A tudás az egyetlen kincs, amit soha nem vehetnek el tőled.</blockquote>
             </div>
 
             <!-- Küldetés Grid (JS tölti be) -->
             <div id="quest-content"></div>
 
             <!-- AI Küldetésgenerátor szekció -->
-            <div class="bg-purple-900/60 border-2 border-purple-500 rounded-xl p-6 mt-10 shadow-lg flex flex-col items-center">
-              <h3 class="text-lg font-bold text-pink-300 flex items-center gap-2 mb-2">🤖 Személyre szabott napi kihívások</h3>
-              <p class="text-gray-300 mb-4 text-center">Generálj intelligens küldetéseket az órarended alapján!</p>
+            <div class="bg-purple-dark border-2 border-purple rounded-xl p-6 mt-10 shadow-lg flex flex-col items-center">
+              <h3 class="text-lg font-bold text-pink flex items-center gap-2 mb-2">🤖 Személyre szabott napi kihívások</h3>
+              <p class="text-primary mb-4 text-center">Generálj intelligens küldetéseket az órarended alapján!</p>
               <div class="flex flex-col md:flex-row gap-4 w-full justify-center">
-                <button id="generate-quests-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-200 flex-1">🪄 Küldetések generálása (sablon)</button>
-                <button id="generate-ai-quests-btn" class="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-200 flex-1">🤖 AI Küldetések generálása</button>
+                <button id="generate-quests-btn" class="bg-blue hover:bg-blue-hover text-white font-bold py-2 px-6 rounded-lg transition-colors duration-200 flex-1">🪄 Küldetések generálása (sablon)</button>
+                <button id="generate-ai-quests-btn" class="bg-gradient-to-r from-pink to-purple hover:from-pink-hover hover:to-purple-hover text-white font-bold py-2 px-6 rounded-lg transition-colors duration-200 flex-1">🤖 AI Küldetések generálása</button>
               </div>
             </div>
           </section>

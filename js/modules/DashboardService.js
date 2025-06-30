@@ -775,8 +775,8 @@ window.DashboardService = (function() {
             if (dataService) {
                 const userData = await dataService.getUserData();
                 const lists = userData.lists || {};
-                existingLists = Object.values(lists)
-                    .filter(list => list.status !== 'deleted')
+                existingLists = Object.values(lists || {})
+                    .filter(list => list && list.status !== 'deleted')
                     .map(list => ({
                         value: list.id,
                         label: `${list.title} (${Object.keys(list.tasks || {}).length} feladat)`

@@ -48,7 +48,7 @@ class ModalService {
         let html = `
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-bold text-donezy-orange">${icon || ''} ${title}</h3>
-                <button class="modal-close text-gray-400 hover:text-white text-2xl transition-colors duration-200">&times;</button>
+                <button class="modal-close text-secondary hover:text-primary text-2xl transition-colors duration-200">&times;</button>
             </div>
         `;
         
@@ -80,15 +80,15 @@ class ModalService {
         
         let html = `
             <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2">${label}</label>
+                <label class="block text-sm font-medium text-primary mb-2">${label}</label>
         `;
         
         switch (type) {
             case 'textarea':
-                html += `<textarea id="${id}" rows="${rows || 3}" placeholder="${placeholder || ''}" ${required ? 'required' : ''} class="w-full bg-donezy-accent border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-donezy-orange transition-colors duration-200"></textarea>`;
+                html += `<textarea id="${id}" rows="${rows || 3}" placeholder="${placeholder || ''}" ${required ? 'required' : ''} class="w-full bg-donezy-accent border border-secondary rounded-lg px-3 py-2 text-white focus:outline-none focus:border-donezy-orange transition-colors duration-200"></textarea>`;
                 break;
             case 'select':
-                html += `<select id="${id}" ${required ? 'required' : ''} class="w-full bg-donezy-accent border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-donezy-orange transition-colors duration-200">`;
+                html += `<select id="${id}" ${required ? 'required' : ''} class="w-full bg-donezy-accent border border-secondary rounded-lg px-3 py-2 text-white focus:outline-none focus:border-donezy-orange transition-colors duration-200">`;
                 if (field.options) {
                     field.options.forEach(option => {
                         html += `<option value="${option.value}">${option.label}</option>`;
@@ -98,21 +98,21 @@ class ModalService {
                 break;
             case 'checkbox':
                 html += `<div class="flex items-center">
-                    <input type="checkbox" id="${id}" ${required ? 'required' : ''} class="w-4 h-4 text-donezy-orange bg-donezy-accent border-gray-600 rounded focus:ring-donezy-orange focus:ring-2">
-                    <label for="${id}" class="ml-2 text-sm text-gray-300">${placeholder || ''}</label>
+                    <input type="checkbox" id="${id}" ${required ? 'required' : ''} class="w-4 h-4 text-donezy-orange bg-donezy-accent border-secondary rounded focus:ring-donezy-orange focus:ring-2">
+                    <label for="${id}" class="ml-2 text-sm text-primary">${placeholder || ''}</label>
                 </div>`;
                 break;
             case 'password':
-                html += `<input type="password" id="${id}" placeholder="${placeholder || ''}" ${required ? 'required' : ''} class="w-full bg-donezy-accent border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-donezy-orange transition-colors duration-200">`;
+                html += `<input type="password" id="${id}" placeholder="${placeholder || ''}" ${required ? 'required' : ''} class="w-full bg-donezy-accent border border-secondary rounded-lg px-3 py-2 text-white focus:outline-none focus:border-donezy-orange transition-colors duration-200">`;
                 break;
             case 'date':
-                html += `<input type="date" id="${id}" ${required ? 'required' : ''} class="w-full bg-donezy-accent border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-donezy-orange transition-colors duration-200">`;
+                html += `<input type="date" id="${id}" ${required ? 'required' : ''} class="w-full bg-donezy-accent border border-secondary rounded-lg px-3 py-2 text-white focus:outline-none focus:border-donezy-orange transition-colors duration-200">`;
                 break;
             case 'time':
-                html += `<input type="time" id="${id}" ${required ? 'required' : ''} class="w-full bg-donezy-accent border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-donezy-orange transition-colors duration-200">`;
+                html += `<input type="time" id="${id}" ${required ? 'required' : ''} class="w-full bg-donezy-accent border border-secondary rounded-lg px-3 py-2 text-white focus:outline-none focus:border-donezy-orange transition-colors duration-200">`;
                 break;
             default:
-                html += `<input type="${type || 'text'}" id="${id}" placeholder="${placeholder || ''}" ${required ? 'required' : ''} class="w-full bg-donezy-accent border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-donezy-orange transition-colors duration-200">`;
+                html += `<input type="${type || 'text'}" id="${id}" ${required ? 'required' : ''} class="w-full bg-donezy-accent border border-secondary rounded-lg px-3 py-2 text-white focus:outline-none focus:border-donezy-orange transition-colors duration-200" placeholder="${placeholder || ''}">`;
         }
         
         html += '</div>';
