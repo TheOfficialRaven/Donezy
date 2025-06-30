@@ -10,6 +10,59 @@
 // 6. TargetAudienceSelector.js (existing)
 // 7. FirebaseConfig.js (existing)
 
+// PWA Service Worker Registration
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+            .then(registration => {
+                console.log('[PWA] Service Worker registered successfully:', registration);
+                
+                // Check for updates
+                registration.addEventListener('updatefound', () => {
+                    const newWorker = registration.installing;
+                    newWorker.addEventListener('statechange', () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            // New version available
+                            console.log('[PWA] New version available');
+                            this.showUpdateNotification();
+                        }
+                    });
+                });
+            })
+            .catch(registrationError => {
+                console.error('[PWA] Service Worker registration failed:', registrationError);
+            });
+    });
+}
+
+// PWA Update Notification
+function showUpdateNotification() {
+    const notification = document.createElement('div');
+    notification.className = 'fixed bottom-4 right-4 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 transform transition-transform duration-300 translate-y-full';
+    notification.innerHTML = `
+        <div class="flex items-center space-x-2">
+            <span>🔄</span>
+            <span>Új verzió elérhető!</span>
+            <button onclick="window.location.reload()" class="ml-2 bg-white text-blue-600 px-2 py-1 rounded text-sm font-bold">Frissítés</button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+        notification.classList.remove('translate-y-full');
+    }, 100);
+    
+    // Remove after 10 seconds
+    setTimeout(() => {
+        notification.classList.add('translate-y-full');
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
+    }, 10000);
+}
+
 // Import LevelSystem modul (window fallback, ha nincs ES6 import)
 let LevelSystem = window.LevelSystem || {};
 let StatAggregator = window.StatAggregator || {};

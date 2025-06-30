@@ -5,8 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Donezy - Tanulmányi Központ</title>
     
-    <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1f1f1f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Donezy">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="description" content="Gamifikált, célcsoportokra szabott produktivitásnövelő webalkalmazás">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/svg+xml" href="/imgs/icon-192x192.svg">
+    <link rel="apple-touch-icon" href="/imgs/icon-192x192.svg">
+    <link rel="mask-icon" href="/imgs/icon-192x192.svg" color="#ff6b35">
     
     <!-- Production CSS -->
     <link rel="stylesheet" href="css/tailwind.css">
@@ -605,6 +618,8 @@
     <script src="js/modules/CalendarRenderer.js" type="module"></script>
     <script src="js/modules/ReminderService.js" type="module"></script>
     <script src="js/modules/DashboardService.js"></script>
+    <!-- PWA Installer -->
+    <script src="js/pwa-installer.js"></script>
     <!-- Main app -->
     <script src="js/main.js" type="module"></script>
 </body>
