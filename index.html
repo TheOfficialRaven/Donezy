@@ -24,6 +24,9 @@
     <!-- Production CSS -->
     <link rel="stylesheet" href="css/tailwind.css">
     <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/modules/components.css">
+    <link rel="stylesheet" href="css/modules/quests.css">
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 </head>
 <body class="bg-donezy-dark text-white min-h-screen auth-loading">
@@ -445,134 +448,15 @@
 
           <!-- Results Section -->
           <section id="results-section" class="content-section">
-            <div class="mb-8">
-              <h1 class="text-3xl font-bold text-donezy-orange mb-4 flex items-center gap-2">
-                <span class="text-2xl">📊</span>
-                Áttekintés & Statisztikák
-              </h1>
-            </div>
-            <div class="space-y-8">
-              <!-- Statisztikák blokk -->
-              <div class="bg-donezy-card rounded-xl p-6 shadow-lg border border-donezy-accent card-hover">
-                <h2 class="text-xl font-bold text-donezy-orange mb-4 flex items-center gap-2">
-                  <span>📈</span> Statisztikák
-                </h2>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div class="stat-card">
-                    <div class="text-4xl mb-2 text-center">🗂️</div>
-                    <div class="text-2xl font-bold text-center" id="stat-lists">0</div>
-                    <div class="text-secondary text-sm text-center">Lista</div>
-                  </div>
-                  <div class="stat-card">
-                    <div class="text-4xl mb-2 text-center">📝</div>
-                    <div class="text-2xl font-bold text-center" id="stat-notes">0</div>
-                    <div class="text-secondary text-sm text-center">Jegyzet</div>
-                  </div>
-                  <div class="stat-card">
-                    <div class="text-4xl mb-2 text-center">✅</div>
-                    <div class="text-2xl font-bold text-center" id="stat-tasks">0</div>
-                    <div class="text-secondary text-sm text-center">Kész</div>
-                  </div>
-                  <div class="stat-card">
-                    <div class="text-4xl mb-2 text-center">🎯</div>
-                    <div class="text-2xl font-bold text-center" id="stat-completion">0%</div>
-                    <div class="text-secondary text-sm text-center">Teljesítés</div>
-                  </div>
-                </div>
-              </div>
-              <!-- Szint & XP blokk -->
-              <div class="bg-donezy-card rounded-xl p-6 shadow-lg border border-donezy-accent card-hover flex flex-col items-center">
-                <h2 class="text-xl font-bold text-donezy-orange mb-2 flex items-center gap-2">
-                  <span>🌟</span> Szinted
-                </h2>
-                <div class="text-5xl font-extrabold mb-2" id="level-value">1</div>
-                <div class="w-full max-w-xl">
-                  <div class="w-full bg-donezy-accent rounded-full h-3 mb-2 overflow-hidden">
-                    <div id="xp-progress-bar" class="bg-donezy-orange h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
-                  </div>
-                  <div class="flex justify-between text-sm text-secondary">
-                    <span>Jelenlegi sorozat:</span>
-                    <span id="current-streak">0 nap</span>
-                  </div>
-                </div>
-              </div>
-              <!-- Aktivitás blokk -->
-              <div class="bg-donezy-card rounded-xl p-6 shadow-lg border border-donezy-accent card-hover">
-                <h2 class="text-xl font-bold text-donezy-orange mb-4 flex items-center gap-2">
-                  <span>📊</span> Aktivitás grafikon
-                </h2>
-                <div class="flex flex-col md:flex-row md:items-end gap-6">
-                  <div class="flex-1 flex items-end gap-2 h-24 md:h-32" id="activity-graph">
-                    <!-- Dummy grafikon: oszlopok -->
-                  </div>
-                  <div class="flex-1 grid grid-cols-2 md:grid-cols-3 gap-4 mt-4 md:mt-0">
-                    <div class="activity-stat">
-                      <div class="text-lg font-bold text-center" id="stat-total-days">0</div>
-                      <div class="text-secondary text-xs text-center">Összes nap</div>
-                    </div>
-                    <div class="activity-stat">
-                      <div class="text-lg font-bold text-center" id="stat-best-streak">0</div>
-                      <div class="text-secondary text-xs text-center">Leghosszabb sorozat</div>
-                    </div>
-                    <div class="activity-stat">
-                      <div class="text-lg font-bold text-center" id="stat-avg">0</div>
-                      <div class="text-secondary text-xs text-center">Átlag/nap</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <!-- Badge grid blokk -->
-              <div class="bg-donezy-card rounded-xl p-6 shadow-lg border border-donezy-accent card-hover">
-                <h2 class="text-xl font-bold text-donezy-orange mb-4 flex items-center gap-2">
-                  <span>🏅</span> Elért eredmények
-                </h2>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="badge-grid">
-                  <!-- Badge-ek JS-ből -->
-                </div>
-              </div>
-              <!-- Összegzés blokk -->
-              <div class="bg-donezy-card rounded-xl p-6 shadow-lg border border-donezy-accent card-hover">
-                <h2 class="text-xl font-bold text-donezy-orange mb-4 flex items-center gap-2">
-                  <span>📝</span> Produktivitási betekintés
-                </h2>
-                <ul class="text-primary space-y-2 text-sm" id="summary-list">
-                  <!-- Összegzés JS-ből -->
-                </ul>
-              </div>
+            <div id="results-content">
+              <!-- Üres eredmények oldal - később új rendszerrel lesz feltöltve -->
             </div>
           </section>
 
           <!-- Missions Section -->
           <section id="missions-section" class="content-section">
-            <div class="mb-8">
-              <h1 class="text-3xl font-bold text-donezy-pink mb-4 flex items-center gap-2">
-                <span class="text-2xl">🎯</span>
-                Napi Küldetések
-              </h1>
-            </div>
-
-            <!-- Kiemelt szekció: Mai Diák Küldetések -->
-            <div class="bg-donezy-accent border-2 border-success rounded-xl p-6 mb-8 shadow-lg">
-              <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-2">
-                <h2 class="text-xl font-bold text-success flex items-center gap-2 mb-2 md:mb-0">
-                  <span>🪄</span> Mai Diák Küldetések
-                </h2>
-                <span id="missions-progress" class="text-sm font-bold text-success bg-success-dark px-3 py-1 rounded-full">0/3 teljesítve</span>
-              </div>
-              <blockquote class="italic text-primary text-center md:text-left mt-2 mb-0">A tudás az egyetlen kincs, amit soha nem vehetnek el tőled.</blockquote>
-            </div>
-
-            <!-- Küldetés Grid (JS tölti be) -->
-            <div id="quest-content"></div>
-
-            <!-- AI Küldetésgenerátor szekció -->
-            <div class="bg-purple-dark border-2 border-purple rounded-xl p-6 mt-10 shadow-lg flex flex-col items-center">
-              <h3 class="text-lg font-bold text-pink flex items-center gap-2 mb-2">🤖 Személyre szabott napi kihívások</h3>
-              <p class="text-primary mb-4 text-center">Generálj intelligens küldetéseket az órarended alapján!</p>
-              <div class="flex flex-col md:flex-row gap-4 w-full justify-center">
-                <button id="generate-quests-btn" class="bg-blue hover:bg-blue-hover text-white font-bold py-2 px-6 rounded-lg transition-colors duration-200 flex-1">🪄 Küldetések generálása (sablon)</button>
-                <button id="generate-ai-quests-btn" class="bg-gradient-to-r from-pink to-purple hover:from-pink-hover hover:to-purple-hover text-white font-bold py-2 px-6 rounded-lg transition-colors duration-200 flex-1">🤖 AI Küldetések generálása</button>
-              </div>
+            <div id="missions-content">
+              <!-- Üres küldetés oldal - később új rendszerrel lesz feltöltve -->
             </div>
           </section>
 
@@ -606,10 +490,11 @@
     <script src="js/target-audience-selector.js"></script>
     <script src="js/modules/LevelSystem.js"></script>
     <script src="js/modules/StatAggregator.js"></script>
-    <script src="js/modules/ResultsRenderer.js"></script>
+
     <script src="js/modules/CurrencyService.js"></script>
-    <script src="js/modules/QuestsService.js"></script>
-    <script src="js/modules/QuestsRenderer.js"></script>
+
+    <script src="js/modules/ThemeService.js"></script>
+    <script src="js/modules/ThemeRenderer.js"></script>
     <script src="js/modules/ListsService.js"></script>
     <script src="js/modules/ListsRenderer.js"></script>
     <script src="js/modules/NotesService.js"></script>
@@ -618,6 +503,11 @@
     <script src="js/modules/CalendarRenderer.js" type="module"></script>
     <script src="js/modules/ReminderService.js" type="module"></script>
     <script src="js/modules/DashboardService.js"></script>
+    <script src="js/modules/MissionService.js"></script>
+    <script src="js/modules/MissionRenderer.js"></script>
+    <script src="js/modules/ResultsService.js"></script>
+    <script src="js/modules/ResultsRenderer.js"></script>
+
     <!-- PWA Installer -->
     <script src="js/pwa-installer.js"></script>
     <!-- Main app -->

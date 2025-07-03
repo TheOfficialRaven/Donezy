@@ -72,6 +72,7 @@ window.DashboardService = (function() {
             const progressBar = document.getElementById('xp-progress-bar');
             const xpText = document.getElementById('xp-text');
             const xpToNext = document.getElementById('xp-to-next');
+            const essenceElements = document.querySelectorAll('.essence-display');
             
             if (levelElement) levelElement.textContent = '...';
             if (progressBar) {
@@ -79,7 +80,8 @@ window.DashboardService = (function() {
                 progressBar.classList.add('animate-pulse');
             }
             if (xpText) xpText.textContent = 'Betöltés...';
-            if (xpToNext) xpText.textContent = 'Betöltés...';
+            if (xpToNext) xpToNext.textContent = 'Betöltés...';
+            essenceElements.forEach(el => el.textContent = '...');
             
             let userData = {};
             
@@ -90,6 +92,7 @@ window.DashboardService = (function() {
             
             const xp = userData.xp || 0;
             const level = userData.level || 1;
+            const essence = userData.essence || 50;
             
             // XP progress számítása
             const xpInfo = window.LevelSystem?.getXPForNextLevel(xp) || {
@@ -114,6 +117,15 @@ window.DashboardService = (function() {
                 const remaining = xpInfo.xpToNext;
                 xpToNext.textContent = remaining > 0 ? `Még ${remaining} XP a következő szintig!` : 'Szint teljesítve!';
             }
+            
+            // Essence megjelenítés frissítése
+            essenceElements.forEach(el => {
+                el.textContent = essence;
+                // Animáció hozzáadása
+                el.classList.add('essence-counter-animation');
+                setTimeout(() => el.classList.remove('essence-counter-animation'), 600);
+            });
+            
         } catch (error) {
             console.error('Error updating level and XP:', error);
         }
@@ -130,14 +142,13 @@ window.DashboardService = (function() {
                 streakElement.classList.remove('text-donezy-orange', 'font-bold');
             }
             
-            let userData = {};
+            let streak = 0;
             
             // Csak akkor próbáljuk betölteni a valós adatokat, ha van dataService
             if (dataService) {
-                userData = await dataService.getUserData();
+                // Use the new real streak logic
+                streak = await dataService.updateStreakWithLogic();
             }
-            
-            const streak = userData.streak || 0;
             
             if (streakElement) {
                 streakElement.textContent = `${streak} napos sorozat`;

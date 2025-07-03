@@ -1,12 +1,6 @@
 /* Donezy Application - Custom Styles */
 
-/* Custom CSS Variables */
-:root {
-    --donezy-orange: #ff6b35;
-    --donezy-card: #16213e;
-    --donezy-accent: #0f3460;
-    --donezy-bg: #1a1a2e;
-}
+
 
 /* Base Styles */
 body {
@@ -157,6 +151,8 @@ body {
         opacity: 1;
     }
 }
+
+
 
 .fade-in {
     animation: fadeIn 0.3s ease-out;

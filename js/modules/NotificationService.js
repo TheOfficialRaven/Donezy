@@ -306,4 +306,17 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = NotificationService;
 } else {
     window.NotificationService = NotificationService;
+    
+    // Create a default instance for static method calls
+    const defaultInstance = new NotificationService();
+    
+    // Add static methods to the class
+    NotificationService.showSuccess = (message, duration) => defaultInstance.showSuccess(message, duration);
+    NotificationService.showError = (message, duration) => defaultInstance.showError(message, duration);
+    NotificationService.showWarning = (message, duration) => defaultInstance.showWarning(message, duration);
+    NotificationService.showInfo = (message, duration) => defaultInstance.showInfo(message, duration);
+    NotificationService.showNotification = (message, type, duration) => defaultInstance.showNotification(message, type, duration);
+    NotificationService.showXPAnimation = (amount, reason) => defaultInstance.showXPAnimation(amount, reason);
+    NotificationService.showEssenceAnimation = (amount, reason) => defaultInstance.showEssenceAnimation(amount, reason);
+    NotificationService.showLevelUpAnimation = (oldLevel, newLevel) => defaultInstance.showLevelUpAnimation(oldLevel, newLevel);
 } 

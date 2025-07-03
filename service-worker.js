@@ -1,6 +1,6 @@
-const CACHE_NAME = 'donezy-v1.0.0';
-const STATIC_CACHE = 'donezy-static-v1.0.0';
-const DYNAMIC_CACHE = 'donezy-dynamic-v1.0.0';
+const CACHE_NAME = 'donezy-v1.0.3';
+const STATIC_CACHE = 'donezy-static-v1.0.3';
+const DYNAMIC_CACHE = 'donezy-dynamic-v1.0.3';
 
 // Files to cache immediately
 const STATIC_FILES = [
@@ -11,11 +11,11 @@ const STATIC_FILES = [
   '/css/modules/base.css',
   '/css/modules/components.css',
   '/css/modules/layout.css',
+  '/css/modules/themes.css',
   '/css/styles.css',
   '/js/main.js',
   '/js/auth.js',
   '/js/firebase-config.js',
-  '/js/app.js',
   '/js/target-audience-selector.js',
   '/js/pwa-installer.js',
   '/js/modules/FirebaseService.js',
@@ -25,10 +25,9 @@ const STATIC_FILES = [
   '/js/modules/ModalService.js',
   '/js/modules/LevelSystem.js',
   '/js/modules/StatAggregator.js',
-  '/js/modules/ResultsRenderer.js',
+  
   '/js/modules/CurrencyService.js',
-  '/js/modules/QuestsService.js',
-  '/js/modules/QuestsRenderer.js',
+  
   '/js/modules/ListsService.js',
   '/js/modules/ListsRenderer.js',
   '/js/modules/NotesService.js',
@@ -37,6 +36,12 @@ const STATIC_FILES = [
   '/js/modules/CalendarRenderer.js',
   '/js/modules/ReminderService.js',
   '/js/modules/DashboardService.js',
+  '/js/modules/ThemeService.js',
+  '/js/modules/ThemeRenderer.js',
+      '/js/modules/MissionService.js',
+    '/js/modules/MissionRenderer.js',
+    '/js/modules/ResultsService.js',
+    '/js/modules/ResultsRenderer.js',
   '/imgs/Essence.svg',
   '/imgs/icon-192x192.svg',
   '/imgs/icon-512x512.svg',
@@ -52,14 +57,24 @@ self.addEventListener('install', (event) => {
     caches.open(STATIC_CACHE)
       .then((cache) => {
         console.log('[SW] Caching static files...');
-        return cache.addAll(STATIC_FILES);
+        // Cache files one by one to handle individual failures
+        return Promise.allSettled(
+          STATIC_FILES.map(url => 
+            cache.add(url).catch(error => {
+              console.warn(`[SW] Failed to cache ${url}:`, error);
+              return null; // Continue with other files
+            })
+          )
+        );
       })
-      .then(() => {
-        console.log('[SW] Static files cached successfully');
+      .then((results) => {
+        const successful = results.filter(r => r.status === 'fulfilled').length;
+        const failed = results.filter(r => r.status === 'rejected').length;
+        console.log(`[SW] Cache results: ${successful} successful, ${failed} failed`);
         return self.skipWaiting();
       })
       .catch((error) => {
-        console.error('[SW] Error caching static files:', error);
+        console.error('[SW] Critical error during installation:', error);
       })
   );
 });
@@ -165,8 +180,8 @@ self.addEventListener('push', (event) => {
   
   const options = {
     body: event.data ? event.data.text() : 'Új értesítés a Donezy-ből!',
-    icon: '/imgs/icon-192x192.png',
-    badge: '/imgs/icon-192x192.png',
+    icon: '/imgs/icon-192x192.svg',
+    badge: '/imgs/icon-192x192.svg',
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
@@ -176,12 +191,12 @@ self.addEventListener('push', (event) => {
       {
         action: 'explore',
         title: 'Megnyitás',
-        icon: '/imgs/icon-192x192.png'
+        icon: '/imgs/icon-192x192.svg'
       },
       {
         action: 'close',
         title: 'Bezárás',
-        icon: '/imgs/icon-192x192.png'
+        icon: '/imgs/icon-192x192.svg'
       }
     ]
   };

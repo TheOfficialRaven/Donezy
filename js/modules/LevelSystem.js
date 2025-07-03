@@ -52,13 +52,25 @@ async function addXP(amount, reason = '') {
     // Update XP through DataService
     if (window.app && window.app.dataService) {
       await window.app.dataService.updateXP(newXP);
+      // Also update level if it changed
+      if (newLevel > oldLevel) {
+        await window.app.dataService.updateUserField('level', newLevel);
+      }
       console.log(`XP added: +${amount} (${oldXP} → ${newXP})`);
     } else if (window.currentUserId && window.FirebaseService) {
       await window.FirebaseService.updateXP(newXP);
+      // Also update level if it changed
+      if (newLevel > oldLevel) {
+        await window.FirebaseService.updateLevel(newLevel);
+      }
       console.log(`XP added: +${amount} (${oldXP} → ${newXP})`);
     } else if (window.LocalStorageService) {
       const localStorageService = new window.LocalStorageService();
       await localStorageService.updateXP(newXP);
+      // Also update level if it changed
+      if (newLevel > oldLevel) {
+        await localStorageService.updateUserField('level', newLevel);
+      }
       console.log(`XP added (localStorage): +${amount} (${oldXP} → ${newXP})`);
     }
     

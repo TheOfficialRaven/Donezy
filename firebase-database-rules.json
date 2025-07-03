@@ -9,7 +9,29 @@
             ".read": true,
             ".write": true
           }
+        },
+        "activity_log": {
+          "$date": {
+            ".read": true,
+            ".write": true
+          }
+        },
+        "badges": {
+          "$badgeId": {
+            ".read": true,
+            ".write": true
+          }
         }
+      }
+    },
+    "themes": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "quests": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid"
       }
     },
     "test": {

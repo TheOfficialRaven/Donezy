@@ -79,6 +79,12 @@ class CalendarService {
         };
 
         await eventRef.set(event);
+        
+        // Track mission progress
+        if (window.MissionService && window.MissionService.trackActivity) {
+            await window.MissionService.trackActivity('events_created', 1);
+        }
+        
         return eventId;
     }
 

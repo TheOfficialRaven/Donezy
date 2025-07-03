@@ -28,7 +28,7 @@ Egy játékos, MMORPG-hangulatú produktivitás dashboard, amely a "Tanulmányi 
 ### 📊 Főbb komponensek:
 - **Dashboard**: Tanulmányi központ áttekintés
 - **Eredmények**: Teljesítmény grafikonok és célok
-- **Küldetések**: Napi és heti kihívások
+- **🤖 Küldetések**: AI-alapú napi küldetésgeneráló rendszer
 - **Listák**: Teendők és bevásárlólisták
 - **Jegyzetfüzet**: Jegyzetek írása és kezelése
 - **Naptár**: Események és időbeosztás
@@ -39,6 +39,20 @@ Egy játékos, MMORPG-hangulatú produktivitás dashboard, amely a "Tanulmányi 
 - **Checkbox funkcionalitás**: Listákban a teendők bejelölése
 - **Értesítések**: Sikeres műveletek visszajelzése
 - **Témaváltó**: Későbbi funkció előkészítve
+
+### 🤖 AI-alapú Küldetések:
+- **Automatikus generálás**: Napi küldetések AI-alapú létrehozása
+- **Személyre szabás**: Célcsoport és felhasználói adatok alapján
+- **Valós progress követés**: Listák, jegyzetek, naptár alapján
+- **Dinamikus tartalom**: Felhasználói tevékenységek alapján változó küldetések
+- **Kategóriák**: Motivációs, termelékenységi, célcsoportra szabott, dinamikus
+
+### 🔧 PWA Service Worker:
+- **Offline támogatás**: Alkalmazás offline használata
+- **Intelligens cache**: Statikus fájlok és dinamikus tartalom cache-elése
+- **Hibakezelés**: Robusztus cache-elési logika egyedi fájl hibákkal
+- **Automatikus frissítések**: Service worker verziókezelés
+- **Push értesítések**: Háttérben futó értesítések támogatása
 
 ### 🌐 Nyelv és Téma vezérlők:
 - **HU gomb**: Nyelv választó (dummy)
@@ -57,16 +71,30 @@ Egy játékos, MMORPG-hangulatú produktivitás dashboard, amely a "Tanulmányi 
 ## 📁 Projekt struktúra
 
 ```
-to-do-listank/
+Donezy/
 ├── index.html                    # Fő HTML fájl navigációs rendszerrel
 ├── js/
 │   ├── app.js                   # Fő JavaScript alkalmazás + navigáció
 │   ├── firebase-config.js       # Firebase konfiguráció és szolgáltatás
-│   └── target-audience-selector.js # Célcsoport-választó komponens
+│   ├── target-audience-selector.js # Célcsoport-választó komponens
+│   └── modules/
+│       ├── QuestsService.js     # 🤖 AI-alapú küldetésgeneráló rendszer
+│       ├── QuestsRenderer.js    # Küldetések UI renderelése
+│       ├── DataService.js       # Adatkezelési szolgáltatás
+│       ├── ListsService.js      # Listák kezelése
+│       ├── NotesService.js      # Jegyzetek kezelése
+│       ├── CalendarService.js   # Naptár kezelése
+│       └── CurrencyService.js   # XP és Essence kezelése
 ├── css/
-│   └── styles.css               # Egyedi stílusok + navigációs CSS
+│   └── main.css                 # Egyedi stílusok + navigációs CSS
 ├── package.json                 # Projekt konfiguráció
+├── service-worker.js            # 🔧 PWA Service Worker (cache, offline)
+├── manifest.json               # PWA manifest fájl
+├── offline.html                # Offline oldal
 ├── README.md                    # Részletes dokumentáció
+├── AI_QUESTS_SYSTEM.md          # 🤖 AI-alapú küldetésrendszer dokumentáció
+├── test-ai-quests.html          # AI küldetésrendszer tesztelése
+├── test-service-worker.html     # 🔧 Service Worker tesztelése
 ├── DEMO.md                     # Demo útmutató
 └── FIREBASE_SETUP.md           # Firebase beállítási útmutató
 ```
@@ -108,10 +136,25 @@ to-do-listank/
 
 ## 🔧 Fejlesztői információk
 
+### Service Worker Hibaelhárítás:
+- **Cache hiba**: Ha "Failed to execute 'addAll' on 'Cache'" hibát látsz, ellenőrizd a fájl elérési útjakat
+- **Verzió frissítés**: A service worker automatikusan frissül, de manuálisan is törölheted a cache-t
+- **Offline teszt**: Használd a `test-service-worker.html` fájlt a service worker tesztelésére
+- **Fájl hiány**: Ellenőrizd, hogy minden fájl létezik a STATIC_FILES listában
+- **Cache törlés**: `clearAllCaches()` funkció a teszt oldalon
+
 ### JavaScript osztályok:
 - `DonezyApp`: Fő alkalmazás osztály navigációs rendszerrel
 - `FirebaseService`: Firebase adatkezelés és kapcsolat
 - `TargetAudienceSelector`: Célcsoport-választó komponens
+- `QuestsService`: 🤖 AI-alapú küldetésgeneráló rendszer
+- `QuestsRenderer`: ⚔️ Küldetések tab teljes UI renderelése
+- `DataService`: Adatkezelési szolgáltatás
+- `ListsService`: Listák kezelése
+- `NotesService`: Jegyzetek kezelése
+- `CalendarService`: Naptár kezelése
+- `CurrencyService`: XP és Essence kezelése
+- `LevelSystem`: Szint és badge rendszer
 - `setupNavigation()`: Navigációs tab kezelés
 - `switchTab()`: Tab váltás logika
 - `updatePageTitle()`: Oldal cím frissítés
@@ -142,10 +185,60 @@ const groupInfo = selector.getGroupInfo('student');
 const allGroups = selector.getAllGroups();
 ```
 
+### 🤖 AI-alapú Küldetések:
+```javascript
+// QuestsService inicializálása
+await window.QuestsService.init();
+
+// Napi küldetések generálása
+const quests = await window.QuestsService.generateDailyQuests();
+
+// Küldetések lekérése
+const dailyQuests = window.QuestsService.getDailyQuests();
+
+// Progress frissítés
+await window.QuestsService.updateQuestProgressAutomatically();
+
+// Küldetés teljesítése
+await window.QuestsService.completeQuest(questId, 'daily');
+```
+
+### 🔧 Service Worker Tesztelés:
+```javascript
+// Service Worker regisztráció ellenőrzése
+const registration = await navigator.serviceWorker.getRegistration();
+const isActive = registration.active !== null;
+
+// Cache állapot lekérdezése
+const cacheNames = await caches.keys();
+const cache = await caches.open('donezy-static-v1.0.1');
+
+// Offline mód tesztelése
+const response = await caches.match('/index.html');
+const isCached = !!response;
+
+// Teszt oldal: test-service-worker.html
+```
+
+### ⚔️ Küldetések Tab:
+```javascript
+// QuestsRenderer inicializálása
+await window.QuestsRenderer.init();
+
+// Szűrő beállítása
+window.QuestsRenderer.setFilter('active');
+
+// Küldetések betöltése és renderelése
+await window.QuestsRenderer.loadAndRenderQuests();
+
+// AI küldetések generálása
+await window.QuestsRenderer.generateAIQuests();
+```
+
 ### Navigációs rendszer:
 ```javascript
 // Tab váltás programatikusan
-window.donezyApp.switchTab('results');
+window.donezyApp.switchTab('missions');
 
 // Aktuális tab lekérdezése
 const currentTab = window.donezyApp.getCurrentTab();
@@ -166,6 +259,22 @@ const userGroup = window.donezyApp.getUserGroup();
 - URL routing (hash-based)
 - Breadcrumb navigáció
 - Célcsoportonkénti modulok
+
+### 🤖 AI Küldetésrendszer Fejlesztések:
+- **Nehézségi szintek**: Könnyű, közepes, nehéz küldetések
+- **Szakmai küldetések**: Tantárgyi, projekt-specifikus
+- **Csapat küldetések**: Több felhasználós kihívások
+- **Időzített küldetések**: Heti, havi, év végi célok
+- **AI tanulás**: Felhasználói preferenciák alapján optimalizálás
+- **Küldetés konfiguráció**: Testreszabható jutalmak és kategóriák
+
+### ⚔️ Küldetések Tab Fejlesztések:
+- **Részletes statisztikák**: Küldetés teljesítési arányok
+- **Küldetés történet**: Előző napok küldetései
+- **Küldetés exportálás**: PDF vagy CSV formátumban
+- **Küldetés megosztás**: Küldetések megosztása másokkal
+- **Küldetés értékelés**: Felhasználói visszajelzés küldetésekről
+- **Küldetés keresés**: Szöveges keresés küldetésekben
 
 ## 📱 Reszponzív design
 

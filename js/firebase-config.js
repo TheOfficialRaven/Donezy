@@ -105,14 +105,38 @@ class FirebaseService {
             const snapshot = await userRef.once('value');
             
             if (snapshot.exists()) {
-                return snapshot.val();
+                const userData = snapshot.val();
+                
+                // Ensure progress object exists
+                if (!userData.progress) {
+                    userData.progress = {
+                        xp: userData.xp || 0,
+                        level: userData.level || 1,
+                        currency: userData.essence || 50
+                    };
+                    await this.updateUserField('progress', userData.progress);
+                }
+                
+                // Ensure currency field exists (for backward compatibility)
+                if (userData.essence === undefined) {
+                    userData.essence = userData.progress.currency || 50;
+                    await this.updateUserField('essence', userData.essence);
+                }
+                
+                return userData;
             } else {
                 // Create new user with default data
                 const defaultUserData = {
                     group: null,
                     level: 1,
                     xp: 0,
+                    essence: 50,
                     streak: 0,
+                    progress: {
+                        xp: 0,
+                        level: 1,
+                        currency: 50
+                    },
                     createdAt: new Date().toISOString(),
                     lastActive: new Date().toISOString()
                 };
@@ -188,14 +212,223 @@ class FirebaseService {
         return userData ? userData.group : null;
     }
 
-    // Update user streak
+    // Update user streak with real logic
     async updateStreak(streak) {
         return await this.updateUserField('streak', streak);
     }
 
+    // Update streak with automatic logic
+    async updateStreakWithLogic() {
+        try {
+            const userData = await this.getUserData();
+            const today = new Date().toISOString().split('T')[0];
+            const lastActiveDate = userData.lastActiveDate || null;
+            const currentStreak = userData.currentStreak || 0;
+            
+            let newStreak = currentStreak;
+            let shouldUpdate = false;
+            
+            // Check if user was active today
+            const wasActiveToday = await this.checkUserActivityToday();
+            
+            if (wasActiveToday) {
+                if (lastActiveDate === today) {
+                    // Already updated today, no change needed
+                    return currentStreak;
+                } else if (lastActiveDate === this.getYesterdayDate()) {
+                    // User was active yesterday, continue streak
+                    newStreak = currentStreak + 1;
+                    shouldUpdate = true;
+                } else {
+                    // User was not active yesterday, reset streak
+                    newStreak = 1;
+                    shouldUpdate = true;
+                }
+            }
+            
+            if (shouldUpdate) {
+                await this.updateUserField('currentStreak', newStreak);
+                await this.updateUserField('lastActiveDate', today);
+                await this.updateUserField('lastActive', new Date().toISOString());
+            }
+            
+            return newStreak;
+        } catch (error) {
+            console.error('Error updating streak with logic:', error);
+            return 0;
+        }
+    }
+
+    // Check if user was active today
+    async checkUserActivityToday() {
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const activityRef = this.database.ref(`users/${this.currentUserId}/activity_log/${today}`);
+            const snapshot = await activityRef.once('value');
+            
+            if (snapshot.exists()) {
+                const activity = snapshot.val();
+                return activity.tasksCreated > 0 || activity.notesCreated > 0 || activity.listsCreated > 0;
+            }
+            
+            return false;
+        } catch (error) {
+            console.error('Error checking user activity today:', error);
+            return false;
+        }
+    }
+
+    // Get yesterday's date in YYYY-MM-DD format
+    getYesterdayDate() {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        return yesterday.toISOString().split('T')[0];
+    }
+
+    // Log completed task
+    async logCompletedTask(taskData = {}) {
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const completedTasksRef = this.database.ref(`users/${this.currentUserId}/completedTasks/${today}`);
+            
+            // Get current day's completed tasks
+            const snapshot = await completedTasksRef.once('value');
+            const currentTasks = snapshot.exists() ? snapshot.val() : { count: 0, tasks: [] };
+            
+            // Add new completed task
+            currentTasks.count = (currentTasks.count || 0) + 1;
+            currentTasks.tasks.push({
+                id: taskData.id || `task_${Date.now()}`,
+                title: taskData.title || 'Completed Task',
+                completedAt: new Date().toISOString(),
+                ...taskData
+            });
+            
+            // Save updated completed tasks
+            await completedTasksRef.set(currentTasks);
+            
+            // Update activity log
+            await this.logActivity('task_completed', taskData);
+            
+            return true;
+        } catch (error) {
+            console.error('Error logging completed task:', error);
+            return false;
+        }
+    }
+
+    // Get completed tasks for a specific date range
+    async getCompletedTasks(startDate, endDate) {
+        try {
+            const tasksRef = this.database.ref(`users/${this.currentUserId}/completedTasks`);
+            const snapshot = await tasksRef.once('value');
+            
+            if (snapshot.exists()) {
+                const allTasks = snapshot.val();
+                const filteredTasks = {};
+                
+                Object.entries(allTasks).forEach(([date, dayData]) => {
+                    if (date >= startDate && date <= endDate) {
+                        filteredTasks[date] = dayData;
+                    }
+                });
+                
+                return filteredTasks;
+            }
+            
+            return {};
+        } catch (error) {
+            console.error('Error getting completed tasks:', error);
+            return {};
+        }
+    }
+
+    // Save badge data
+    async saveBadge(badgeId, badgeData) {
+        try {
+            const badgesRef = this.database.ref(`users/${this.currentUserId}/badges/${badgeId}`);
+            await badgesRef.set({
+                ...badgeData,
+                lastUpdated: new Date().toISOString()
+            });
+            return true;
+        } catch (error) {
+            console.error('Error saving badge:', error);
+            return false;
+        }
+    }
+
+    // Get all badges for user
+    async getBadges() {
+        try {
+            const badgesRef = this.database.ref(`users/${this.currentUserId}/badges`);
+            const snapshot = await badgesRef.once('value');
+            
+            if (snapshot.exists()) {
+                return snapshot.val();
+            }
+            
+            return {};
+        } catch (error) {
+            console.error('Error getting badges:', error);
+            return {};
+        }
+    }
+
+    // Update badge progress
+    async updateBadgeProgress(badgeId, progress) {
+        try {
+            const badgeRef = this.database.ref(`users/${this.currentUserId}/badges/${badgeId}`);
+            await badgeRef.update({
+                progress: progress,
+                lastUpdated: new Date().toISOString()
+            });
+            return true;
+        } catch (error) {
+            console.error('Error updating badge progress:', error);
+            return false;
+        }
+    }
+
     // Update user XP
     async updateXP(xp) {
-        return await this.updateUserField('xp', xp);
+        const success = await this.updateUserField('xp', xp);
+        if (success) {
+            // Also update progress object
+            await this.updateUserField('progress/xp', xp);
+        }
+        return success;
+    }
+
+    // Update user level
+    async updateLevel(level) {
+        const success = await this.updateUserField('level', level);
+        if (success) {
+            // Also update progress object
+            await this.updateUserField('progress/level', level);
+        }
+        return success;
+    }
+
+    // Update user currency (essence)
+    async updateCurrency(currency) {
+        const success = await this.updateUserField('essence', currency);
+        if (success) {
+            // Also update progress object
+            await this.updateUserField('progress/currency', currency);
+        }
+        return success;
+    }
+
+    // Update progress object
+    async updateProgress(progress) {
+        return await this.updateUserField('progress', progress);
+    }
+
+    // Get progress data
+    async getProgress() {
+        const userData = await this.getUserData();
+        return userData ? userData.progress : null;
     }
 
     // Save task/note/event
@@ -321,6 +554,100 @@ class FirebaseService {
             });
         } catch (error) {
             console.warn('Could not log activity:', error);
+        }
+    }
+
+    // Témák kezelése
+    async getThemes() {
+        if (!this.initialized) {
+            console.warn('Firebase not initialized');
+            return null;
+        }
+
+        // Check if user is authenticated before accessing themes
+        if (!this.currentUserId) {
+            console.warn('User not authenticated, skipping themes access');
+            return null;
+        }
+
+        try {
+            const themesRef = this.database.ref('themes');
+            const snapshot = await themesRef.once('value');
+            
+            if (snapshot.exists()) {
+                return snapshot.val();
+            } else {
+                return null;
+            }
+        } catch (error) {
+            if (error.code === 'PERMISSION_DENIED') {
+                console.warn('Firebase themes access denied - check database rules for /themes path');
+            } else {
+                console.error('Error getting themes:', error);
+            }
+            return null;
+        }
+    }
+
+    async saveTheme(themeData) {
+        if (!this.initialized) {
+            console.warn('Firebase not initialized');
+            return false;
+        }
+
+        try {
+            const themeId = themeData.id || `theme_${Date.now()}`;
+            const themeRef = this.database.ref(`themes/${themeId}`);
+            
+            await themeRef.set({
+                ...themeData,
+                id: themeId,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            });
+            
+            return true;
+        } catch (error) {
+            console.error('Error saving theme:', error);
+            return false;
+        }
+    }
+
+    async updateTheme(themeId, updates) {
+        if (!this.initialized) {
+            console.warn('Firebase not initialized');
+            return false;
+        }
+
+        try {
+            const themeRef = this.database.ref(`themes/${themeId}`);
+            
+            await themeRef.update({
+                ...updates,
+                updatedAt: new Date().toISOString()
+            });
+            
+            return true;
+        } catch (error) {
+            console.error('Error updating theme:', error);
+            return false;
+        }
+    }
+
+    async deleteTheme(themeId) {
+        if (!this.initialized) {
+            console.warn('Firebase not initialized');
+            return false;
+        }
+
+        try {
+            const themeRef = this.database.ref(`themes/${themeId}`);
+            await themeRef.remove();
+            
+            return true;
+        } catch (error) {
+            console.error('Error deleting theme:', error);
+            return false;
         }
     }
 }

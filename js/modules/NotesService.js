@@ -112,6 +112,22 @@ window.NotesService = (function() {
             };
             
             await saveNotes();
+            
+            // Custom event dispatch
+            document.dispatchEvent(new CustomEvent('noteCreated', { 
+                detail: { noteId, note: currentNotes[noteId] } 
+            }));
+            
+            // Track mission progress
+            if (window.MissionService && window.MissionService.trackActivity) {
+                await window.MissionService.trackActivity('notes_created', 1);
+            }
+            
+            // Log activity for results
+            if (window.ResultsService && window.ResultsService.logActivity) {
+                await window.ResultsService.logActivity('note_created');
+            }
+            
             console.log('Note created:', noteId, isEncrypted ? '(encrypted)' : '(not encrypted)');
             return true;
         } catch (e) {

@@ -24,7 +24,7 @@ if ('serviceWorker' in navigator) {
                         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                             // New version available
                             console.log('[PWA] New version available');
-                            this.showUpdateNotification();
+                            showUpdateNotification();
                         }
                     });
                 });
@@ -66,12 +66,14 @@ function showUpdateNotification() {
 // Import LevelSystem modul (window fallback, ha nincs ES6 import)
 let LevelSystem = window.LevelSystem || {};
 let StatAggregator = window.StatAggregator || {};
-let ResultsRenderer = window.ResultsRenderer || {};
+
 let ListsService = window.ListsService || {};
 let ListsRenderer = window.ListsRenderer || {};
 let NotesService = window.NotesService || {};
 let NotesRenderer = window.NotesRenderer || {};
 let DashboardService = window.DashboardService || {};
+let ResultsService = window.ResultsService || {};
+let ResultsRenderer = window.ResultsRenderer || {};
 
 // Import Calendar modules
 let calendarService = null;
@@ -152,6 +154,8 @@ class DonezyApp {
             // Initialize notification service
             if (typeof NotificationService !== 'undefined') {
                 this.notificationService = new NotificationService();
+                // Make notification service available to other modules
+                window.notificationService = this.notificationService;
             } else {
                 console.error('NotificationService not available');
             }
@@ -170,21 +174,7 @@ class DonezyApp {
                 console.error('CurrencyService not available');
             }
 
-            // Initialize quests service
-            if (typeof QuestsService !== 'undefined') {
-                await QuestsService.init();
-                
-                // Initialize quests renderer after service
-                if (typeof QuestsRenderer !== 'undefined') {
-                    // QuestsRenderer is already an object (IIFE result)
-                    window.questsRenderer = QuestsRenderer;
-                    console.log('QuestsRenderer initialized');
-                } else {
-                    console.error('QuestsRenderer not available');
-                }
-            } else {
-                console.error('QuestsService not available');
-            }
+
 
             // Initialize lists service
             if (typeof ListsService !== 'undefined' && ListsService.init) {
@@ -200,11 +190,28 @@ class DonezyApp {
                 console.error('NotesService not available');
             }
 
+            // Initialize theme service
+            if (typeof ThemeService !== 'undefined' && ThemeService.init) {
+                await ThemeService.init();
+                
+                // Initialize theme renderer after service
+                if (typeof ThemeRenderer !== 'undefined' && ThemeRenderer.init) {
+                    await ThemeRenderer.init();
+                    console.log('ThemeRenderer initialized');
+                } else {
+                    console.error('ThemeRenderer not available');
+                }
+            } else {
+                console.error('ThemeService not available');
+            }
+
             // Initialize calendar services
             await this.initializeCalendarServices();
             
             // Initialize dashboard service
             await this.initializeDashboardService();
+
+
         } catch (error) {
             console.error('Error initializing services:', error);
         }
@@ -400,8 +407,10 @@ class DonezyApp {
             targetSection = document.getElementById('dashboard-student');
         } else if (tabName === 'results') {
             targetSection = document.getElementById('results-section');
+            this.renderResultsTab();
         } else if (tabName === 'missions') {
             targetSection = document.getElementById('missions-section');
+            this.renderMissionsTab();
         } else if (tabName === 'lists') {
             targetSection = document.getElementById('lists-section');
         } else if (tabName === 'notes') {
@@ -418,10 +427,8 @@ class DonezyApp {
         }
         
         // Call render functions after showing section
-        if (tabName === 'results') {
-            this.renderResultsTab();
-        } else if (tabName === 'missions') {
-            this.renderQuestsTab();
+        if (tabName === 'missions') {
+            this.renderMissionsTab();
         } else if (tabName === 'lists') {
             this.renderListsTab();
         } else if (tabName === 'notes') {
@@ -460,7 +467,7 @@ class DonezyApp {
     updatePageTitle(tabName) {
         const titles = {
             'dashboard': 'Dashboard - Tanulmányi Központ',
-            'results': 'Eredmények',
+
             'missions': 'Küldetések',
             'lists': 'Listák',
             'notes': 'Jegyzetfüzet',
@@ -487,82 +494,12 @@ class DonezyApp {
         // Profile menu
         this.setupProfileMenu();
 
-        // Quest progress tracking
-        this.setupQuestProgressTracking();
-        
         // Mobile navigation
         this.setupMobileNavigation();
         
         console.log('Event listeners setup completed!');
     }
 
-    /**
-     * Beállítja a küldetések progress követését
-     */
-    setupQuestProgressTracking() {
-        // Progress frissítés amikor a felhasználó tevékenységet végez
-        const updateQuestProgress = async () => {
-            if (window.QuestsService && window.QuestsService.updateQuestProgressAutomatically) {
-                try {
-                    await window.QuestsService.updateQuestProgressAutomatically();
-                    // Ha a küldetések tab aktív, frissítjük a megjelenítést
-                    if (this.currentTab === 'missions') {
-                        await this.renderQuestsTab();
-                    }
-                } catch (error) {
-                    console.error('Error updating quest progress:', error);
-                }
-            }
-        };
-
-        // Figyeljük a DOM változásokat, hogy észleljük a felhasználó tevékenységeit
-        const observer = new MutationObserver((mutations) => {
-            let shouldUpdate = false;
-            
-            mutations.forEach((mutation) => {
-                // Ha új lista vagy teendő lett hozzáadva
-                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                    mutation.addedNodes.forEach((node) => {
-                        if (node.nodeType === Node.ELEMENT_NODE) {
-                            // Lista létrehozás
-                            if (node.classList && node.classList.contains('list-card')) {
-                                shouldUpdate = true;
-                            }
-                            // Teendő hozzáadás
-                            if (node.classList && node.classList.contains('task-row')) {
-                                shouldUpdate = true;
-                            }
-                            // Jegyzet létrehozás
-                            if (node.classList && node.classList.contains('note-card')) {
-                                shouldUpdate = true;
-                            }
-                        }
-                    });
-                }
-                
-                // Ha teendő státusza változott (checked/unchecked)
-                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-                    const target = mutation.target;
-                    if (target.classList && target.classList.contains('task-checkbox')) {
-                        shouldUpdate = true;
-                    }
-                }
-            });
-            
-            if (shouldUpdate) {
-                updateQuestProgress();
-            }
-        });
-
-        // Figyeljük a DOM változásokat
-        observer.observe(document.body, {
-                childList: true,
-                subtree: true,
-                attributes: true,
-                attributeFilter: ['class']
-            });
-        }
-        
     /**
      * Beállítja a mobil navigációt
      */
@@ -821,8 +758,12 @@ class DonezyApp {
     }
 
     toggleTheme() {
-        // Dummy theme toggle functionality
-        this.showNotification('Téma váltás funkció később lesz elérhető!', 'info');
+        // Témaváltó megnyitása
+        if (window.ThemeService) {
+            window.ThemeService.openThemeSelector();
+        } else {
+            this.showNotification('Téma szolgáltatás nem elérhető!', 'error');
+        }
     }
 
     showQuickActionModal(title, type) {
@@ -837,79 +778,26 @@ class DonezyApp {
     }
 
     showLegacyModal(title, type) {
-        // Legacy modal implementation for fallback
-        const modalOverlay = document.createElement('div');
-        modalOverlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 modal-backdrop';
-        modalOverlay.id = 'modal-overlay';
-
-        const modalContent = document.createElement('div');
-        modalContent.className = 'bg-donezy-card rounded-lg p-6 shadow-lg border border-donezy-accent max-w-md w-full mx-4 fade-in';
-        
-        const icon = type === 'task' ? '✅' : type === 'note' ? '📝' : '📅';
-        
-        modalContent.innerHTML = `
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-donezy-orange">${icon} ${title}</h3>
-                <button id="close-modal" class="text-gray-400 hover:text-white text-2xl transition-colors duration-200">&times;</button>
-            </div>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Cím</label>
-                    <input type="text" id="modal-title" class="w-full bg-donezy-accent border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-donezy-orange transition-colors duration-200">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Leírás</label>
-                    <textarea id="modal-description" rows="3" class="w-full bg-donezy-accent border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-donezy-orange transition-colors duration-200"></textarea>
-                </div>
-                <div class="flex space-x-3">
-                    <button id="save-item" class="flex-1 bg-donezy-orange hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 btn-hover-effect">
-                        Mentés
-                    </button>
-                    <button id="cancel-item" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 btn-hover-effect">
-                        Mégse
-                    </button>
-                </div>
-            </div>
-        `;
-
-        modalOverlay.appendChild(modalContent);
-        document.body.appendChild(modalOverlay);
-
-        // Add event listeners for modal
-        document.getElementById('close-modal').addEventListener('click', () => {
-            this.closeModal();
-        });
-
-        document.getElementById('cancel-item').addEventListener('click', () => {
-            this.closeModal();
-        });
-
-        document.getElementById('save-item').addEventListener('click', () => {
-            const title = document.getElementById('modal-title').value.trim();
-            const description = document.getElementById('modal-description').value.trim();
-            this.saveItem(type, { 'modal-title': title, 'modal-description': description });
-        });
-
-        // Close modal when clicking overlay
-        modalOverlay.addEventListener('click', (e) => {
-            if (e.target === modalOverlay) {
-                this.closeModal();
-            }
-        });
-
-        // Focus on title input
-        document.getElementById('modal-title').focus();
+        // Legacy modal implementation for fallback - simplified
+        if (this.modalService) {
+            this.modalService.showModal({
+                title: title,
+                icon: type === 'task' ? '✅' : type === 'note' ? '📝' : '📅',
+                fields: [
+                    { id: 'modal-title', label: 'Cím', type: 'text', required: true },
+                    { id: 'modal-description', label: 'Leírás', type: 'textarea', rows: 3 }
+                ],
+                buttons: [
+                    { text: 'Mentés', action: (data) => this.saveItem(type, data), type: 'primary' },
+                    { text: 'Mégse', action: () => this.closeModal(), type: 'secondary' }
+                ]
+            });
+        }
     }
 
     closeModal() {
         if (this.modalService) {
             this.modalService.closeAllModals();
-        } else {
-            // Legacy modal close
-            const modalOverlay = document.getElementById('modal-overlay');
-            if (modalOverlay) {
-                modalOverlay.remove();
-            }
         }
     }
 
@@ -931,7 +819,6 @@ class DonezyApp {
                     this.showSuccess(`${type === 'task' ? 'Feladat' : type === 'note' ? 'Jegyzet' : 'Esemény'} sikeresen hozzáadva!`);
                     
                     // Update streak counter
-                    this.streakCount++;
                     await this.updateStreakCounter();
                 } else {
                     this.showError('Hiba történt a mentés során. Kérjük, próbáld újra.');
@@ -940,8 +827,7 @@ class DonezyApp {
                 // Fallback to local notification
                 this.closeModal();
                 this.showSuccess(`${type === 'task' ? 'Feladat' : type === 'note' ? 'Jegyzet' : 'Esemény'} sikeresen hozzáadva!`);
-                this.streakCount++;
-                this.updateStreakCounter();
+                await this.updateStreakCounter();
             }
         } catch (error) {
             console.error('Error saving item:', error);
@@ -975,14 +861,19 @@ class DonezyApp {
     }
 
     async updateStreakCounter() {
-        const streakElement = document.getElementById('streak-counter');
-        if (streakElement) {
-            streakElement.textContent = `${this.streakCount} napos sorozat`;
-        }
-
-        // Save to data service if available
-        if (this.dataService) {
-            await this.dataService.updateStreak(this.streakCount);
+        try {
+            // Use the new real streak logic
+            if (this.dataService) {
+                const newStreak = await this.dataService.updateStreakWithLogic();
+                this.streakCount = newStreak;
+            }
+            
+            const streakElement = document.getElementById('streak-counter');
+            if (streakElement) {
+                streakElement.textContent = `${this.streakCount} napos sorozat`;
+            }
+        } catch (error) {
+            console.error('Error updating streak counter:', error);
         }
     }
 
@@ -1374,60 +1265,56 @@ class DonezyApp {
         }
     }
 
-    async renderResultsTab() {
-        console.log('Rendering results tab...');
-        
-        // 1. Lekérjük a user itemeket és userData-t
-        let items = [];
-        let userData = {};
-        if (this.dataService) {
-            try {
-                items = await this.dataService.getUserItems();
-                userData = await this.dataService.getUserData();
-                console.log('User items:', items);
-                console.log('User data:', userData);
-            } catch (e) {
-                console.error('Nem sikerült betölteni a user adatokat:', e);
-            }
-        }
-        // 2. Stat aggregálás
-        let stats = (window.StatAggregator && window.StatAggregator.aggregateStats) ? window.StatAggregator.aggregateStats(items, userData) : {};
-        console.log('Stats:', stats);
-        // 3. Szint/XP progress
-        let xpInfo = (window.LevelSystem && window.LevelSystem.getXPForNextLevel) ? window.LevelSystem.getXPForNextLevel(stats.xp || 0) : { currentLevel: 1, currentLevelXP: 0, nextLevelXP: 100, xpToNext: 100, progress: 0 };
-        console.log('XP info:', xpInfo);
-        // 4. Badge-ek (nem ellenőrizzük az új achievement-eket automatikusan)
-        let badges = (window.LevelSystem && window.LevelSystem.getUserBadges) ? window.LevelSystem.getUserBadges(stats, false) : [];
-        console.log('Badges:', badges);
-        // 5. Összegzés
-        let summaryLines = (window.LevelSystem && window.LevelSystem.getSummaryLines) ? window.LevelSystem.getSummaryLines(stats) : [];
-        console.log('Summary lines:', summaryLines);
-        // 6. Renderelés
-        if (window.ResultsRenderer && window.ResultsRenderer.renderResultsTab) {
-            console.log('Calling ResultsRenderer.renderResultsTab...');
-            window.ResultsRenderer.renderResultsTab(stats, badges, xpInfo, summaryLines);
-        } else {
-            console.error('ResultsRenderer not available or renderResultsTab method missing');
-        }
-    }
 
-    async renderQuestsTab() {
-        console.log('Rendering quests tab...');
-        
-        if (window.QuestsService && window.questsRenderer) {
-            try {
-                const quests = window.QuestsService.getQuests();
-                console.log('Quests:', quests);
-                console.log('Calling questsRenderer.renderQuestsTab...');
-                await window.questsRenderer.renderQuestsTab(quests);
-                console.log('questsRenderer.renderQuestsTab called successfully');
-            } catch (error) {
-                console.error('Error rendering quests tab:', error);
+
+    async renderMissionsTab() {
+        try {
+            console.log('Rendering missions tab...');
+            
+            // Initialize mission system if not already done
+            if (!window.missionService) {
+                window.missionService = new MissionService();
+                await window.missionService.init();
             }
-        } else {
-            console.error('QuestsService or questsRenderer not available');
-            console.log('QuestsService available:', !!window.QuestsService);
-            console.log('questsRenderer available:', !!window.questsRenderer);
+            
+            if (!window.missionRenderer) {
+                window.missionRenderer = new MissionRenderer();
+                await window.missionRenderer.init();
+            }
+            
+            // Render missions using the new system
+            if (window.missionRenderer && window.missionRenderer.renderMissionsTab) {
+                await window.missionRenderer.renderMissionsTab();
+            } else {
+                // Fallback to loading message
+                const missionsContainer = document.getElementById('missions-content');
+                if (missionsContainer) {
+                    missionsContainer.innerHTML = `
+                        <div class="flex flex-col items-center justify-center min-h-[400px] text-gray-500">
+                            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-donezy-orange mb-4"></div>
+                            <p>Küldetések betöltése...</p>
+                        </div>
+                    `;
+                }
+            }
+        } catch (error) {
+            console.error('Error rendering missions tab:', error);
+            const missionsContainer = document.getElementById('missions-content');
+            if (missionsContainer) {
+                missionsContainer.innerHTML = `
+                    <div class="flex flex-col items-center justify-center min-h-[400px] text-red-400">
+                        <div class="text-4xl mb-4">❌</div>
+                        <h2 class="text-xl font-bold mb-2">Hiba történt</h2>
+                        <p class="text-center max-w-md text-secondary">
+                            Nem sikerült betölteni a küldetéseket.<br>
+                            Kérjük, próbáld újra később.
+                        </p>
+                        <button onclick="location.reload()" class="mt-4 bg-donezy-orange hover:bg-orange-hover text-white px-4 py-2 rounded-lg transition">
+                            Újrapróbálkozás
+                        </button>
+                    </div>
+                `;
+            }
         }
     }
 
@@ -1448,6 +1335,82 @@ class DonezyApp {
             console.error('ListsService or ListsRenderer not available');
             console.log('ListsService available:', !!window.ListsService);
             console.log('ListsRenderer available:', !!window.ListsRenderer);
+        }
+    }
+
+    async renderResultsTab() {
+        try {
+            console.log('Rendering results tab...');
+            
+            // Track mission progress for viewing results
+            if (window.MissionService && window.MissionService.trackActivity) {
+                await window.MissionService.trackActivity('results_viewed', 1);
+            }
+            
+            // Wait for app to be initialized
+            let attempts = 0;
+            while (!window.app && attempts < 10) {
+                console.log('Waiting for app to be initialized for results...');
+                await new Promise(resolve => setTimeout(resolve, 500));
+                attempts++;
+            }
+            
+            // Initialize results service if not already done
+            if (window.ResultsService && window.ResultsService.init) {
+                console.log('Initializing ResultsService...');
+                const initialized = await window.ResultsService.init();
+                console.log('ResultsService initialized:', initialized);
+            } else {
+                console.error('ResultsService not available');
+            }
+
+            // Get data from results service
+            let userStats = {};
+            let activityData = {};
+            let badges = {};
+            
+            if (window.ResultsService) {
+                userStats = window.ResultsService.getUserStats ? window.ResultsService.getUserStats() : {};
+                activityData = window.ResultsService.getActivityData ? window.ResultsService.getActivityData() : {};
+                badges = window.ResultsService.getBadges ? window.ResultsService.getBadges() : {};
+                
+                console.log('Results data loaded:', { userStats, activityData, badges });
+            }
+
+            // Render results using ResultsRenderer
+            if (window.ResultsRenderer && window.ResultsRenderer.renderResultsTab) {
+                console.log('Rendering with ResultsRenderer...');
+                window.ResultsRenderer.renderResultsTab(userStats, activityData, badges);
+            } else {
+                console.error('ResultsRenderer not available');
+                const resultsContent = document.getElementById('results-content');
+                if (resultsContent) {
+                    resultsContent.innerHTML = `
+                        <div class="flex flex-col items-center justify-center min-h-[400px] text-gray-500">
+                            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-donezy-orange mb-4"></div>
+                            <p>Eredmények betöltése...</p>
+                        </div>
+                    `;
+                }
+            }
+        } catch (error) {
+            console.error('Error rendering results tab:', error);
+            const resultsContent = document.getElementById('results-content');
+            if (resultsContent) {
+                resultsContent.innerHTML = `
+                    <div class="flex flex-col items-center justify-center min-h-[400px] text-red-400">
+                        <div class="text-4xl mb-4">❌</div>
+                        <h2 class="text-xl font-bold mb-2">Hiba történt</h2>
+                        <p class="text-center max-w-md text-secondary">
+                            Nem sikerült betölteni az eredményeket.<br>
+                            Kérjük, próbáld újra később.
+                        </p>
+                        <button onclick="location.reload()" class="mt-4 bg-donezy-orange hover:bg-orange-hover text-white px-4 py-2 rounded-lg transition">
+                            Újrapróbálkozás
+                        </button>
+                    </div>
+                `;
+            }
         }
     }
 }

@@ -113,9 +113,44 @@ class DataService {
         return false;
     }
 
+    async updateStreakWithLogic() {
+        if (this.currentService) {
+            return await this.currentService.updateStreakWithLogic();
+        }
+        return 0;
+    }
+
     async updateXP(xp) {
         if (this.currentService) {
             return await this.currentService.updateXP(xp);
+        }
+        return false;
+    }
+
+    async updateLevel(level) {
+        if (this.currentService) {
+            return await this.currentService.updateLevel(level);
+        }
+        return false;
+    }
+
+    async updateCurrency(currency) {
+        if (this.currentService) {
+            return await this.currentService.updateCurrency(currency);
+        }
+        return false;
+    }
+
+    async getProgress() {
+        if (this.currentService) {
+            return await this.currentService.getProgress();
+        }
+        return null;
+    }
+
+    async updateProgress(progress) {
+        if (this.currentService) {
+            return await this.currentService.updateProgress(progress);
         }
         return false;
     }
@@ -145,6 +180,84 @@ class DataService {
         if (this.currentService) {
             this.currentService.logActivity(action, data);
         }
+    }
+
+    // Get current user ID
+    getCurrentUserId() {
+        if (this.currentService && this.currentService.getCurrentUserId) {
+            return this.currentService.getCurrentUserId();
+        }
+        // Fallback to localStorage
+        let userId = localStorage.getItem('donezy_user_id');
+        if (!userId) {
+            userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('donezy_user_id', userId);
+        }
+        return userId;
+    }
+
+    // Témák kezelése
+    async getThemes() {
+        if (this.currentService) {
+            return await this.currentService.getThemes();
+        }
+        return null;
+    }
+
+    async saveTheme(themeData) {
+        if (this.currentService) {
+            return await this.currentService.saveTheme(themeData);
+        }
+        return false;
+    }
+
+    async updateTheme(themeId, updates) {
+        if (this.currentService) {
+            return await this.currentService.updateTheme(themeId, updates);
+        }
+        return false;
+    }
+
+    async deleteTheme(themeId) {
+        if (this.currentService) {
+            return await this.currentService.deleteTheme(themeId);
+        }
+        return false;
+    }
+
+    async logCompletedTask(taskData = {}) {
+        if (this.currentService) {
+            return await this.currentService.logCompletedTask(taskData);
+        }
+        return false;
+    }
+
+    async getCompletedTasks(startDate, endDate) {
+        if (this.currentService) {
+            return await this.currentService.getCompletedTasks(startDate, endDate);
+        }
+        return {};
+    }
+
+    async saveBadge(badgeId, badgeData) {
+        if (this.currentService) {
+            return await this.currentService.saveBadge(badgeId, badgeData);
+        }
+        return false;
+    }
+
+    async getBadges() {
+        if (this.currentService) {
+            return await this.currentService.getBadges();
+        }
+        return {};
+    }
+
+    async updateBadgeProgress(badgeId, progress) {
+        if (this.currentService) {
+            return await this.currentService.updateBadgeProgress(badgeId, progress);
+        }
+        return false;
     }
 }
 

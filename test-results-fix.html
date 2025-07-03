@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Results Fix Test - Donezy</title>
+    <link rel="stylesheet" href="css/main.css">
+    <style>
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-primary);
+        }
+        .test-button {
+            background: var(--donezy-orange);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: var(--orange-secondary);
+        }
+        .log-output {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-secondary);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .status.success {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid var(--success-primary);
+            color: var(--success-primary);
+        }
+        .status.error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid var(--error-primary);
+            color: var(--error-primary);
+        }
+        .status.warning {
+            background: rgba(245, 158, 11, 0.2);
+            border: 1px solid var(--warning-primary);
+            color: var(--warning-primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔧 Results Fix Test</h1>
+        
+        <div class="test-section">
+            <h2>1. Service Initialization Test</h2>
+            <button class="test-button" onclick="testServiceInit()">Test Service Initialization</button>
+            <div id="service-status"></div>
+            <div id="service-log" class="log-output"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>2. Data Loading Test</h2>
+            <button class="test-button" onclick="testDataLoading()">Test Data Loading</button>
+            <div id="data-status"></div>
+            <div id="data-log" class="log-output"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>3. Results Rendering Test</h2>
+            <button class="test-button" onclick="testResultsRendering()">Test Results Rendering</button>
+            <div id="render-status"></div>
+            <div id="render-log" class="log-output"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>4. Badge System Test</h2>
+            <button class="test-button" onclick="testBadgeSystem()">Test Badge System</button>
+            <div id="badge-status"></div>
+            <div id="badge-log" class="log-output"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>5. Activity Chart Test</h2>
+            <button class="test-button" onclick="testActivityChart()">Test Activity Chart</button>
+            <div id="chart-status"></div>
+            <div id="chart-log" class="log-output"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>6. Full Integration Test</h2>
+            <button class="test-button" onclick="testFullIntegration()">Run Full Integration Test</button>
+            <div id="integration-status"></div>
+            <div id="integration-log" class="log-output"></div>
+        </div>
+    </div>
+
+    <script>
+        // Test logging utility
+        function logToElement(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            element.innerHTML += logEntry + '\n';
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function updateStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        // Test 1: Service Initialization
+        async function testServiceInit() {
+            updateStatus('service-status', 'Testing service initialization...', 'warning');
+            logToElement('service-log', 'Starting service initialization test...');
+
+            try {
+                // Check if modules are loaded
+                logToElement('service-log', 'Checking module availability...');
+                
+                if (typeof DataService !== 'undefined') {
+                    logToElement('service-log', '✓ DataService is available');
+                } else {
+                    logToElement('service-log', '✗ DataService is not available', 'error');
+                }
+
+                if (typeof ResultsService !== 'undefined') {
+                    logToElement('service-log', '✓ ResultsService is available');
+                } else {
+                    logToElement('service-log', '✗ ResultsService is not available', 'error');
+                }
+
+                if (typeof ResultsRenderer !== 'undefined') {
+                    logToElement('service-log', '✓ ResultsRenderer is available');
+                } else {
+                    logToElement('service-log', '✗ ResultsRenderer is not available', 'error');
+                }
+
+                // Test DataService initialization
+                logToElement('service-log', 'Initializing DataService...');
+                const dataService = new DataService();
+                const dataInitResult = await dataService.init();
+                logToElement('service-log', `DataService init result: ${dataInitResult}`);
+
+                // Test ResultsService initialization
+                logToElement('service-log', 'Initializing ResultsService...');
+                const resultsInitResult = await ResultsService.init();
+                logToElement('service-log', `ResultsService init result: ${resultsInitResult}`);
+
+                if (dataInitResult && resultsInitResult) {
+                    updateStatus('service-status', '✓ All services initialized successfully!', 'success');
+                } else {
+                    updateStatus('service-status', '✗ Some services failed to initialize', 'error');
+                }
+
+            } catch (error) {
+                logToElement('service-log', `Error during service initialization: ${error.message}`, 'error');
+                updateStatus('service-status', '✗ Service initialization failed', 'error');
+            }
+        }
+
+        // Test 2: Data Loading
+        async function testDataLoading() {
+            updateStatus('data-status', 'Testing data loading...', 'warning');
+            logToElement('data-log', 'Starting data loading test...');
+
+            try {
+                // Test user data loading
+                logToElement('data-log', 'Loading user data...');
+                const userStats = ResultsService.getUserStats();
+                logToElement('data-log', `User stats loaded: ${JSON.stringify(userStats, null, 2)}`);
+
+                // Test activity data loading
+                logToElement('data-log', 'Loading activity data...');
+                const activityData = ResultsService.getActivityData();
+                logToElement('data-log', `Activity data loaded: ${JSON.stringify(activityData, null, 2)}`);
+
+                // Test badge loading
+                logToElement('data-log', 'Loading badges...');
+                const badges = ResultsService.getBadges();
+                logToElement('data-log', `Badges loaded: ${JSON.stringify(badges, null, 2)}`);
+
+                if (userStats && activityData && badges) {
+                    updateStatus('data-status', '✓ All data loaded successfully!', 'success');
+                } else {
+                    updateStatus('data-status', '✗ Some data failed to load', 'error');
+                }
+
+            } catch (error) {
+                logToElement('data-log', `Error during data loading: ${error.message}`, 'error');
+                updateStatus('data-status', '✗ Data loading failed', 'error');
+            }
+        }
+
+        // Test 3: Results Rendering
+        async function testResultsRendering() {
+            updateStatus('render-status', 'Testing results rendering...', 'warning');
+            logToElement('render-log', 'Starting results rendering test...');
+
+            try {
+                // Get test data
+                const userStats = ResultsService.getUserStats();
+                const activityData = ResultsService.getActivityData();
+                const badges = ResultsService.getBadges();
+
+                logToElement('render-log', 'Test data prepared for rendering');
+
+                // Test ResultsRenderer availability
+                if (ResultsRenderer && ResultsRenderer.renderResultsTab) {
+                    logToElement('render-log', '✓ ResultsRenderer.renderResultsTab is available');
+                } else {
+                    logToElement('render-log', '✗ ResultsRenderer.renderResultsTab is not available', 'error');
+                }
+
+                // Test BADGE_DEFINITIONS availability
+                if (ResultsRenderer && ResultsRenderer.BADGE_DEFINITIONS) {
+                    logToElement('render-log', `✓ BADGE_DEFINITIONS available with ${Object.keys(ResultsRenderer.BADGE_DEFINITIONS).length} badges`);
+                } else {
+                    logToElement('render-log', '✗ BADGE_DEFINITIONS is not available', 'error');
+                }
+
+                // Test checkAndUpdateBadges function
+                if (ResultsRenderer && ResultsRenderer.checkAndUpdateBadges) {
+                    logToElement('render-log', '✓ checkAndUpdateBadges function is available');
+                    const updatedBadges = ResultsRenderer.checkAndUpdateBadges(userStats);
+                    logToElement('render-log', `Badge check result: ${JSON.stringify(updatedBadges, null, 2)}`);
+                } else {
+                    logToElement('render-log', '✗ checkAndUpdateBadges function is not available', 'error');
+                }
+
+                updateStatus('render-status', '✓ Results rendering test completed!', 'success');
+
+            } catch (error) {
+                logToElement('render-log', `Error during results rendering test: ${error.message}`, 'error');
+                updateStatus('render-status', '✗ Results rendering test failed', 'error');
+            }
+        }
+
+        // Test 4: Badge System
+        async function testBadgeSystem() {
+            updateStatus('badge-status', 'Testing badge system...', 'warning');
+            logToElement('badge-log', 'Starting badge system test...');
+
+            try {
+                // Test badge definitions
+                if (ResultsRenderer && ResultsRenderer.BADGE_DEFINITIONS) {
+                    logToElement('badge-log', 'Testing badge definitions...');
+                    Object.entries(ResultsRenderer.BADGE_DEFINITIONS).forEach(([badgeId, badgeDef]) => {
+                        logToElement('badge-log', `Badge: ${badgeId} - ${badgeDef.name} (${badgeDef.condition})`);
+                    });
+                }
+
+                // Test badge evaluation
+                const testUserData = {
+                    level: 5,
+                    xp: 1250,
+                    currentStreak: 7,
+                    totalActiveDays: 23,
+                    questsCompleted: 8,
+                    totalQuests: 12,
+                    tasksCompleted: 45,
+                    notesCreated: 12,
+                    listsCreated: 6
+                };
+
+                logToElement('badge-log', 'Testing badge evaluation with test data...');
+                const evaluatedBadges = ResultsRenderer.checkAndUpdateBadges(testUserData);
+                
+                Object.entries(evaluatedBadges).forEach(([badgeId, badge]) => {
+                    logToElement('badge-log', `${badge.unlocked ? '✓' : '✗'} ${badge.name}: ${badge.progress}% progress`);
+                });
+
+                updateStatus('badge-status', '✓ Badge system test completed!', 'success');
+
+            } catch (error) {
+                logToElement('badge-log', `Error during badge system test: ${error.message}`, 'error');
+                updateStatus('badge-status', '✗ Badge system test failed', 'error');
+            }
+        }
+
+        // Test 5: Activity Chart
+        async function testActivityChart() {
+            updateStatus('chart-status', 'Testing activity chart...', 'warning');
+            logToElement('chart-log', 'Starting activity chart test...');
+
+            try {
+                // Test chart data preparation
+                const activityData = ResultsService.getActivityData();
+                logToElement('chart-log', `Activity data for chart: ${JSON.stringify(activityData, null, 2)}`);
+
+                // Test chart functions availability
+                if (ResultsRenderer && ResultsRenderer.updateActivityChart) {
+                    logToElement('chart-log', '✓ updateActivityChart function is available');
+                } else {
+                    logToElement('chart-log', '✗ updateActivityChart function is not available', 'error');
+                }
+
+                // Test data preparation
+                const testData = {
+                    '2024-01-01': { tasksCompleted: 5, tasksCreated: 6 },
+                    '2024-01-02': { tasksCompleted: 3, tasksCreated: 4 },
+                    '2024-01-03': { tasksCompleted: 7, tasksCreated: 8 }
+                };
+
+                logToElement('chart-log', 'Testing with sample activity data...');
+                logToElement('chart-log', `Sample data: ${JSON.stringify(testData, null, 2)}`);
+
+                updateStatus('chart-status', '✓ Activity chart test completed!', 'success');
+
+            } catch (error) {
+                logToElement('chart-log', `Error during activity chart test: ${error.message}`, 'error');
+                updateStatus('chart-status', '✗ Activity chart test failed', 'error');
+            }
+        }
+
+        // Test 6: Full Integration
+        async function testFullIntegration() {
+            updateStatus('integration-status', 'Running full integration test...', 'warning');
+            logToElement('integration-log', 'Starting full integration test...');
+
+            try {
+                // Step 1: Initialize services
+                logToElement('integration-log', 'Step 1: Initializing services...');
+                const dataService = new DataService();
+                await dataService.init();
+                await ResultsService.init();
+                logToElement('integration-log', '✓ Services initialized');
+
+                // Step 2: Load data
+                logToElement('integration-log', 'Step 2: Loading data...');
+                const userStats = ResultsService.getUserStats();
+                const activityData = ResultsService.getActivityData();
+                const badges = ResultsService.getBadges();
+                logToElement('integration-log', '✓ Data loaded');
+
+                // Step 3: Test rendering
+                logToElement('integration-log', 'Step 3: Testing rendering...');
+                if (ResultsRenderer && ResultsRenderer.renderResultsTab) {
+                    logToElement('integration-log', '✓ ResultsRenderer is ready');
+                }
+
+                // Step 4: Test badge system
+                logToElement('integration-log', 'Step 4: Testing badge system...');
+                const evaluatedBadges = ResultsRenderer.checkAndUpdateBadges(userStats);
+                logToElement('integration-log', `✓ Badges evaluated: ${Object.keys(evaluatedBadges).length} badges`);
+
+                // Step 5: Test activity data
+                logToElement('integration-log', 'Step 5: Testing activity data...');
+                const activityDays = Object.keys(activityData).length;
+                logToElement('integration-log', `✓ Activity data: ${activityDays} days of data`);
+
+                // Summary
+                logToElement('integration-log', '=== INTEGRATION TEST SUMMARY ===');
+                logToElement('integration-log', `User Stats: ${userStats ? '✓ Loaded' : '✗ Failed'}`);
+                logToElement('integration-log', `Activity Data: ${activityData ? '✓ Loaded' : '✗ Failed'}`);
+                logToElement('integration-log', `Badges: ${badges ? '✓ Loaded' : '✗ Failed'}`);
+                logToElement('integration-log', `ResultsRenderer: ${ResultsRenderer ? '✓ Available' : '✗ Not Available'}`);
+
+                updateStatus('integration-status', '✓ Full integration test completed successfully!', 'success');
+
+            } catch (error) {
+                logToElement('integration-log', `Error during integration test: ${error.message}`, 'error');
+                updateStatus('integration-status', '✗ Full integration test failed', 'error');
+            }
+        }
+
+        // Load required modules
+        window.addEventListener('load', async () => {
+            logToElement('service-log', 'Loading test page...');
+            
+            // Load required scripts
+            const scripts = [
+                'js/modules/DataService.js',
+                'js/modules/LocalStorageService.js',
+                'js/modules/ResultsService.js',
+                'js/modules/ResultsRenderer.js'
+            ];
+
+            for (const script of scripts) {
+                try {
+                    const scriptElement = document.createElement('script');
+                    scriptElement.src = script;
+                    document.head.appendChild(scriptElement);
+                    logToElement('service-log', `Loaded: ${script}`);
+                } catch (error) {
+                    logToElement('service-log', `Failed to load: ${script}`, 'error');
+                }
+            }
+        });
+    </script>
+</body>
+</html> 

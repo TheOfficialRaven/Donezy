@@ -46,31 +46,29 @@ window.ListsRenderer = (function() {
         const categoryOptions = categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
 
         headerContainer.innerHTML = `
-            <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
-                <div class="flex-1">
-                    <h2 class="text-2xl font-bold text-donezy-orange mb-2">📋 Listák</h2>
-                    <div class="flex flex-col md:flex-row gap-2 items-stretch md:items-end">
-                        <div class="flex-1">
-                            <label class="block text-sm text-gray-400 mb-1">Lista neve</label>
-                            <input type="text" id="list-title" class="w-full bg-donezy-accent border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-donezy-orange" placeholder="pl. Bevásárlás, Munka...">
-                        </div>
-                        <div class="flex-1">
-                            <label class="block text-sm text-gray-400 mb-1">Kategória</label>
-                            <input list="category-list" id="list-category" class="w-full bg-donezy-accent border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-donezy-orange" placeholder="pl. Otthon, Munka, Hobbi...">
-                            <datalist id="category-list">${categoryOptions}</datalist>
-                        </div>
-                        <button id="create-list-btn" class="bg-donezy-orange hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 mt-4 md:mt-0">➕ Lista létrehozása</button>
-                    </div>
-                </div>
-                <div class="flex-1 flex flex-col md:flex-row gap-2 items-stretch md:items-end">
+            <div class="lists-header">
+                <h2>📋 Listák</h2>
+                <div class="lists-header-row">
                     <div class="flex-1">
-                        <label class="block text-sm text-gray-400 mb-1">Kategória szűrő</label>
-                        <input list="filter-category-list" id="filter-category" class="w-full bg-donezy-accent border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-donezy-orange" placeholder="Összes kategória">
+                        <label class="block">Lista neve</label>
+                        <input type="text" id="list-title" placeholder="pl. Bevásárlás, Munka...">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block">Kategória</label>
+                        <input list="category-list" id="list-category" placeholder="pl. Otthon, Munka, Hobbi...">
+                        <datalist id="category-list">${categoryOptions}</datalist>
+                    </div>
+                    <button id="create-list-btn">➕ Lista létrehozása</button>
+                </div>
+                <div class="lists-header-row">
+                    <div class="flex-1">
+                        <label class="block">Kategória szűrő</label>
+                        <input list="filter-category-list" id="filter-category" placeholder="Összes kategória">
                         <datalist id="filter-category-list">${categoryOptions}</datalist>
                     </div>
                     <div class="flex-1">
-                        <label class="block text-sm text-gray-400 mb-1">Keresés</label>
-                        <input type="text" id="search-lists" class="w-full bg-donezy-accent border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-donezy-orange" placeholder="Keresés a listákban és teendőkben...">
+                        <label class="block">Keresés</label>
+                        <input type="text" id="search-lists" placeholder="Keresés a listákban és teendőkben...">
                     </div>
                 </div>
             </div>
@@ -270,18 +268,33 @@ window.ListsRenderer = (function() {
      */
     function setupListsEventListeners() {
         // Lista létrehozás
-        document.getElementById('create-list-btn')?.addEventListener('click', async () => {
-            const title = document.getElementById('list-title').value.trim();
-            const category = document.getElementById('list-category').value.trim();
-            if (!title) return alert('Adj meg egy listanevet!');
-            await window.ListsService.createList(title, '', 'medium', category);
-            document.getElementById('list-title').value = '';
-            document.getElementById('list-category').value = '';
-            refreshListsDisplay();
-        });
+        const oldCreateBtn = document.getElementById('create-list-btn');
+        if (oldCreateBtn) {
+            const newCreateBtn = oldCreateBtn.cloneNode(true);
+            oldCreateBtn.parentNode.replaceChild(newCreateBtn, oldCreateBtn);
+            newCreateBtn.addEventListener('click', async () => {
+                const title = document.getElementById('list-title').value.trim();
+                const category = document.getElementById('list-category').value.trim();
+                if (!title) return alert('Adj meg egy listanevet!');
+                await window.ListsService.createList(title, '', 'medium', category);
+                document.getElementById('list-title').value = '';
+                document.getElementById('list-category').value = '';
+                refreshListsDisplay();
+            });
+        }
         // Szűrők
-        document.getElementById('filter-category')?.addEventListener('input', refreshListsDisplay);
-        document.getElementById('search-lists')?.addEventListener('input', refreshListsDisplay);
+        const oldFilter = document.getElementById('filter-category');
+        if (oldFilter) {
+            const newFilter = oldFilter.cloneNode(true);
+            oldFilter.parentNode.replaceChild(newFilter, oldFilter);
+            newFilter.addEventListener('input', refreshListsDisplay);
+        }
+        const oldSearch = document.getElementById('search-lists');
+        if (oldSearch) {
+            const newSearch = oldSearch.cloneNode(true);
+            oldSearch.parentNode.replaceChild(newSearch, oldSearch);
+            newSearch.addEventListener('input', refreshListsDisplay);
+        }
         // Lista törlés
         document.querySelectorAll('.list-delete-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {

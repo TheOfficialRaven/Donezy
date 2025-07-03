@@ -9,6 +9,9 @@
 /* Import layout styles */
 @import url('./modules/layout.css');
 
+/* Import theme styles */
+@import url('./modules/themes.css');
+
 :root {
   /* Primary Donezy Colors */
   --donezy-orange: #ff6b35;
@@ -242,14 +245,7 @@
     box-shadow: var(--shadow-lg);
 }
 
-.btn-hover-effect {
-    transition: all var(--transition-fast);
-}
 
-.btn-hover-effect:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
-}
 
 /* Dropdown animations */
 .dropdown-animate-in {
@@ -1071,24 +1067,7 @@ body.auth-loading #app-main { display: none !important; }
 .activity-stat {
   @apply bg-donezy-accent rounded-lg p-3 flex flex-col items-center shadow-md;
 }
-#badge-grid .badge-card {
-  @apply flex flex-col items-center justify-center bg-donezy-accent rounded-lg p-4 shadow-md border-2 border-transparent transition-all duration-200 cursor-pointer relative;
-}
-#badge-grid .badge-card.earned {
-  @apply border-donezy-orange bg-gradient-to-br from-donezy-orange/30 to-donezy-accent;
-}
-#badge-grid .badge-card.locked {
-  @apply opacity-50 grayscale;
-}
-#badge-grid .badge-card .badge-icon {
-  @apply text-3xl mb-2;
-}
-#badge-grid .badge-card .badge-title {
-  @apply font-bold text-white mb-1 text-center;
-}
-#badge-grid .badge-card .badge-desc {
-  @apply text-xs text-gray-300 text-center;
-}
+
 .card-hover:hover {
   @apply ring-2 ring-donezy-orange ring-opacity-60 scale-105 z-10;
 }
@@ -1096,13 +1075,7 @@ body.auth-loading #app-main { display: none !important; }
   transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
 }
 
-/* --- Eredmények tab vizuális tuning --- */
 
-.results-section {
-  /* háttér blur, extra padding, sötét overlay */
-  backdrop-filter: blur(6px);
-  background: rgba(20, 20, 30, 0.7);
-}
 
 .bg-donezy-card {
   background: linear-gradient(135deg, #23232b 80%, #2d1a0b 100%);
@@ -1120,18 +1093,17 @@ body.auth-loading #app-main { display: none !important; }
   z-index: 2;
 }
 
-.stat-card, .activity-stat {
-  background: linear-gradient(135deg, #23232b 70%, #1e293b 100%);
-  box-shadow: 0 2px 12px 0 #1a1a22;
-  border: 1.5px solid #2d3748;
-  border-radius: 1rem;
-  transition: box-shadow 0.2s, border 0.2s;
-}
-.stat-card:hover, .activity-stat:hover {
-  border-color: #ff9100;
-  box-shadow: 0 0 12px 2px #ff9100cc;
+
+
+
+
+/* --- DONEZY EREDMÉNYEK MODERN STÍLUSOK --- */
+
+.results-section {
+  margin-top: 2rem;
 }
 
+/* Level & XP Section */
 #level-value {
   font-size: 3.5rem;
   color: #fff;
@@ -1140,6 +1112,7 @@ body.auth-loading #app-main { display: none !important; }
   filter: drop-shadow(0 0 8px #ff9100cc);
   transition: text-shadow 0.3s;
 }
+
 #level-value.glow {
   text-shadow: 0 0 32px #ff9100, 0 0 8px #fff;
 }
@@ -1151,17 +1124,48 @@ body.auth-loading #app-main { display: none !important; }
   border-radius: 1rem;
   transition: width 0.5s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s;
 }
+
 #xp-progress-bar.pulse {
   animation: pulse-bar 1.2s infinite alternate;
 }
+
 @keyframes pulse-bar {
   0% { box-shadow: 0 0 8px 2px #ff9100cc; }
   100% { box-shadow: 0 0 24px 6px #7f5fffcc; }
 }
 
+/* Activity Chart Section */
+#activity-chart {
+  max-height: 300px;
+  width: 100% !important;
+}
+
+.chart-period-btn {
+  background: var(--donezy-accent);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chart-period-btn:hover {
+  background: var(--donezy-orange);
+  transform: translateY(-1px);
+}
+
+.chart-period-btn.active {
+  background: var(--donezy-orange);
+  box-shadow: 0 0 8px rgba(255, 107, 53, 0.3);
+}
+
+/* Badge Collection Section */
 #badge-grid {
   gap: 1.2rem;
 }
+
 .badge-card {
   background: linear-gradient(135deg, #23232b 70%, #1e293b 100%);
   border-radius: 1.1rem;
@@ -1172,43 +1176,63 @@ body.auth-loading #app-main { display: none !important; }
   min-height: 120px;
   cursor: pointer;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
 }
+
 .badge-card.earned {
   border-color: #ff9100;
   background: linear-gradient(135deg, #ff9100 10%, #7f5fff 90%);
   box-shadow: 0 0 16px 2px #ff9100cc;
   color: #fff;
 }
+
 .badge-card.locked {
   opacity: 0.6;
   filter: grayscale(0.7) blur(0.5px);
 }
+
 .badge-card .badge-icon {
   font-size: 2.2rem;
   margin-bottom: 0.3rem;
   filter: drop-shadow(0 0 6px #ff9100cc);
 }
+
 .badge-card .badge-title {
   font-weight: 700;
   color: #fff;
   margin-bottom: 0.1rem;
   text-align: center;
   letter-spacing: 0.01em;
+  font-size: 0.875rem;
 }
+
 .badge-card .badge-desc {
-  font-size: 0.92rem;
+  font-size: 0.75rem;
   color: #ffe0b2;
   text-align: center;
   opacity: 0.92;
+  line-height: 1.2;
 }
+
 .badge-card .absolute {
   right: 0.7rem;
   top: 0.7rem;
 }
+
 .badge-card:hover {
   border-color: #7f5fff;
   box-shadow: 0 0 24px 4px #7f5fffcc, 0 2px 16px 0 #1a1a22;
   transform: scale(1.06) translateY(-2px);
+}
+
+.badge-card.earned:hover {
+  border-color: #7f5fff;
+  box-shadow: 0 0 32px 6px #7f5fffcc, 0 4px 20px 0 #1a1a22;
+  transform: scale(1.08) translateY(-3px);
 }
 
 /* Tooltip badge leírás (hover) */
@@ -1216,76 +1240,128 @@ body.auth-loading #app-main { display: none !important; }
   opacity: 0.85;
   transition: opacity 0.2s;
 }
+
 .badge-card:hover .badge-desc {
   opacity: 1;
 }
 
-/* Responsive tuning */
+/* Stat Cards */
+.stat-card {
+  background: linear-gradient(135deg, #23232b 70%, #1e293b 100%);
+  box-shadow: 0 2px 12px 0 #1a1a22;
+  border: 1.5px solid #2d3748;
+  border-radius: 1rem;
+  transition: box-shadow 0.2s, border 0.2s;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.stat-card:hover {
+  border-color: #ff9100;
+  box-shadow: 0 0 12px 2px #ff9100cc;
+}
+
+.activity-stat {
+  background: linear-gradient(135deg, #23232b 70%, #1e293b 100%);
+  box-shadow: 0 2px 12px 0 #1a1a22;
+  border: 1.5px solid #2d3748;
+  border-radius: 1rem;
+  transition: box-shadow 0.2s, border 0.2s;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.activity-stat:hover {
+  border-color: #ff9100;
+  box-shadow: 0 0 12px 2px #ff9100cc;
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
   .stat-card, .activity-stat, .badge-card {
     font-size: 0.98rem;
     padding: 0.9rem 0.7rem;
   }
+  
   #level-value {
     font-size: 2.2rem;
   }
+  
   #xp-progress-bar {
     height: 0.7rem;
   }
+  
+  .badge-card {
+    min-height: 100px;
+  }
+  
+  .badge-card .badge-icon {
+    font-size: 1.8rem;
+  }
+  
+  .badge-card .badge-title {
+    font-size: 0.8rem;
+  }
+  
+  .badge-card .badge-desc {
+    font-size: 0.7rem;
+  }
+  
+  #activity-chart {
+    max-height: 200px;
+  }
 }
 
-/* Quest Tab Styles */
-.quest-tab {
-    @apply text-gray-300 hover:text-white hover:bg-donezy-card;
+@media (max-width: 480px) {
+  .badge-card {
+    min-height: 90px;
+    padding: 0.75rem;
+  }
+  
+  .badge-card .badge-icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.2rem;
+  }
+  
+  .badge-card .badge-title {
+    font-size: 0.75rem;
+    margin-bottom: 0.05rem;
+  }
+  
+  .badge-card .badge-desc {
+    font-size: 0.65rem;
+  }
+  
+  .stat-card, .activity-stat {
+    padding: 0.75rem 0.5rem;
+  }
 }
 
-.quest-tab.active {
-    @apply text-white bg-donezy-orange shadow-lg;
+/* Animation for new badges */
+@keyframes badgeUnlock {
+  0% {
+    transform: scale(0.8) rotate(-10deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1) rotate(5deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
 }
 
-.quest-content {
-    @apply hidden;
-}
-
-.quest-content.active {
-    @apply block;
-}
-
-/* Quest Card Styles */
-.quest-card {
-    @apply relative overflow-hidden;
-}
-
-.quest-card.completed {
-    @apply opacity-75;
-}
-
-.quest-card.completed::before {
-    content: '';
-    @apply absolute inset-0 bg-green-500 bg-opacity-10 pointer-events-none;
-}
-
-.quest-card:hover {
-    @apply transform scale-105 shadow-xl;
-}
-
-/* Quest Progress Animation */
-.quest-card .bg-donezy-orange {
-    transition: width 0.5s ease-in-out;
-}
-
-/* Quest Status Badge Animation */
-.quest-card span {
-    @apply transition-all duration-200;
-}
-
-/* Quest Button Hover Effects */
-.quest-complete-btn:hover {
-    @apply transform scale-105 shadow-lg;
-}
-
-.quest-complete-btn:active {
-    @apply transform scale-95;
+.badge-card.new-unlock {
+  animation: badgeUnlock 0.6s ease-out;
 }
 
 /* --- DONEZY LISTÁK MODERN STÍLUSOK --- */
@@ -1714,35 +1790,36 @@ body.auth-loading #app-main { display: none !important; }
 
 /* XP Progress Bar Animáció */
 .xp-progress-animation {
-    animation: xpProgressPulse 1s ease-in-out;
+    animation: xpProgressPulse 1s ease-out;
 }
 
 @keyframes xpProgressPulse {
     0% {
-        box-shadow: 0 0 0 0 rgba(255, 145, 0, 0.7);
+        box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.7);
     }
     70% {
-        box-shadow: 0 0 0 10px rgba(255, 145, 0, 0);
+        box-shadow: 0 0 0 10px rgba(255, 107, 53, 0);
     }
     100% {
-        box-shadow: 0 0 0 0 rgba(255, 145, 0, 0);
+        box-shadow: 0 0 0 0 rgba(255, 107, 53, 0);
     }
 }
 
 /* Essence Counter Animáció */
 .essence-counter-animation {
-    animation: essenceCounterBounce 0.6s ease-in-out;
+    animation: essenceCounterBounce 0.6s ease-out;
 }
 
 @keyframes essenceCounterBounce {
-    0%, 20%, 50%, 80%, 100% {
+    0% {
         transform: scale(1);
     }
-    40% {
-        transform: scale(1.1);
+    50% {
+        transform: scale(1.2);
+        color: #a855f7;
     }
-    60% {
-        transform: scale(1.05);
+    100% {
+        transform: scale(1);
     }
 }
 
@@ -1799,4 +1876,21 @@ body.auth-loading #app-main { display: none !important; }
   to {
     box-shadow: 0 0 20px rgba(147, 51, 234, 0.6);
   }
-} 
+}
+
+@keyframes slide-in {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.animate-slide-in {
+    animation: slide-in 0.3s ease-out;
+}
+
+ 

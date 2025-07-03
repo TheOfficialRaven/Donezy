@@ -203,18 +203,23 @@ window.ListsService = (function() {
                 updatedAt: new Date().toISOString(),
                 tasks: {}
             };
-
+            
             currentLists[listId] = newList;
             await saveLists();
-
-            // XP és Essence jutalom lista létrehozásért
-            if (window.app && window.app.levelSystem) {
-                window.app.levelSystem.addXP(10);
+            
+            // Custom event dispatch
+            document.dispatchEvent(new CustomEvent('listCreated', { detail: { listId, list: newList } }));
+            
+            // Track mission progress
+            if (window.MissionService && window.MissionService.trackActivity) {
+                await window.MissionService.trackActivity('lists_created', 1);
             }
-            if (window.app && window.app.currencyService) {
-                window.app.currencyService.addEssence(5);
+            
+            // Log activity for results
+            if (window.ResultsService && window.ResultsService.logActivity) {
+                await window.ResultsService.logActivity('list_created');
             }
-
+            
             console.log('List created:', listId);
             return newList;
         } catch (error) {
@@ -300,6 +305,16 @@ window.ListsService = (function() {
 
             await saveLists();
 
+            // Track mission progress
+            if (window.MissionService && window.MissionService.trackActivity) {
+                await window.MissionService.trackActivity('tasks_created', 1);
+            }
+            
+            // Log activity for results
+            if (window.ResultsService && window.ResultsService.logActivity) {
+                await window.ResultsService.logActivity('task_created');
+            }
+
             console.log(`Task added to list ${listId}: ${taskName}`);
             return newTask;
         } catch (error) {
@@ -337,6 +352,11 @@ window.ListsService = (function() {
                 if (window.CurrencyService) {
                     await window.CurrencyService.addEssence(2, `Teendő teljesítés: ${currentLists[listId].tasks[taskId].name}`);
                 }
+                
+                // Track mission progress for completed tasks
+                if (window.MissionService && window.MissionService.trackActivity) {
+                    await window.MissionService.trackActivity('tasks_completed', 1);
+                }
             }
 
             console.log(`Task updated: ${taskId}`);
@@ -373,21 +393,57 @@ window.ListsService = (function() {
     }
 
     /**
-     * Vált egy teendő teljesítési állapotát
+     * Váltogatja egy teendő állapotát
      * @param {string} listId - Lista azonosítója
      * @param {string} taskId - Teendő azonosítója
-     * @returns {boolean} - Sikeres volt-e a váltás
+     * @returns {boolean} - Sikeres volt-e a művelet
      */
     async function toggleTask(listId, taskId) {
         try {
-            if (!currentLists[listId] || !currentLists[listId].tasks[taskId]) {
-                throw new Error('Task not found');
+            const list = currentLists[listId];
+            if (!list || !list.tasks[taskId]) {
+                return false;
             }
-
-            const currentStatus = currentLists[listId].tasks[taskId].done;
-            const newStatus = !currentStatus;
-
-            return await updateTask(listId, taskId, { done: newStatus });
+            
+            const task = list.tasks[taskId];
+            const wasCompleted = task.done;
+            task.done = !task.done;
+            list.updatedAt = new Date().toISOString();
+            
+            await saveLists();
+            
+            // Custom event dispatch
+            if (task.done) {
+                document.dispatchEvent(new CustomEvent('taskCompleted', { 
+                    detail: { listId, taskId, task } 
+                }));
+                
+                // Log task completion for results system
+                if (window.ResultsService && window.ResultsService.logActivity) {
+                    await window.ResultsService.logActivity('task_completed', {
+                        id: taskId,
+                        title: task.name,
+                        listId: listId,
+                        listTitle: list.title
+                    });
+                }
+                
+                // Ha a teendő teljesítve lett, adjunk jutalmat
+                if (window.LevelSystem && window.LevelSystem.addXP) {
+                    await window.LevelSystem.addXP(5, `Teendő teljesítés: ${task.name}`);
+                }
+                if (window.CurrencyService) {
+                    await window.CurrencyService.addEssence(2, `Teendő teljesítés: ${task.name}`);
+                }
+                
+                // Track mission progress for completed tasks
+                if (window.MissionService && window.MissionService.trackActivity) {
+                    await window.MissionService.trackActivity('tasks_completed', 1);
+                }
+            }
+            
+            console.log('Task toggled:', taskId, task.done);
+            return true;
         } catch (error) {
             console.error('Error toggling task:', error);
             return false;

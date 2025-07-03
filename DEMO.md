@@ -105,7 +105,7 @@ console.log('User items:', items);
 ### Programatikus tab váltás:
 ```javascript
 // Tab váltás JavaScript-ből
-window.donezyApp.switchTab('results');
+window.donezyApp.switchTab('missions');
 
 // Aktuális tab lekérdezése
 const currentTab = window.donezyApp.getCurrentTab();
