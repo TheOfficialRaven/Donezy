@@ -1,14 +1,6 @@
 // Main JavaScript File - Imports and uses all modular JavaScript files
 
-// Import all modules (these will be loaded via script tags in HTML)
-// The modules are designed to be loaded in the correct order:
-// 1. FirebaseService.js
-// 2. LocalStorageService.js
-// 3. DataService.js
-// 4. NotificationService.js
-// 5. ModalService.js
-// 6. TargetAudienceSelector.js (existing)
-// 7. FirebaseConfig.js (existing)
+// Main JavaScript File - Imports and uses all modular JavaScript files
 
 // PWA Service Worker Registration
 if ('serviceWorker' in navigator) {
@@ -63,10 +55,9 @@ function showUpdateNotification() {
     }, 10000);
 }
 
-// Import LevelSystem modul (window fallback, ha nincs ES6 import)
+// Import modules from window object (loaded via script tags)
 let LevelSystem = window.LevelSystem || {};
 let StatAggregator = window.StatAggregator || {};
-
 let ListsService = window.ListsService || {};
 let ListsRenderer = window.ListsRenderer || {};
 let NotesService = window.NotesService || {};
@@ -75,10 +66,10 @@ let DashboardService = window.DashboardService || {};
 let ResultsService = window.ResultsService || {};
 let ResultsRenderer = window.ResultsRenderer || {};
 
-// Import Calendar modules
-let calendarService = null;
-let calendarRenderer = null;
-let reminderService = null;
+// Calendar modules (loaded asynchronously)
+let calendarService = window.calendarService || null;
+let calendarRenderer = window.calendarRenderer || null;
+let reminderService = window.reminderService || null;
 
 // Main Application Class
 class DonezyApp {
@@ -192,17 +183,8 @@ class DonezyApp {
 
             // Initialize results service - csak akkor, ha van bejelentkezett felhasználó
             if (typeof ResultsService !== 'undefined' && ResultsService.init) {
-                console.log('Checking if ResultsService should be initialized...');
-                // Várjunk egy kicsit, hogy a felhasználó autentikáció befejeződjön
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                if (window.currentUserId || (window.firebase && window.firebase.auth && window.firebase.auth().currentUser)) {
-                    console.log('User authenticated, initializing ResultsService...');
-                    await ResultsService.init();
-                    console.log('ResultsService initialized successfully');
-                } else {
-                    console.warn('No authenticated user, ResultsService will be initialized later');
-                }
+                console.log('ResultsService available, will initialize after user authentication');
+                // ResultsService will be initialized after user authentication
             } else {
                 console.error('ResultsService not available');
             }
@@ -256,18 +238,13 @@ class DonezyApp {
 
     async initializeCalendarServices() {
         try {
-            // Várunk, amíg a Firebase inicializálódik
+            // Wait for calendar modules to be loaded
             let attempts = 0;
-            while (attempts < 20) {
-                try {
-                    // Import calendar modules dynamically
-                    const calendarModule = await import('./modules/CalendarService.js');
-                    const rendererModule = await import('./modules/CalendarRenderer.js');
-                    const reminderModule = await import('./modules/ReminderService.js');
-                    
-                    calendarService = calendarModule.default;
-                    calendarRenderer = rendererModule.default;
-                    reminderService = reminderModule.default;
+            while (attempts < 30) {
+                if (window.calendarService && window.calendarRenderer && window.calendarReminderService) {
+                    calendarService = window.calendarService;
+                    calendarRenderer = window.calendarRenderer;
+                    reminderService = window.calendarReminderService;
                     
                     // Make calendar services available to other modules
                     if (!window.app) window.app = {};
@@ -275,7 +252,9 @@ class DonezyApp {
                     window.app.calendarRenderer = calendarRenderer;
                     window.app.reminderService = reminderService;
                     
-                    // Csak akkor inicializáljuk a naptárat, ha van bejelentkezett user
+                    console.log('Calendar modules loaded successfully');
+                    
+                    // Only initialize if user is authenticated
                     if (window.currentUserId) {
                         if (typeof calendarRenderer.init === 'function') {
                             await calendarRenderer.init();
@@ -285,18 +264,14 @@ class DonezyApp {
                         console.log('Calendar services initialized successfully');
                         this.calendarInitialized = true;
                     } else {
-                        console.warn('Nincs bejelentkezett felhasználó, a naptár nem inicializálódik.');
+                        console.warn('No authenticated user, calendar will be initialized later');
                     }
                     return;
-                } catch (error) {
-                    if (error.message.includes('Firebase') || error.message.includes('app/no-app')) {
-                        console.log('Firebase not ready yet, waiting...');
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                        attempts++;
-                    } else {
-                        throw error;
-                    }
                 }
+                
+                console.log('Waiting for calendar modules to load... (attempt ' + (attempts + 1) + '/30)');
+                await new Promise(resolve => setTimeout(resolve, 500));
+                attempts++;
             }
             
             console.error('Calendar services initialization timeout');
@@ -1052,11 +1027,28 @@ class DonezyApp {
         await this.loadUserData();
         
         // Initialize ResultsService if not already done
-        if (typeof ResultsService !== 'undefined' && ResultsService.init && !ResultsService.isInitialized) {
+        if (typeof ResultsService !== 'undefined' && ResultsService.init) {
             console.log('Initializing ResultsService after group selection...');
             try {
-                await ResultsService.init();
-                console.log('ResultsService initialized after group selection');
+                // Wait for DataService to be ready
+                if (this.dataService && this.dataService.isReady) {
+                    await ResultsService.init();
+                    console.log('ResultsService initialized after group selection');
+                } else {
+                    console.log('DataService not ready, waiting...');
+                    // Wait for DataService to be ready
+                    let attempts = 0;
+                    while (attempts < 20 && (!this.dataService || !this.dataService.isReady)) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        attempts++;
+                    }
+                    if (this.dataService && this.dataService.isReady) {
+                        await ResultsService.init();
+                        console.log('ResultsService initialized after DataService became ready');
+                    } else {
+                        console.error('DataService not ready after waiting');
+                    }
+                }
             } catch (error) {
                 console.error('Error initializing ResultsService after group selection:', error);
             }

@@ -481,36 +481,59 @@
     </div>
 
     <!-- Scripts -->
-    <!-- Load modular JavaScript files in order -->
+    <!-- Core Services (load first, synchronous) -->
     <script src="js/modules/FirebaseService.js"></script>
     <script src="js/modules/LocalStorageService.js"></script>
     <script src="js/modules/DataService.js"></script>
     <script src="js/modules/NotificationService.js"></script>
     <script src="js/modules/ModalService.js"></script>
-    <script src="js/target-audience-selector.js"></script>
+    
+    <!-- Utility Services -->
     <script src="js/modules/LevelSystem.js"></script>
     <script src="js/modules/StatAggregator.js"></script>
-
     <script src="js/modules/CurrencyService.js"></script>
-
     <script src="js/modules/ThemeService.js"></script>
-    <script src="js/modules/ThemeRenderer.js"></script>
+    
+    <!-- Feature Services -->
     <script src="js/modules/ListsService.js"></script>
-    <script src="js/modules/ListsRenderer.js"></script>
     <script src="js/modules/NotesService.js"></script>
-    <script src="js/modules/NotesRenderer.js"></script>
-    <script src="js/modules/CalendarService.js" type="module"></script>
-    <script src="js/modules/CalendarRenderer.js" type="module"></script>
-    <script src="js/modules/ReminderService.js" type="module"></script>
     <script src="js/modules/DashboardService.js"></script>
     <script src="js/modules/MissionService.js"></script>
-    <script src="js/modules/MissionRenderer.js"></script>
     <script src="js/modules/ResultsService.js"></script>
+    
+    <!-- Renderers (load after services) -->
+    <script src="js/modules/ThemeRenderer.js"></script>
+    <script src="js/modules/ListsRenderer.js"></script>
+    <script src="js/modules/NotesRenderer.js"></script>
+    <script src="js/modules/MissionRenderer.js"></script>
     <script src="js/modules/ResultsRenderer.js"></script>
-
+    
+    <!-- Target Audience Selector -->
+    <script src="js/target-audience-selector.js"></script>
+    
     <!-- PWA Installer -->
     <script src="js/pwa-installer.js"></script>
-    <!-- Main app -->
-    <script src="js/main.js" type="module"></script>
+    
+    <!-- Calendar (module-based, load after core) -->
+    <script type="module">
+        // Import calendar modules after core services are loaded
+        import('./js/modules/CalendarService.js').then(calendarModule => {
+            window.calendarService = calendarModule.default;
+            console.log('CalendarService loaded successfully');
+        }).catch(err => console.error('CalendarService import failed:', err));
+        
+        import('./js/modules/CalendarRenderer.js').then(rendererModule => {
+            window.calendarRenderer = rendererModule.default;
+            console.log('CalendarRenderer loaded successfully');
+        }).catch(err => console.error('CalendarRenderer import failed:', err));
+        
+        import('./js/modules/ReminderService.js').then(reminderModule => {
+            window.calendarReminderService = reminderModule.default;
+            console.log('ReminderService loaded successfully');
+        }).catch(err => console.error('ReminderService import failed:', err));
+    </script>
+    
+    <!-- Main app (load last, synchronous) -->
+    <script src="js/main.js"></script>
 </body>
 </html> 
