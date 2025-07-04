@@ -421,6 +421,11 @@ class MissionService {
                 await window.CurrencyService.addEssence(essenceReward, `Küldetés: ${mission.title}`);
             }
             
+            // Log activity for ResultsService
+            if (window.ResultsService && window.ResultsService.logActivity) {
+                await window.ResultsService.logActivity('quest_completed', { missionId, title: mission.title });
+            }
+            
             // Show completion notification
             if (window.NotificationService && window.NotificationService.showSuccess) {
                 window.NotificationService.showSuccess(

@@ -157,7 +157,24 @@ class DataService {
 
     async saveItem(type, title, description) {
         if (this.currentService) {
-            return await this.currentService.saveItem(type, title, description);
+            const result = await this.currentService.saveItem(type, title, description);
+            
+            // Log activity for ResultsService
+            if (result && window.ResultsService && window.ResultsService.logActivity) {
+                switch (type) {
+                    case 'task':
+                        await window.ResultsService.logActivity('task_created', { title, description });
+                        break;
+                    case 'note':
+                        await window.ResultsService.logActivity('note_created', { title, description });
+                        break;
+                    case 'event':
+                        await window.ResultsService.logActivity('event_created', { title, description });
+                        break;
+                }
+            }
+            
+            return result;
         }
         return null;
     }
@@ -227,7 +244,14 @@ class DataService {
 
     async logCompletedTask(taskData = {}) {
         if (this.currentService) {
-            return await this.currentService.logCompletedTask(taskData);
+            const result = await this.currentService.logCompletedTask(taskData);
+            
+            // Log activity for ResultsService
+            if (result && window.ResultsService && window.ResultsService.logActivity) {
+                await window.ResultsService.logActivity('task_completed', taskData);
+            }
+            
+            return result;
         }
         return false;
     }

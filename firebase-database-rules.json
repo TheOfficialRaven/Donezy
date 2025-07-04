@@ -16,6 +16,16 @@
             ".write": true
           }
         },
+        "dailyActivity": {
+          "$date": {
+            ".read": true,
+            ".write": true
+          }
+        },
+        "stats": {
+          ".read": true,
+          ".write": true
+        },
         "badges": {
           "$badgeId": {
             ".read": true,

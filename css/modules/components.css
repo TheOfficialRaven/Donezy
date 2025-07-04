@@ -686,4 +686,107 @@
         margin-left: 0;
         margin-top: var(--spacing-2, 0.5rem);
     }
+}
+
+/* Results Page Specific Styles */
+.stat-card {
+    background-color: var(--donezy-accent);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-4);
+    text-align: center;
+    border: 1px solid var(--donezy-border);
+    transition: all var(--transition-fast);
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--donezy-orange);
+}
+
+.badge-card {
+    transition: all var(--transition-fast);
+    cursor: pointer;
+}
+
+.badge-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.badge-card.unlocked {
+    animation: badgeUnlock 0.6s ease-out;
+}
+
+@keyframes badgeUnlock {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.badge-card.locked {
+    opacity: 0.7;
+}
+
+.badge-card.locked:hover {
+    opacity: 1;
+}
+
+/* Activity Chart Styles */
+#activity-chart {
+    max-height: 300px;
+    margin: 0 auto;
+}
+
+/* Results Page Responsive */
+@media (max-width: 768px) {
+    .stat-card {
+        padding: var(--spacing-3);
+    }
+    
+    .badge-card {
+        margin-bottom: var(--spacing-3);
+    }
+    
+    #activity-chart {
+        max-height: 250px;
+    }
+}
+
+/* Empty State Animation */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.empty-state {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+/* Progress Bar Animation */
+.progress-bar-animated {
+    background: linear-gradient(90deg, var(--donezy-orange), #ff6b7a, var(--donezy-orange));
+    background-size: 200% 100%;
+    animation: progressBarShimmer 2s infinite;
+}
+
+@keyframes progressBarShimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
 } 

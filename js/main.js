@@ -190,6 +190,23 @@ class DonezyApp {
                 console.error('NotesService not available');
             }
 
+            // Initialize results service - csak akkor, ha van bejelentkezett felhasználó
+            if (typeof ResultsService !== 'undefined' && ResultsService.init) {
+                console.log('Checking if ResultsService should be initialized...');
+                // Várjunk egy kicsit, hogy a felhasználó autentikáció befejeződjön
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                if (window.currentUserId || (window.firebase && window.firebase.auth && window.firebase.auth().currentUser)) {
+                    console.log('User authenticated, initializing ResultsService...');
+                    await ResultsService.init();
+                    console.log('ResultsService initialized successfully');
+                } else {
+                    console.warn('No authenticated user, ResultsService will be initialized later');
+                }
+            } else {
+                console.error('ResultsService not available');
+            }
+
             // Initialize theme service
             if (typeof ThemeService !== 'undefined' && ThemeService.init) {
                 await ThemeService.init();
@@ -1026,13 +1043,24 @@ class DonezyApp {
     }
 
     // Initialize app after group selection
-    initializeAppAfterGroupSelection() {
+    async initializeAppAfterGroupSelection() {
         console.log('Initializing app after group selection...');
         
         // Initialize the main app components
         this.updateDateTime();
         this.setupEventListeners();
-        this.loadUserData();
+        await this.loadUserData();
+        
+        // Initialize ResultsService if not already done
+        if (typeof ResultsService !== 'undefined' && ResultsService.init && !ResultsService.isInitialized) {
+            console.log('Initializing ResultsService after group selection...');
+            try {
+                await ResultsService.init();
+                console.log('ResultsService initialized after group selection');
+            } catch (error) {
+                console.error('Error initializing ResultsService after group selection:', error);
+            }
+        }
         
         // Update time every second
         setInterval(() => {
@@ -1340,58 +1368,39 @@ class DonezyApp {
 
     async renderResultsTab() {
         try {
-            console.log('Rendering results tab...');
+            console.log('Rendering results tab with new system...');
             
             // Track mission progress for viewing results
             if (window.MissionService && window.MissionService.trackActivity) {
                 await window.MissionService.trackActivity('results_viewed', 1);
             }
             
-            // Wait for app to be initialized
-            let attempts = 0;
-            while (!window.app && attempts < 10) {
-                console.log('Waiting for app to be initialized for results...');
-                await new Promise(resolve => setTimeout(resolve, 500));
-                attempts++;
-            }
-            
-            // Initialize results service if not already done
+            // Ensure ResultsService is initialized
             if (window.ResultsService && window.ResultsService.init) {
-                console.log('Initializing ResultsService...');
-                const initialized = await window.ResultsService.init();
-                console.log('ResultsService initialized:', initialized);
+                if (!window.ResultsService.isInitialized) {
+                    console.log('ResultsService not initialized, attempting to initialize...');
+                    const initialized = await window.ResultsService.init();
+                    if (!initialized) {
+                        throw new Error('ResultsService failed to initialize');
+                    }
+                }
             } else {
-                console.error('ResultsService not available');
+                throw new Error('ResultsService not available');
             }
 
-            // Get data from results service
-            let userStats = {};
-            let activityData = {};
-            let badges = {};
+            // Get real data from ResultsService
+            const userStats = window.ResultsService.getUserStats();
+            const activityData = window.ResultsService.getActivityData();
+            const badges = window.ResultsService.getBadges();
             
-            if (window.ResultsService) {
-                userStats = window.ResultsService.getUserStats ? window.ResultsService.getUserStats() : {};
-                activityData = window.ResultsService.getActivityData ? window.ResultsService.getActivityData() : {};
-                badges = window.ResultsService.getBadges ? window.ResultsService.getBadges() : {};
-                
-                console.log('Results data loaded:', { userStats, activityData, badges });
-            }
+            console.log('Real results data loaded:', { userStats, activityData, badges });
 
             // Render results using ResultsRenderer
             if (window.ResultsRenderer && window.ResultsRenderer.renderResultsTab) {
                 console.log('Rendering with ResultsRenderer...');
                 window.ResultsRenderer.renderResultsTab(userStats, activityData, badges);
             } else {
-                console.error('ResultsRenderer not available');
-                const resultsContent = document.getElementById('results-content');
-                if (resultsContent) {
-                    resultsContent.innerHTML = `
-                        <div class="flex flex-col items-center justify-center min-h-[400px] text-gray-500">
-                            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-donezy-orange mb-4"></div>
-                            <p>Eredmények betöltése...</p>
-                        </div>
-                    `;
-                }
+                throw new Error('ResultsRenderer not available');
             }
         } catch (error) {
             console.error('Error rendering results tab:', error);
