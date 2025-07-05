@@ -2,51 +2,95 @@
   "rules": {
     "users": {
       "$uid": {
-        ".read": true,
-        ".write": true,
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid",
         "items": {
           "$itemId": {
-            ".read": true,
-            ".write": true
+            ".read": "$uid === auth.uid",
+            ".write": "$uid === auth.uid"
           }
         },
         "activity_log": {
           "$date": {
-            ".read": true,
-            ".write": true
+            ".read": "$uid === auth.uid",
+            ".write": "$uid === auth.uid"
           }
         },
         "dailyActivity": {
           "$date": {
-            ".read": true,
-            ".write": true
+            ".read": "$uid === auth.uid",
+            ".write": "$uid === auth.uid"
           }
         },
         "stats": {
-          ".read": true,
-          ".write": true
+          ".read": "$uid === auth.uid",
+          ".write": "$uid === auth.uid"
         },
         "badges": {
           "$badgeId": {
-            ".read": true,
-            ".write": true
+            ".read": "$uid === auth.uid",
+            ".write": "$uid === auth.uid"
           }
+        },
+        "quests": {
+          "$date": {
+            ".read": "$uid === auth.uid",
+            ".write": "$uid === auth.uid"
+          }
+        },
+        "lists": {
+          "$listId": {
+            ".read": "$uid === auth.uid",
+            ".write": "$uid === auth.uid"
+          }
+        },
+        "notes": {
+          "$noteId": {
+            ".read": "$uid === auth.uid",
+            ".write": "$uid === auth.uid"
+          }
+        },
+        "calendar": {
+          "$eventId": {
+            ".read": "$uid === auth.uid",
+            ".write": "$uid === auth.uid"
+          }
+        },
+        "themes": {
+          "$themeId": {
+            ".read": "$uid === auth.uid",
+            ".write": "$uid === auth.uid"
+          }
+        },
+        "achievements": {
+          "$achievementId": {
+            ".read": "$uid === auth.uid",
+            ".write": "$uid === auth.uid"
+          }
+        },
+        "streak": {
+          ".read": "$uid === auth.uid",
+          ".write": "$uid === auth.uid"
+        },
+        "progress": {
+          ".read": "$uid === auth.uid",
+          ".write": "$uid === auth.uid"
         }
       }
     },
-    "themes": {
-      ".read": true,
-      ".write": "auth != null"
-    },
-    "quests": {
-      "$uid": {
-        ".read": "auth != null && auth.uid == $uid",
-        ".write": "auth != null && auth.uid == $uid"
+    "global": {
+      "themes": {
+        ".read": "auth != null",
+        ".write": false
+      },
+      "system": {
+        ".read": "auth != null",
+        ".write": false
       }
     },
     "test": {
-      ".read": true,
-      ".write": true
+      ".read": false,
+      ".write": false
     },
     "$other": {
       ".read": false,

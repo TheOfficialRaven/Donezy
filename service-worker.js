@@ -1,6 +1,6 @@
-const CACHE_NAME = 'donezy-v1.0.3';
-const STATIC_CACHE = 'donezy-static-v1.0.3';
-const DYNAMIC_CACHE = 'donezy-dynamic-v1.0.3';
+const CACHE_NAME = 'donezy-v1.0.4';
+const STATIC_CACHE = 'donezy-static-v1.0.4';
+const DYNAMIC_CACHE = 'donezy-dynamic-v1.0.4';
 
 // Files to cache immediately
 const STATIC_FILES = [
@@ -12,6 +12,7 @@ const STATIC_FILES = [
   '/css/modules/components.css',
   '/css/modules/layout.css',
   '/css/modules/themes.css',
+  '/css/modules/quests.css',
   '/css/styles.css',
   '/js/main.js',
   '/js/auth.js',
@@ -21,6 +22,7 @@ const STATIC_FILES = [
   '/js/modules/FirebaseService.js',
   '/js/modules/LocalStorageService.js',
   '/js/modules/DataService.js',
+  '/js/modules/DataMigrationService.js',
   '/js/modules/NotificationService.js',
   '/js/modules/ModalService.js',
   '/js/modules/LevelSystem.js',
@@ -40,8 +42,9 @@ const STATIC_FILES = [
   '/js/modules/ThemeRenderer.js',
       '/js/modules/MissionService.js',
     '/js/modules/MissionRenderer.js',
-    '/js/modules/ResultsService.js',
-    '/js/modules/ResultsRenderer.js',
+      '/js/modules/ResultsService.js',
+  '/js/modules/ResultsRenderer.js',
+  '/js/modules/UserIDTest.js',
   '/imgs/Essence.svg',
   '/imgs/icon-192x192.svg',
   '/imgs/icon-512x512.svg',

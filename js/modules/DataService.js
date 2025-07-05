@@ -7,6 +7,7 @@ class DataService {
         this.localStorageService = null;
         this.currentService = null;
         this.isInitialized = false;
+        this.isReady = false;
     }
 
     async init() {
@@ -22,6 +23,11 @@ class DataService {
                     console.log('Firebase connection successful');
                     this.currentService = this.firebaseService;
                     this.isInitialized = true;
+                    this.isReady = this.firebaseService.isReady !== undefined ? this.firebaseService.isReady : true;
+                    console.log('DataService Firebase ready status:', {
+                        firebaseServiceIsReady: this.firebaseService.isReady,
+                        dataServiceIsReady: this.isReady
+                    });
                     return true;
                 } else {
                     console.log('Firebase connection failed, falling back to local storage');
@@ -35,6 +41,11 @@ class DataService {
                 this.localStorageService = new window.LocalStorageService();
                 this.currentService = this.localStorageService;
                 this.isInitialized = true;
+                this.isReady = this.localStorageService.isReady !== undefined ? this.localStorageService.isReady : true;
+                console.log('DataService LocalStorage ready status:', {
+                    localStorageServiceIsReady: this.localStorageService.isReady,
+                    dataServiceIsReady: this.isReady
+                });
                 console.log('Using LocalStorage service');
                 return true;
             } else {
@@ -60,6 +71,14 @@ class DataService {
     // Check if LocalStorage is being used
     isLocalStorageFallback() {
         return this.localStorageService && this.currentService === this.localStorageService;
+    }
+
+    // Get ready status
+    getReadyStatus() {
+        if (this.currentService && this.currentService.getReadyStatus) {
+            return this.currentService.getReadyStatus();
+        }
+        return this.isReady;
     }
 
     // Get connection status
@@ -201,10 +220,25 @@ class DataService {
 
     // Get current user ID
     getCurrentUserId() {
+        // First priority: Firebase Auth current user
+        if (window.firebase && window.firebase.auth) {
+            const user = window.firebase.auth().currentUser;
+            if (user && user.uid) {
+                return user.uid;
+            }
+        }
+        
+        // Second priority: window.currentUserId (set by auth.js)
+        if (window.currentUserId) {
+            return window.currentUserId;
+        }
+        
+        // Third priority: Current service
         if (this.currentService && this.currentService.getCurrentUserId) {
             return this.currentService.getCurrentUserId();
         }
-        // Fallback to localStorage
+        
+        // Fallback to localStorage (only for demo/offline mode)
         let userId = localStorage.getItem('donezy_user_id');
         if (!userId) {
             userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -221,9 +255,30 @@ class DataService {
         return null;
     }
 
+    async getGlobalThemes() {
+        if (this.currentService && this.currentService.getGlobalThemes) {
+            return await this.currentService.getGlobalThemes();
+        }
+        return null;
+    }
+
+    async getUserThemes() {
+        if (this.currentService && this.currentService.getUserThemes) {
+            return await this.currentService.getUserThemes();
+        }
+        return {};
+    }
+
     async saveTheme(themeData) {
         if (this.currentService) {
             return await this.currentService.saveTheme(themeData);
+        }
+        return false;
+    }
+
+    async saveUserTheme(themeData) {
+        if (this.currentService && this.currentService.saveUserTheme) {
+            return await this.currentService.saveUserTheme(themeData);
         }
         return false;
     }
@@ -235,9 +290,23 @@ class DataService {
         return false;
     }
 
+    async updateUserTheme(themeId, updates) {
+        if (this.currentService && this.currentService.updateUserTheme) {
+            return await this.currentService.updateUserTheme(themeId, updates);
+        }
+        return false;
+    }
+
     async deleteTheme(themeId) {
         if (this.currentService) {
             return await this.currentService.deleteTheme(themeId);
+        }
+        return false;
+    }
+
+    async deleteUserTheme(themeId) {
+        if (this.currentService && this.currentService.deleteUserTheme) {
+            return await this.currentService.deleteUserTheme(themeId);
         }
         return false;
     }

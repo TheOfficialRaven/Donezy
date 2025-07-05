@@ -105,6 +105,15 @@ async function addXP(amount, reason = '') {
         }
       }
       
+      // Trigger ResultsRenderer level up animation
+      if (window.ResultsRenderer && window.ResultsRenderer.animateLevelUp) {
+        try {
+          window.ResultsRenderer.animateLevelUp(oldLevel, newLevel);
+        } catch (error) {
+          console.warn('ResultsRenderer level up animation error:', error);
+        }
+      }
+      
       // Award essence for level up
       if (window.CurrencyService && window.CurrencyService.addEssence) {
         const essenceReward = newLevel * 10; // 10 essence per level
@@ -113,6 +122,15 @@ async function addXP(amount, reason = '') {
         } catch (error) {
           console.error('Error awarding essence for level up:', error);
         }
+      }
+    }
+    
+    // Trigger ResultsRenderer XP progress animation
+    if (window.ResultsRenderer && window.ResultsRenderer.addXPProgressAnimation) {
+      try {
+        window.ResultsRenderer.addXPProgressAnimation();
+      } catch (error) {
+        console.warn('ResultsRenderer XP progress animation error:', error);
       }
     }
     

@@ -47,6 +47,7 @@ class FirebaseService {
         this.analytics = null;
         this.currentUserId = this.getCurrentUserId();
         this.initialized = false;
+        this.isReady = false;
     }
 
     // Initialize Firebase connection
@@ -65,6 +66,7 @@ class FirebaseService {
                 this.database = database;
                 this.analytics = analytics;
                 this.initialized = true;
+                this.isReady = true;
                 console.log('FirebaseService initialized successfully');
                 return true;
             } else {
@@ -79,7 +81,15 @@ class FirebaseService {
 
     // Get current user ID from Firebase auth or fallback
     getCurrentUserId() {
-        // First try to get from window.currentUserId (set by auth.js)
+        // First priority: Firebase Auth current user
+        if (window.firebase && window.firebase.auth) {
+            const user = window.firebase.auth().currentUser;
+            if (user && user.uid) {
+                return user.uid;
+            }
+        }
+        
+        // Second priority: window.currentUserId (set by auth.js)
         if (window.currentUserId) {
             return window.currentUserId;
         }
@@ -91,6 +101,11 @@ class FirebaseService {
             localStorage.setItem('donezy_user_id', userId);
         }
         return userId;
+    }
+
+    // Get ready status
+    getReadyStatus() {
+        return this.isReady;
     }
 
     // Get user data from Firebase
@@ -557,8 +572,8 @@ class FirebaseService {
         }
     }
 
-    // Témák kezelése
-    async getThemes() {
+    // Témák kezelése - globális témák (csak olvasás)
+    async getGlobalThemes() {
         if (!this.initialized) {
             console.warn('Firebase not initialized');
             return null;
@@ -571,7 +586,7 @@ class FirebaseService {
         }
 
         try {
-            const themesRef = this.database.ref('themes');
+            const themesRef = this.database.ref('global/themes');
             const snapshot = await themesRef.once('value');
             
             if (snapshot.exists()) {
@@ -581,23 +596,55 @@ class FirebaseService {
             }
         } catch (error) {
             if (error.code === 'PERMISSION_DENIED') {
-                console.warn('Firebase themes access denied - check database rules for /themes path');
+                console.warn('Firebase global themes access denied - check database rules for /global/themes path');
             } else {
-                console.error('Error getting themes:', error);
+                console.error('Error getting global themes:', error);
             }
             return null;
         }
     }
 
-    async saveTheme(themeData) {
+    // Felhasználó specifikus témák kezelése
+    async getUserThemes() {
+        if (!this.initialized) {
+            console.warn('Firebase not initialized');
+            return null;
+        }
+
+        if (!this.currentUserId) {
+            console.warn('User not authenticated, skipping user themes access');
+            return null;
+        }
+
+        try {
+            const themesRef = this.database.ref(`users/${this.currentUserId}/themes`);
+            const snapshot = await themesRef.once('value');
+            
+            if (snapshot.exists()) {
+                return snapshot.val();
+            } else {
+                return {};
+            }
+        } catch (error) {
+            console.error('Error getting user themes:', error);
+            return {};
+        }
+    }
+
+    async saveUserTheme(themeData) {
         if (!this.initialized) {
             console.warn('Firebase not initialized');
             return false;
         }
 
+        if (!this.currentUserId) {
+            console.warn('User not authenticated, cannot save theme');
+            return false;
+        }
+
         try {
             const themeId = themeData.id || `theme_${Date.now()}`;
-            const themeRef = this.database.ref(`themes/${themeId}`);
+            const themeRef = this.database.ref(`users/${this.currentUserId}/themes/${themeId}`);
             
             await themeRef.set({
                 ...themeData,
@@ -608,19 +655,24 @@ class FirebaseService {
             
             return true;
         } catch (error) {
-            console.error('Error saving theme:', error);
+            console.error('Error saving user theme:', error);
             return false;
         }
     }
 
-    async updateTheme(themeId, updates) {
+    async updateUserTheme(themeId, updates) {
         if (!this.initialized) {
             console.warn('Firebase not initialized');
             return false;
         }
 
+        if (!this.currentUserId) {
+            console.warn('User not authenticated, cannot update theme');
+            return false;
+        }
+
         try {
-            const themeRef = this.database.ref(`themes/${themeId}`);
+            const themeRef = this.database.ref(`users/${this.currentUserId}/themes/${themeId}`);
             
             await themeRef.update({
                 ...updates,
@@ -629,26 +681,55 @@ class FirebaseService {
             
             return true;
         } catch (error) {
-            console.error('Error updating theme:', error);
+            console.error('Error updating user theme:', error);
             return false;
         }
     }
 
-    async deleteTheme(themeId) {
+    async deleteUserTheme(themeId) {
         if (!this.initialized) {
             console.warn('Firebase not initialized');
             return false;
         }
 
+        if (!this.currentUserId) {
+            console.warn('User not authenticated, cannot delete theme');
+            return false;
+        }
+
         try {
-            const themeRef = this.database.ref(`themes/${themeId}`);
+            const themeRef = this.database.ref(`users/${this.currentUserId}/themes/${themeId}`);
             await themeRef.remove();
             
             return true;
         } catch (error) {
-            console.error('Error deleting theme:', error);
+            console.error('Error deleting user theme:', error);
             return false;
         }
+    }
+
+    // Backward compatibility methods
+    async getThemes() {
+        // First try to get user themes, then fallback to global themes
+        const userThemes = await this.getUserThemes();
+        const globalThemes = await this.getGlobalThemes();
+        
+        return {
+            ...globalThemes,
+            ...userThemes
+        };
+    }
+
+    async saveTheme(themeData) {
+        return await this.saveUserTheme(themeData);
+    }
+
+    async updateTheme(themeId, updates) {
+        return await this.updateUserTheme(themeId, updates);
+    }
+
+    async deleteTheme(themeId) {
+        return await this.deleteUserTheme(themeId);
     }
 }
 

@@ -8,18 +8,31 @@ class MissionRenderer {
 
     async init() {
         try {
-            // Get mission service
-            this.missionService = window.missionService || 
-                                 (window.MissionService ? new MissionService() : null);
+            // Wait for mission service to be available
+            let attempts = 0;
+            while (!window.missionService && attempts < 40) {
+                await new Promise(resolve => setTimeout(resolve, 250));
+                attempts++;
+            }
+            
+            // Get mission service (only use existing one, don't create new)
+            this.missionService = window.missionService;
             
             if (!this.missionService) {
-                console.error('MissionRenderer: MissionService not available');
+                console.error('MissionRenderer: MissionService not available after waiting');
                 return false;
             }
 
-            // Initialize mission service if not already done
+            // Wait for mission service to be initialized
+            attempts = 0;
+            while (!this.missionService.isInitialized && attempts < 40) {
+                await new Promise(resolve => setTimeout(resolve, 250));
+                attempts++;
+            }
+
             if (!this.missionService.isInitialized) {
-                await this.missionService.init();
+                console.error('MissionRenderer: MissionService not initialized after waiting');
+                return false;
             }
 
             // Set up event listeners

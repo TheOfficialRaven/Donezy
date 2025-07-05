@@ -10,24 +10,41 @@ class MissionService {
 
     async init() {
         try {
-            // Get user ID
-            this.userId = localStorage.getItem('donezy_user_id') || 
-                         (window.currentUserId ? window.currentUserId : null);
+            // Wait for app and data service to be available
+            let attempts = 0;
+            while (!window.app && attempts < 40) {
+                await new Promise(resolve => setTimeout(resolve, 250));
+                attempts++;
+            }
+            
+            if (!window.app) {
+                console.error('MissionService: App not available after waiting');
+                return false;
+            }
+
+            // Wait for data service to be initialized
+            attempts = 0;
+            while ((!window.app.dataService || !window.app.dataService.isInitialized) && attempts < 40) {
+                await new Promise(resolve => setTimeout(resolve, 250));
+                attempts++;
+            }
+
+            if (!window.app.dataService || !window.app.dataService.isInitialized) {
+                console.error('MissionService: DataService not initialized after waiting');
+                return false;
+            }
+
+            // Get user ID with proper priority
+            this.userId = this.getCurrentUserId();
             
             if (!this.userId) {
-                console.error('MissionService: No user ID available');
+                console.error('MissionService: No authenticated user ID available');
                 return false;
             }
 
             // Get data service
-            this.dataService = window.app?.dataService || 
-                              (window.DataService ? new DataService() : null);
+            this.dataService = window.app.dataService;
             
-            if (!this.dataService) {
-                console.error('MissionService: DataService not available');
-                return false;
-            }
-
             // Load existing missions
             await this.loadMissions();
             
@@ -35,12 +52,39 @@ class MissionService {
             await this.generateDailyMissions();
             
             this.isInitialized = true;
-            console.log('MissionService initialized successfully');
+            console.log('MissionService initialized successfully for user:', this.userId);
             return true;
         } catch (error) {
             console.error('MissionService init error:', error);
             return false;
         }
+    }
+
+    // Get current user ID with proper priority
+    getCurrentUserId() {
+        // First priority: Firebase Auth current user
+        if (window.firebase && window.firebase.auth) {
+            const user = window.firebase.auth().currentUser;
+            if (user && user.uid) {
+                return user.uid;
+            }
+        }
+        
+        // Second priority: window.currentUserId (set by auth.js)
+        if (window.currentUserId) {
+            return window.currentUserId;
+        }
+        
+        // Third priority: DataService
+        if (window.app && window.app.dataService) {
+            const userId = window.app.dataService.getCurrentUserId();
+            if (userId && !userId.startsWith('user_')) {
+                return userId;
+            }
+        }
+        
+        console.warn('MissionService: No authenticated user ID available');
+        return null;
     }
 
     async loadMissions() {
@@ -106,10 +150,24 @@ class MissionService {
             
             // Check if missions already exist for today
             if (this.missions.size > 0) {
-                console.log('Missions already exist for today');
+                console.log(`Missions already exist for today (${this.missions.size} missions)`);
                 return;
             }
 
+            // Double-check with database to prevent duplicates
+            const existingMissions = await this.loadMissionsFromDatabase(today);
+            if (existingMissions && Object.keys(existingMissions).length > 0) {
+                console.log(`Missions already exist in database for today (${Object.keys(existingMissions).length} missions)`);
+                // Load existing missions into the map
+                this.missions.clear();
+                Object.keys(existingMissions).forEach(key => {
+                    this.missions.set(key, existingMissions[key]);
+                });
+                return;
+            }
+
+            console.log('Generating new missions for today...');
+            
             // Generate missions based on user data
             const missions = await this.generateQuests();
             
@@ -136,9 +194,33 @@ class MissionService {
         }
     }
 
+    // Helper method to load missions from database without updating the map
+    async loadMissionsFromDatabase(date) {
+        try {
+            const missionPath = `users/${this.userId}/quests/${date}`;
+            
+            if (this.dataService.isFirebaseAvailable() && this.userId) {
+                try {
+                    const snapshot = await firebase.database().ref(missionPath).once('value');
+                    return snapshot.val() || {};
+                } catch (firebaseError) {
+                    console.warn('Firebase missions access failed:', firebaseError.message);
+                    const stored = localStorage.getItem(`missions_${this.userId}_${date}`);
+                    return stored ? JSON.parse(stored) : {};
+                }
+            } else {
+                const stored = localStorage.getItem(`missions_${this.userId}_${date}`);
+                return stored ? JSON.parse(stored) : {};
+            }
+        } catch (error) {
+            console.error('Error loading missions from database:', error);
+            return {};
+        }
+    }
+
     async generateQuests() {
         // Pseudo-AI logic - később cserélhető valódi AI-ra
-        const missions = [];
+        let missions = [];
         
         try {
             // Get user data for mission generation
@@ -157,7 +239,15 @@ class MissionService {
             
             // Add some random missions for variety
             missions.push(...this.generateRandomMissions(stats));
-            
+
+            // DUPLIKÁCIÓK KISZŰRÉSE (title, type, goal alapján)
+            const seen = new Set();
+            missions = missions.filter(m => {
+                const key = `${m.title}|${m.type}|${m.goal}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
             // Limit to 5-8 missions per day
             return missions.slice(0, Math.min(8, Math.max(5, missions.length)));
             

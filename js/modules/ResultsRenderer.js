@@ -87,72 +87,83 @@ window.ResultsRenderer = (function() {
         const streak = userStats?.streak || 0;
         const totalActiveDays = userStats?.totalActiveDays || 0;
         
-        // XP progress számítása
-        const xpPerLevel = 6400;
-        const xpInCurrentLevel = xp % xpPerLevel;
-        const progressPercent = Math.min((xpInCurrentLevel / xpPerLevel) * 100, 100);
+        // XP progress számítása az új rendszerrel
+        const xpRequiredForNextLevel = window.ResultsService ? 
+            window.ResultsService.getXPRequiredForLevel(level + 1) : 100;
+        const xpInCurrentLevel = window.ResultsService ? 
+            window.ResultsService.getXPProgressInCurrentLevel(xp) : 0;
+        const progressPercent = Math.min((xpInCurrentLevel / xpRequiredForNextLevel) * 100, 100);
+
+        // Szint rang meghatározása
+        const getLevelRank = (level) => {
+            if (level >= 20) return { name: 'Mester', icon: '👑', color: 'var(--purple-primary)', bg: 'var(--level-badge-bg-master)' };
+            if (level >= 15) return { name: 'Veterán', icon: '⭐', color: 'var(--yellow-primary)', bg: 'var(--level-badge-bg-veteran)' };
+            if (level >= 10) return { name: 'Tapasztalt', icon: '🌟', color: 'var(--blue-primary)', bg: 'var(--level-badge-bg-experienced)' };
+            if (level >= 5) return { name: 'Kezdő', icon: '🌱', color: 'var(--green-primary)', bg: 'var(--level-badge-bg-beginner)' };
+            return { name: 'Újonc', icon: '🌿', color: 'var(--gray-primary)', bg: 'var(--level-badge-bg-novice)' };
+        };
+        const levelRank = getLevelRank(level);
 
         section.innerHTML = `
-            <div class="flex items-center justify-between mb-6">
-                <h2 class="text-2xl font-bold text-donezy-orange flex items-center gap-3">
-                    <span class="text-3xl">🌟</span>
-                    Szinted & XP
-                </h2>
-                <div class="text-right">
-                    <div class="text-sm text-secondary">Következő szint</div>
-                    <div class="text-lg font-bold text-donezy-orange">${level + 1}</div>
+            <div class="level-badge-wrapper mb-6">
+                <div class="level-badge-circle" style="background: ${levelRank.bg}; color: ${levelRank.color};">
+                    <span class="level-number">${level}</span>
+                </div>
+                <div class="level-label" style="color: ${levelRank.color};">${levelRank.name}</div>
+                <div class="level-subtext">Szint ${level}</div>
+            </div>
+
+            <!-- XP Progress Bar -->
+            <div class="w-full max-w-xl mx-auto mb-6">
+                <div class="flex justify-between items-center mb-1 px-1">
+                    <div class="text-sm font-medium text-secondary">XP Progress</div>
+                    <div class="text-sm font-bold text-donezy-orange">${Math.round(progressPercent)}%</div>
+                </div>
+                <div style="width: 100%; height: 18px; background: #23232b; border-radius: 9px; position: relative; overflow: hidden;">
+                    <div style="position: absolute; left: 0; top: 0; height: 100%; width: ${progressPercent}%; background: linear-gradient(90deg, #ff9100 0%, #fbbf24 100%); border-radius: 9px;"></div>
+                    <div style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; pointer-events: none;">
+                        <span style="color: #fff; font-weight: bold; font-size: 13px; text-shadow: 0 1px 4px #000;">${xpInCurrentLevel} / ${xpRequiredForNextLevel} XP</span>
+                    </div>
+                </div>
+                <div class="text-center mt-1">
+                    <div class="text-xs text-secondary">
+                        Még <span class="font-bold text-donezy-orange">${xpRequiredForNextLevel - xpInCurrentLevel} XP</span> a következő szintig
+                    </div>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Current Level -->
-                <div class="text-center">
-                    <div class="text-5xl font-extrabold text-donezy-orange mb-2">${level}</div>
-                    <div class="text-sm text-secondary">Jelenlegi szint</div>
+            <!-- Teljes XP és statisztikák -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-center text-white">
+                    <div class="text-2xl font-bold mb-1">${xp.toLocaleString()}</div>
+                    <div class="text-sm opacity-90">Összes XP</div>
                 </div>
-
-                <!-- XP Progress -->
-                <div class="flex flex-col justify-center">
-                    <div class="flex justify-between text-sm text-secondary mb-2">
-                        <span>${xpInCurrentLevel} / ${xpPerLevel} XP</span>
-                        <span>${Math.round(progressPercent)}%</span>
-                    </div>
-                    <div class="w-full bg-donezy-accent rounded-full h-3 mb-2 overflow-hidden">
-                        <div class="bg-gradient-to-r from-donezy-orange to-orange-hover h-3 rounded-full transition-all duration-500" style="width: ${progressPercent}%"></div>
-                    </div>
-                    <div class="text-xs text-secondary text-center">
-                        Még ${xpPerLevel - xpInCurrentLevel} XP a következő szintig
-                    </div>
-                </div>
-
-                <!-- Total XP -->
-                <div class="text-center">
-                    <div class="text-3xl font-bold text-purple mb-2">${xp}</div>
-                    <div class="text-sm text-secondary">Összes XP</div>
+                <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-4 text-center text-white">
+                    <div class="text-2xl font-bold mb-1">${level + 1}</div>
+                    <div class="text-sm opacity-90">Következő szint</div>
                 </div>
             </div>
 
-            <!-- Stats Grid -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-                <div class="stat-card">
+                <div class="stat-card bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border border-green-200 dark:border-green-700">
                     <div class="text-2xl mb-1">📊</div>
-                    <div class="text-lg font-bold">${totalActiveDays}</div>
-                    <div class="text-xs text-secondary">Aktív nap</div>
+                    <div class="text-lg font-bold text-green-700 dark:text-green-300">${totalActiveDays}</div>
+                    <div class="text-xs text-green-600 dark:text-green-400">Aktív nap</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border border-red-200 dark:border-red-700">
                     <div class="text-2xl mb-1">🔥</div>
-                    <div class="text-lg font-bold">${streak}</div>
-                    <div class="text-xs text-secondary">Sorozat</div>
+                    <div class="text-lg font-bold text-red-700 dark:text-red-300">${streak}</div>
+                    <div class="text-xs text-red-600 dark:text-red-400">Sorozat</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200 dark:border-blue-700">
                     <div class="text-2xl mb-1">✅</div>
-                    <div class="text-lg font-bold">${userStats?.tasksCompleted || 0}</div>
-                    <div class="text-xs text-secondary">Feladat</div>
+                    <div class="text-lg font-bold text-blue-700 dark:text-blue-300">${userStats?.tasksCompleted || 0}</div>
+                    <div class="text-xs text-blue-600 dark:text-blue-400">Feladat</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border border-purple-200 dark:border-purple-700">
                     <div class="text-2xl mb-1">🎯</div>
-                    <div class="text-lg font-bold">${userStats?.questsCompleted || 0}</div>
-                    <div class="text-xs text-secondary">Küldetés</div>
+                    <div class="text-lg font-bold text-purple-700 dark:text-purple-300">${userStats?.questsCompleted || 0}</div>
+                    <div class="text-xs text-purple-600 dark:text-purple-400">Küldetés</div>
                 </div>
             </div>
         `;
@@ -215,6 +226,94 @@ window.ResultsRenderer = (function() {
         }, 100);
         
         return section;
+    }
+
+    /**
+     * XP Progress animáció hozzáadása
+     */
+    function addXPProgressAnimation() {
+        // XP progress bar animáció
+        const progressBars = document.querySelectorAll('.bg-gradient-to-r.from-donezy-orange');
+        progressBars.forEach(bar => {
+            if (bar.style.width && bar.style.width !== '0%') {
+                // Animáljuk a progress bart
+                const currentWidth = parseFloat(bar.style.width);
+                bar.style.width = '0%';
+                setTimeout(() => {
+                    bar.style.width = currentWidth + '%';
+                }, 100);
+            }
+        });
+
+        // XP kör animáció
+        const xpCircles = document.querySelectorAll('.xp-circle-progress');
+        xpCircles.forEach(circle => {
+            circle.style.animation = 'none';
+            setTimeout(() => {
+                circle.style.animation = 'xpCircleFill 1.5s ease-out';
+            }, 50);
+        });
+
+        // Shimmer effekt hozzáadása
+        const shimmerElements = document.querySelectorAll('.animate-shimmer');
+        shimmerElements.forEach(element => {
+            element.style.animation = 'none';
+            setTimeout(() => {
+                element.style.animation = 'shimmer 2s infinite';
+            }, 50);
+        });
+    }
+
+    /**
+     * Szint emelkedés animáció
+     */
+    function animateLevelUp(oldLevel, newLevel) {
+        const levelElement = document.querySelector('.text-6xl.font-black.text-white');
+        if (levelElement) {
+            // Szint szám animáció
+            levelElement.style.animation = 'none';
+            levelElement.style.transform = 'scale(1.2)';
+            levelElement.style.color = '#fbbf24';
+            
+            setTimeout(() => {
+                levelElement.textContent = newLevel;
+                levelElement.style.transform = 'scale(1)';
+                levelElement.style.color = '#ffffff';
+            }, 300);
+
+            // Konfetti effekt (egyszerű verzió)
+            createLevelUpConfetti();
+        }
+    }
+
+    /**
+     * Egyszerű konfetti effekt szint emelkedéshez
+     */
+    function createLevelUpConfetti() {
+        const colors = ['#ff6b35', '#fbbf24', '#10b981', '#3b82f6', '#8b5cf6'];
+        const container = document.querySelector('.bg-donezy-card');
+        
+        if (container) {
+            for (let i = 0; i < 20; i++) {
+                const confetti = document.createElement('div');
+                confetti.style.position = 'absolute';
+                confetti.style.width = '8px';
+                confetti.style.height = '8px';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.borderRadius = '50%';
+                confetti.style.left = Math.random() * 100 + '%';
+                confetti.style.top = '50%';
+                confetti.style.pointerEvents = 'none';
+                confetti.style.zIndex = '1000';
+                confetti.style.animation = `confettiFall ${2 + Math.random() * 2}s linear forwards`;
+                
+                container.appendChild(confetti);
+                
+                setTimeout(() => {
+                    confetti.remove();
+                }, 4000);
+            }
+        }
     }
 
     /**
@@ -579,6 +678,9 @@ window.ResultsRenderer = (function() {
     return {
         renderResultsTab,
         updateActivityChart,
-        initializeActivityChart
+        initializeActivityChart,
+        addXPProgressAnimation,
+        animateLevelUp,
+        createLevelUpConfetti
     };
 })();

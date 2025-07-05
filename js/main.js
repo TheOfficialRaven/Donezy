@@ -113,6 +113,42 @@ class DonezyApp {
                 setInterval(() => {
                     this.updateDateTime();
                 }, 1000);
+                
+                // Run user ID tests after initialization
+                setTimeout(() => {
+                    if (window.UserIDTest) {
+                        window.UserIDTest.runTests();
+                    }
+                }, 2000);
+                
+                // Add debug function to global scope
+                window.debugUserIDs = () => {
+                    if (window.UserIDTest) {
+                        console.log('🔍 Current User IDs:', window.UserIDTest.getAllUserIDs());
+                        window.UserIDTest.runTests();
+                    } else {
+                        console.log('UserIDTest not available');
+                    }
+                };
+
+                // Add mission debug function
+                window.debugMissions = () => {
+                    console.log('🔍 Mission Debug Info:');
+                    console.log('MissionService exists:', !!window.missionService);
+                    console.log('MissionService initialized:', window.missionService?.isInitialized);
+                    console.log('MissionRenderer exists:', !!window.missionRenderer);
+                    console.log('MissionRenderer initialized:', window.missionRenderer?.isInitialized);
+                    
+                    if (window.missionService) {
+                        console.log('MissionService user ID:', window.missionService.userId);
+                        console.log('MissionService missions count:', window.missionService.missions?.size || 0);
+                        console.log('MissionService missions:', Array.from(window.missionService.missions?.entries() || []));
+                    }
+                    
+                    if (window.missionRenderer) {
+                        console.log('MissionRenderer mission service:', !!window.missionRenderer.missionService);
+                    }
+                };
             }
         } catch (error) {
             console.error('Error initializing app:', error);
@@ -125,7 +161,13 @@ class DonezyApp {
             // Initialize data service
             if (typeof DataService !== 'undefined') {
                 this.dataService = new DataService();
+                console.log('DataService created, initializing...');
                 await this.dataService.init();
+                console.log('DataService initialized:', {
+                    isInitialized: this.dataService.isInitialized,
+                    isReady: this.dataService.isReady,
+                    currentService: this.dataService.currentService ? 'available' : 'null'
+                });
                 
                 // Make dataService available to other modules
                 if (!window.app) window.app = {};
@@ -147,6 +189,8 @@ class DonezyApp {
                 this.notificationService = new NotificationService();
                 // Make notification service available to other modules
                 window.notificationService = this.notificationService;
+                if (!window.app) window.app = {};
+                window.app.notificationService = this.notificationService;
             } else {
                 console.error('NotificationService not available');
             }
@@ -246,11 +290,16 @@ class DonezyApp {
                     calendarRenderer = window.calendarRenderer;
                     reminderService = window.calendarReminderService;
                     
-                    // Make calendar services available to other modules
-                    if (!window.app) window.app = {};
-                    window.app.calendarService = calendarService;
-                    window.app.calendarRenderer = calendarRenderer;
-                    window.app.reminderService = reminderService;
+                                    // Make calendar services available to other modules
+                if (!window.app) window.app = {};
+                window.app.calendarService = calendarService;
+                window.app.calendarRenderer = calendarRenderer;
+                window.app.reminderService = reminderService;
+                
+                // Make ResultsRenderer available to other modules
+                if (window.ResultsRenderer) {
+                    window.app.resultsRenderer = window.ResultsRenderer;
+                }
                     
                     console.log('Calendar modules loaded successfully');
                     
@@ -1037,17 +1086,33 @@ class DonezyApp {
                 } else {
                     console.log('DataService not ready, waiting...');
                     // Wait for DataService to be ready
-                    let attempts = 0;
-                    while (attempts < 20 && (!this.dataService || !this.dataService.isReady)) {
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                        attempts++;
-                    }
-                    if (this.dataService && this.dataService.isReady) {
-                        await ResultsService.init();
-                        console.log('ResultsService initialized after DataService became ready');
-                    } else {
-                        console.error('DataService not ready after waiting');
-                    }
+                                    let attempts = 0;
+                console.log('Waiting for DataService to be ready...', {
+                    dataService: !!this.dataService,
+                    isReady: this.dataService ? this.dataService.isReady : false,
+                    isInitialized: this.dataService ? this.dataService.isInitialized : false
+                });
+                
+                while (attempts < 20 && (!this.dataService || (!this.dataService.isReady && !this.dataService.isInitialized))) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    attempts++;
+                    console.log(`DataService ready check attempt ${attempts}:`, {
+                        dataService: !!this.dataService,
+                        isReady: this.dataService ? this.dataService.isReady : false,
+                        isInitialized: this.dataService ? this.dataService.isInitialized : false
+                    });
+                }
+                
+                if (this.dataService && (this.dataService.isReady || this.dataService.isInitialized)) {
+                    await ResultsService.init();
+                    console.log('ResultsService initialized after DataService became ready');
+                } else {
+                    console.error('DataService not ready after waiting', {
+                        dataService: !!this.dataService,
+                        isReady: this.dataService ? this.dataService.isReady : false,
+                        isInitialized: this.dataService ? this.dataService.isInitialized : false
+                    });
+                }
                 }
             } catch (error) {
                 console.error('Error initializing ResultsService after group selection:', error);
@@ -1293,13 +1358,29 @@ class DonezyApp {
             
             // Initialize mission system if not already done
             if (!window.missionService) {
+                console.log('Creating new MissionService instance...');
                 window.missionService = new MissionService();
                 await window.missionService.init();
+            } else if (!window.missionService.isInitialized) {
+                console.log('MissionService exists but not initialized, waiting...');
+                let attempts = 0;
+                while (!window.missionService.isInitialized && attempts < 40) {
+                    await new Promise(resolve => setTimeout(resolve, 250));
+                    attempts++;
+                }
             }
             
             if (!window.missionRenderer) {
+                console.log('Creating new MissionRenderer instance...');
                 window.missionRenderer = new MissionRenderer();
                 await window.missionRenderer.init();
+            } else if (!window.missionRenderer.isInitialized) {
+                console.log('MissionRenderer exists but not initialized, waiting...');
+                let attempts = 0;
+                while (!window.missionRenderer.isInitialized && attempts < 40) {
+                    await new Promise(resolve => setTimeout(resolve, 250));
+                    attempts++;
+                }
             }
             
             // Render missions using the new system
@@ -1417,11 +1498,24 @@ class DonezyApp {
 }
 
 // Initialize the application when DOM is loaded
-window.addEventListener('donezy-authenticated', () => {
-  if (!window.donezyApp) {
-    window.donezyApp = new DonezyApp();
-  } else if (typeof window.donezyApp.init === 'function') {
-    window.donezyApp.init();
+window.addEventListener('donezy-authenticated', async () => {
+  try {
+    // Initialize DataMigrationService first
+    if (window.DataMigrationService) {
+      console.log('Initializing DataMigrationService...');
+      await window.DataMigrationService.init();
+    } else {
+      console.warn('DataMigrationService not available');
+    }
+    
+    // Initialize the main app
+    if (!window.donezyApp) {
+      window.donezyApp = new DonezyApp();
+    } else if (typeof window.donezyApp.init === 'function') {
+      window.donezyApp.init();
+    }
+  } catch (error) {
+    console.error('Error during authentication initialization:', error);
   }
 });
 

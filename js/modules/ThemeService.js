@@ -212,10 +212,17 @@ window.ThemeService = (function() {
         try {
             // Try Firebase first
             if (window.app && window.app.dataService && window.app.dataService.isFirebaseAvailable()) {
-                const themes = await window.app.dataService.getThemes();
-                if (themes) {
-                    availableThemes = { ...DEFAULT_THEMES, ...themes };
-                    console.log('Themes loaded from Firebase');
+                // Load global themes (read-only) and user themes
+                const globalThemes = await window.app.dataService.getGlobalThemes();
+                const userThemes = await window.app.dataService.getUserThemes();
+                
+                if (globalThemes || userThemes) {
+                    availableThemes = { 
+                        ...DEFAULT_THEMES, 
+                        ...globalThemes, 
+                        ...userThemes 
+                    };
+                    console.log('Themes loaded from Firebase - Global:', Object.keys(globalThemes || {}).length, 'User:', Object.keys(userThemes || {}).length);
                     return;
                 }
             }

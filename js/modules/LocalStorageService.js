@@ -2,6 +2,7 @@
 class LocalStorageService {
     constructor() {
         this.userId = this.getCurrentUserId();
+        this.isReady = true; // LocalStorage is always ready
         console.log('LocalStorageService initialized with userId:', this.userId);
     }
 
@@ -12,6 +13,11 @@ class LocalStorageService {
             localStorage.setItem('donezy_user_id', userId);
         }
         return userId;
+    }
+
+    // Get ready status
+    getReadyStatus() {
+        return this.isReady;
     }
 
     async getUserData() {

@@ -1893,4 +1893,150 @@ body.auth-loading #app-main { display: none !important; }
     animation: slide-in 0.3s ease-out;
 }
 
+/* XP Progress Bar Animations */
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%) skewX(-12deg);
+    }
+    100% {
+        transform: translateX(200%) skewX(-12deg);
+    }
+}
+
+.animate-shimmer {
+    animation: shimmer 2s infinite;
+}
+
+/* Level Circle Animations */
+@keyframes levelPulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.7);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(255, 107, 53, 0);
+    }
+}
+
+.level-circle {
+    animation: levelPulse 3s infinite;
+}
+
+/* XP Progress Circle Animation */
+@keyframes xpCircleFill {
+    from {
+        stroke-dashoffset: 339.292;
+    }
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+.xp-circle-progress {
+    animation: xpCircleFill 1.5s ease-out;
+}
+
+/* Level Rank Badge Animation */
+@keyframes rankGlow {
+    0%, 100% {
+        box-shadow: 0 0 5px rgba(255, 107, 53, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(255, 107, 53, 0.8);
+    }
+}
+
+.level-rank-badge {
+    animation: rankGlow 2s infinite;
+}
+
+/* Konfetti animáció */
+@keyframes confettiFall {
+    0% {
+        transform: translateY(-100px) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(100vh) rotate(720deg);
+        opacity: 0;
+    }
+}
+
+/* Level Badge Modern */
+.level-badge-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 1.5rem;
+}
+.level-badge-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  min-width: 4.5rem;
+  min-height: 4.5rem;
+  border-radius: 50%;
+  background: var(--level-badge-bg, radial-gradient(circle at 60% 40%, #ff9100 60%, #fbbf24 100%));
+  box-shadow: 0 0 0 0 var(--donezy-orange), 0 0 16px 2px #ff9100cc;
+  position: relative;
+  transition: box-shadow 0.3s, background 0.3s;
+  animation: levelBadgePulse 3s infinite;
+}
+.level-badge-circle .level-number {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text-primary, #fff);
+  text-shadow: 0 2px 8px #000a, 0 0 2px #fff;
+  letter-spacing: 0.02em;
+}
+.level-label {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  margin-top: 0.1rem;
+  color: var(--donezy-orange);
+  text-shadow: 0 1px 4px #0002;
+}
+.level-subtext {
+  font-size: 0.95rem;
+  color: var(--text-secondary, #9ca3af);
+  margin-top: -2px;
+}
+@media (max-width: 600px) {
+  .level-badge-circle {
+    width: 3.2rem;
+    height: 3.2rem;
+    min-width: 3.2rem;
+    min-height: 3.2rem;
+  }
+  .level-badge-circle .level-number {
+    font-size: 1.2rem;
+  }
+  .level-label {
+    font-size: 1rem;
+  }
+}
+@keyframes levelBadgePulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 var(--donezy-orange), 0 0 16px 2px #ff9100cc;
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(255, 145, 0, 0.12), 0 0 32px 8px #fbbf24cc;
+  }
+}
+/* Szintfüggő badge színek */
+:root {
+  --level-badge-bg-novice: radial-gradient(circle at 60% 40%, #ff9100 60%, #fbbf24 100%);
+  --level-badge-bg-beginner: radial-gradient(circle at 60% 40%, #10b981 60%, #fbbf24 100%);
+  --level-badge-bg-experienced: radial-gradient(circle at 60% 40%, #3b82f6 60%, #8b5cf6 100%);
+  --level-badge-bg-veteran: radial-gradient(circle at 60% 40%, #f59e0b 60%, #fbbf24 100%);
+  --level-badge-bg-master: radial-gradient(circle at 60% 40%, #8b5cf6 60%, #fbbf24 100%);
+}
+/* Régi szint badge/stílus törlése */
+.level-circle, .level-rank-badge, .text-6xl.font-black.text-white { display: none !important; }
+
  
