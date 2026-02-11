@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Search, Plus, Command } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import PersonaSwitcher from '@/components/PersonaSwitcher';
 import UserStats from '@/components/UserStats';
 import QuickAddDialog from '@/components/dialogs/QuickAddDialog';
@@ -14,20 +13,6 @@ export default function Header() {
       <div className="flex items-center justify-between gap-1 sm:gap-2 min-w-0">
         <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-shrink">
           <PersonaSwitcher />
-
-          {/* Search */}
-          <div className="hidden md:flex relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
-            <Input
-              placeholder="Keresés... (Ctrl+K)"
-              className="pl-10 w-64 bg-surface-1/50 border-white/10 text-text-primary placeholder:text-text-muted"
-            />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border border-white/10 bg-surface-2/50 px-1.5 font-mono text-xs text-text-muted">
-                <Command className="h-3 w-3" />K
-              </kbd>
-            </div>
-          </div>
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0">

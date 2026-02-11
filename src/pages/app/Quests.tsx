@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Filter, Search, Clock, Zap, CheckCircle, Circle, Sparkles, Target } from 'lucide-react';
+import { Clock, Zap, CheckCircle, Circle, Sparkles, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -27,9 +26,6 @@ const difficultyLabels = {
 };
 
 export default function Quests() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [showFilters, setShowFilters] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [questToDelete, setQuestToDelete] = useState<string | null>(null);
 
@@ -38,8 +34,6 @@ export default function Quests() {
   const today = getLocalDateString();
   const mondayOfWeek = getLocalMondayOfWeek(today);
   const sundayOfWeek = getLocalSundayOfWeek(today);
-
-  const categories = Array.from(new Set(quests.map(q => q.category))).filter(Boolean);
 
   // Daily: incomplete generated daily quests for today
   const questsToday = quests.filter(q =>
@@ -65,15 +59,6 @@ export default function Quests() {
     )
   );
 
-  const filteredQuests = (questList: typeof quests) => {
-    return questList.filter(quest => {
-      const matchesSearch = quest.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           quest.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = selectedCategory === 'all' || quest.category === selectedCategory;
-      return matchesSearch && matchesCategory;
-    });
-  };
-
   const handleCompleteQuest = async (questId: string) => {
     await completeQuest(questId);
     toast.success('Küldetés teljesítve! XP és Essence jóváírva.');
@@ -96,49 +81,6 @@ export default function Quests() {
         <p className="text-text-secondary">A küldetések automatikusan generálódnak a célcsoportod alapján</p>
       </div>
 
-      {/* Search and Filter */}
-      <Card className="glass p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
-            <Input
-              placeholder="Küldetések keresése..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-surface-1/50 border-white/10"
-            />
-          </div>
-          <Button variant="outline" className="border-white/20" onClick={() => setShowFilters(!showFilters)}>
-            <Filter className="h-4 w-4 mr-2" />
-            Szűrők
-          </Button>
-        </div>
-
-        {showFilters && categories.length > 0 && (
-          <div className="flex gap-2 flex-wrap mt-4 pt-4 border-t border-white/10">
-            <Button
-              variant={selectedCategory === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSelectedCategory('all')}
-              className={selectedCategory === 'all' ? 'bg-primary text-surface-0' : 'border-white/20'}
-            >
-              Összes
-            </Button>
-            {categories.map(cat => (
-              <Button
-                key={cat}
-                variant={selectedCategory === cat ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSelectedCategory(cat)}
-                className={selectedCategory === cat ? 'bg-primary text-surface-0' : 'border-white/20'}
-              >
-                {cat}
-              </Button>
-            ))}
-          </div>
-        )}
-      </Card>
-
       {/* Quest Tabs */}
       <Tabs defaultValue="today" className="space-y-4">
         <TabsList className="bg-surface-1/50 border border-white/10">
@@ -156,7 +98,7 @@ export default function Quests() {
         {/* Today */}
         <TabsContent value="today" className="space-y-4">
           <div className="grid gap-4">
-            {filteredQuests(questsToday).map((quest, index) => (
+            {questsToday.map((quest, index) => (
               <motion.div key={quest.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
                 <Card className="glass p-4 sm:p-6 hover-lift">
                   <div className="flex items-start gap-3 sm:gap-4">
@@ -190,7 +132,7 @@ export default function Quests() {
                 </Card>
               </motion.div>
             ))}
-            {filteredQuests(questsToday).length === 0 && (
+            {questsToday.length === 0 && (
               <Card className="glass p-12 text-center">
                 <Zap className="h-16 w-16 text-text-disabled mx-auto mb-4" />
                 <h3 className="text-lg font-heading font-semibold text-text-primary mb-2">Nincsenek mai küldetések</h3>
@@ -203,7 +145,7 @@ export default function Quests() {
         {/* Weekly */}
         <TabsContent value="weekly" className="space-y-4">
           <div className="grid gap-4">
-            {filteredQuests(questsWeekly).map((quest, index) => {
+            {questsWeekly.map((quest, index) => {
               const isProgressQuest = quest.trackingType && quest.targetCount;
               const progress = quest.currentProgress || 0;
               const target = quest.targetCount || 0;
@@ -286,7 +228,7 @@ export default function Quests() {
                 </motion.div>
               );
             })}
-            {filteredQuests(questsWeekly).length === 0 && (
+            {questsWeekly.length === 0 && (
               <Card className="glass p-12 text-center">
                 <Zap className="h-16 w-16 text-text-disabled mx-auto mb-4" />
                 <h3 className="text-lg font-heading font-semibold text-text-primary mb-2">Nincsenek heti küldetések</h3>
@@ -299,7 +241,7 @@ export default function Quests() {
         {/* Completed */}
         <TabsContent value="completed" className="space-y-4">
           <div className="grid gap-4">
-            {filteredQuests(questsCompleted).map((quest, index) => (
+            {questsCompleted.map((quest, index) => (
               <motion.div key={quest.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
                 <Card className="glass p-6 opacity-75">
                   <div className="flex items-start gap-4">
@@ -332,7 +274,7 @@ export default function Quests() {
                 </Card>
               </motion.div>
             ))}
-            {filteredQuests(questsCompleted).length === 0 && (
+            {questsCompleted.length === 0 && (
               <Card className="glass p-12 text-center">
                 <CheckCircle className="h-16 w-16 text-text-disabled mx-auto mb-4" />
                 <h3 className="text-lg font-heading font-semibold text-text-primary mb-2">Még nincs mai teljesítés</h3>
