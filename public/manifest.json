@@ -1,0 +1,24 @@
+{
+  "name": "Donezy - Gamified Productivity",
+  "short_name": "Donezy",
+  "description": "Gamifikált produktivitási platform - küldetések, listák, jegyzetek és eredmények",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080B10",
+  "theme_color": "#080B10",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/Donezy-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/donezy-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

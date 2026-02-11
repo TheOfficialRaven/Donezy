@@ -1,0 +1,43 @@
+interface DonezyLogoProps {
+  className?: string;
+}
+
+export default function DonezyLogo({ className = 'w-8 h-8' }: DonezyLogoProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 200 200"
+      className={className}
+    >
+      <defs>
+        <linearGradient id="wingGrad" x1="30" y1="15" x2="120" y2="55" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#14b8a6" />
+          <stop offset="60%" stopColor="#0d9488" />
+          <stop offset="100%" stopColor="#115e59" />
+        </linearGradient>
+        <linearGradient id="triGrad" x1="80" y1="48" x2="90" y2="90" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#042f2e" />
+          <stop offset="100%" stopColor="#0a4f4a" />
+        </linearGradient>
+        <linearGradient id="curveGrad" x1="70" y1="165" x2="185" y2="85" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#065f5b" />
+          <stop offset="30%" stopColor="#0d9488" />
+          <stop offset="65%" stopColor="#14b8a6" />
+          <stop offset="100%" stopColor="#2dd4bf" />
+        </linearGradient>
+        <linearGradient id="checkGrad" x1="15" y1="120" x2="168" y2="20" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#e2fef8" />
+          <stop offset="25%" stopColor="#5eead4" />
+          <stop offset="60%" stopColor="#2dd4bf" />
+          <stop offset="100%" stopColor="#14b8a6" />
+        </linearGradient>
+      </defs>
+
+      <line x1="28" y1="175" x2="170" y2="20" stroke="#2dd4bf" strokeWidth="2" strokeLinecap="round" opacity="0.45" />
+      <path d="M 32 18 L 163 14 C 172 16 175 28 168 42 L 155 50 L 70 52 Z" fill="url(#wingGrad)" />
+      <path d="M 70 52 L 126 50 L 86 90 Z" fill="url(#triGrad)" />
+      <path d="M 108 90 C 150 82 182 90 184 115 C 186 142 168 162 138 170 C 116 176 90 168 72 156 L 84 144 C 98 156 124 164 148 152 C 166 142 176 122 172 106 C 169 94 154 86 108 90 Z" fill="url(#curveGrad)" />
+      <path d="M 14 88 L 50 122 L 168 20" fill="none" stroke="url(#checkGrad)" strokeWidth="13" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}

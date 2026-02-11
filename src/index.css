@@ -1,0 +1,253 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Donezy Design System - Dark-only premium gaming UI */
+
+@layer base {
+  :root {
+    /* Dark-only surfaces with depth */
+    --surface-0: 215 47% 4%; /* #080B10 - deepest background */
+    --surface-1: 214 36% 6%; /* #0C1017 - elevated surfaces */
+    --surface-2: 218 32% 8%; /* glass surfaces base */
+    
+    /* Glass morphism tokens */
+    --glass-bg: 218 32% 8% / 0.6;
+    --glass-border: 218 32% 15% / 0.2;
+    --glass-shadow: 215 47% 2% / 0.4;
+    
+    /* Brand colors - vivid but balanced */
+    --primary: 167 85% 48%; /* #11E1B1 - neon teal */
+    --primary-glow: 167 85% 60%;
+    --secondary: 213 100% 65%; /* #4DA3FF - electric blue */
+    --secondary-glow: 213 100% 75%;
+    --accent: 41 32% 82%; /* #E5D5BC - warm beige */
+    
+    /* Semantic colors with proper contrast */
+    --info: 205 100% 74%; /* #7AC7FF */
+    --success: 149 71% 49%; /* #24D68A */
+    --warning: 40 100% 67%; /* #FFC056 */
+    --danger: 11 100% 68%; /* #FF5D5D */
+    
+    /* Text hierarchy */
+    --text-primary: 220 15% 95%;
+    --text-secondary: 220 15% 75%;
+    --text-muted: 220 15% 55%;
+    --text-disabled: 220 15% 35%;
+    
+    /* Borders and inputs */
+    --border: 218 32% 15%;
+    --border-muted: 218 32% 12%;
+    --input-bg: 218 32% 10%;
+    
+    /* Shadows and glows */
+    --shadow-lg: 0 20px 40px -12px hsl(215 47% 2% / 0.6);
+    --shadow-glow: 0 0 20px hsl(var(--primary) / 0.3);
+    --shadow-secondary-glow: 0 0 20px hsl(var(--secondary) / 0.3);
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--secondary-glow)));
+    --gradient-surface: linear-gradient(135deg, hsl(var(--surface-1)), hsl(var(--surface-2)));
+    --gradient-glass: linear-gradient(135deg, hsl(var(--glass-bg)), hsl(var(--surface-2) / 0.4));
+    
+    /* Animation curves */
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    
+    /* Radius system */
+    --radius-sm: 6px;
+    --radius: 12px;
+    --radius-lg: 20px;
+    --radius-xl: 24px;
+    
+    /* Persona color overrides */
+    --persona-student: 213 100% 65%;
+    --persona-worker: 167 85% 48%;
+    --persona-selfdev: 260 85% 65%;
+    --persona-freelancer: 142 71% 49%;
+    --persona-organizer: 280 65% 60%;
+    
+    /* Legacy shadcn compatibility */
+    --background: var(--surface-0);
+    --foreground: var(--text-primary);
+    --card: var(--surface-1);
+    --card-foreground: var(--text-primary);
+    --popover: var(--surface-1);
+    --popover-foreground: var(--text-primary);
+    --muted: var(--surface-2);
+    --muted-foreground: var(--text-muted);
+    --destructive: var(--danger);
+    --destructive-foreground: var(--text-primary);
+    --ring: var(--primary);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply bg-surface-0 text-text-primary antialiased;
+    font-family: 'Inter', sans-serif;
+    background: 
+      radial-gradient(ellipse at top, hsl(var(--surface-2)) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom, hsl(var(--surface-1)) 0%, transparent 50%),
+      hsl(var(--surface-0));
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Sora', sans-serif;
+    font-weight: 600;
+  }
+  
+  code, pre {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer components {
+  /* Glass morphism base */
+  .glass {
+    @apply bg-surface-2/60 backdrop-blur-xl border border-white/10;
+    box-shadow: 
+      0 8px 32px 0 rgba(0, 0, 0, 0.37),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+  }
+  
+  .glass-intense {
+    @apply bg-surface-1/80 backdrop-blur-2xl border border-white/20;
+    box-shadow: 
+      0 20px 40px -12px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+  }
+  
+  /* Glow effects */
+  .glow-primary {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.4);
+  }
+  
+  .glow-secondary {
+    box-shadow: 0 0 20px hsl(var(--secondary) / 0.4);
+  }
+  
+  /* Hover lift animation */
+  .hover-lift {
+    @apply transition-all duration-200 ease-smooth;
+  }
+  
+  .hover-lift:hover {
+    @apply -translate-y-1;
+    box-shadow: 
+      0 20px 40px -12px rgba(0, 0, 0, 0.6),
+      0 0 20px hsl(var(--primary) / 0.2);
+  }
+  
+  /* Text gradients */
+  .text-gradient-primary {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .text-gradient-secondary {
+    background: var(--gradient-secondary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  /* Animations */
+  .animate-fade-up {
+    animation: fade-up 0.6s var(--ease-smooth) forwards;
+  }
+  
+  .animate-fade-in {
+    animation: fade-in 0.4s var(--ease-smooth) forwards;
+  }
+  
+  .animate-scale-in {
+    animation: scale-in 0.3s var(--ease-bounce) forwards;
+  }
+}
+
+@layer utilities {
+  /* Persona theming utilities */
+  .persona-student {
+    --persona-color: var(--persona-student);
+  }
+  
+  .persona-worker {
+    --persona-color: var(--persona-worker);
+  }
+  
+  .persona-selfdev {
+    --persona-color: var(--persona-selfdev);
+  }
+  
+  .persona-freelancer {
+    --persona-color: var(--persona-freelancer);
+  }
+  
+  .persona-organizer {
+    --persona-color: var(--persona-organizer);
+  }
+  
+  /* Custom scrollbar */
+  .scrollbar-custom::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .scrollbar-custom::-webkit-scrollbar-track {
+    @apply bg-surface-1 rounded-full;
+  }
+  
+  .scrollbar-custom::-webkit-scrollbar-thumb {
+    @apply bg-surface-2 rounded-full hover:bg-primary/50;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
