@@ -8,6 +8,10 @@ export default defineConfig({
     host: "::",
     port: 8080,
   },
+  preview: {
+    port: 8080,
+  },
+  appType: 'spa', // Explicit SPA mode — serves index.html for all routes
   plugins: [react()],
   resolve: {
     alias: {
