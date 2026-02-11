@@ -27,7 +27,7 @@ export async function signUp(email: string, password: string, displayName: strin
     createdAt: new Date().toISOString(),
   });
 
-  // Initialize default stats
+  // Initialize default stats (lastActiveDate empty so first handleDailyLogin sets streak to 1)
   await set(ref(db, `users/${userCredential.user.uid}/stats`), {
     level: 1,
     xp: 0,
@@ -36,7 +36,7 @@ export async function signUp(email: string, password: string, displayName: strin
     streak: 0,
     questsCompleted: 0,
     totalQuestsCompleted: 0,
-    lastActiveDate: new Date().toISOString().split('T')[0],
+    lastActiveDate: '',
   });
 
   // Sign out immediately so user must verify email first
@@ -87,7 +87,7 @@ export async function signInWithGoogle() {
       streak: 0,
       questsCompleted: 0,
       totalQuestsCompleted: 0,
-      lastActiveDate: new Date().toISOString().split('T')[0],
+      lastActiveDate: '',
     });
   }
 

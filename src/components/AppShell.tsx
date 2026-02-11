@@ -9,14 +9,14 @@ export default function AppShell() {
   const isMobile = useIsMobile();
 
   return (
-    <div className="min-h-screen bg-surface-0 flex">
+    <div className="min-h-screen bg-surface-0 flex overflow-x-hidden max-w-[100vw]">
       {/* Desktop Sidebar */}
       {!isMobile && <Sidebar />}
       
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         <Header />
         
-        <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 pb-20 md:pb-6 min-w-0">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

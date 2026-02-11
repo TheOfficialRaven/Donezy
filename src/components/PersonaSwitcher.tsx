@@ -24,7 +24,7 @@ export default function PersonaSwitcher() {
         <Button 
           variant="ghost" 
           className={cn(
-            "flex items-center gap-3 px-3 py-2 h-auto",
+            "flex items-center gap-2 sm:gap-3 px-1.5 sm:px-3 py-1.5 sm:py-2 h-auto",
             "hover:bg-white/5 transition-all duration-200",
             currentPersona.colorClass
           )}
@@ -36,10 +36,14 @@ export default function PersonaSwitcher() {
               boxShadow: `0 0 20px ${currentPersona.color}40`
             }}
           >
-            <IconComponent className="h-4 w-4 text-surface-0" />
+            <IconComponent className="h-4 w-4 text-white" />
           </div>
           
-          <div className="flex flex-col items-start">
+          <span className="text-xs font-medium text-text-primary sm:hidden">
+            {currentPersona.label}
+          </span>
+
+          <div className="hidden sm:flex flex-col items-start">
             <span className="text-sm font-medium text-text-primary">
               {currentPersona.label}
             </span>
@@ -49,7 +53,7 @@ export default function PersonaSwitcher() {
           </div>
           
           <ChevronDown className={cn(
-            "h-4 w-4 text-text-muted transition-transform duration-200",
+            "h-3.5 w-3.5 sm:h-4 sm:w-4 text-text-muted transition-transform duration-200",
             isOpen && "transform rotate-180"
           )} />
         </Button>
@@ -89,7 +93,7 @@ export default function PersonaSwitcher() {
                       boxShadow: isSelected ? `0 0 20px ${persona.color}60` : 'none'
                     }}
                   >
-                    <PersonaIcon className="h-5 w-5 text-surface-0" />
+                    <PersonaIcon className="h-5 w-5 text-white" />
                   </div>
                   
                   <div className="flex flex-col flex-1">

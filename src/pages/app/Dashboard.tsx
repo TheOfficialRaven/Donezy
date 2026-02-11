@@ -1,24 +1,23 @@
-import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Clock, Target, BookOpen, Calendar as CalendarIcon, Zap, Check, Circle, ChevronRight } from 'lucide-react';
+import { Clock, Target, BookOpen, Calendar as CalendarIcon, Zap, Check, Circle, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { usePersonaStore } from '@/stores/usePersonaStore';
 import { useAppStore } from '@/stores/useAppStore';
-import QuestDialog from '@/components/dialogs/QuestDialog';
 import { cn } from '@/lib/utils';
+import { getLocalDateString } from '@/lib/dateUtils';
 
 export default function Dashboard() {
   const { currentPersona } = usePersonaStore();
   const { userStats, quests, lists, completeQuest, updateTask } = useAppStore();
   const navigate = useNavigate();
-  const [questDialogOpen, setQuestDialogOpen] = useState(false);
 
+  const today = getLocalDateString();
   const todayQuests = quests.filter(q => !q.completed).slice(0, 3);
-  const completedToday = quests.filter(q => q.completed && q.completedAt?.startsWith(new Date().toISOString().split('T')[0])).length;
+  const completedToday = quests.filter(q => q.completed && q.completedAt?.startsWith(today)).length;
 
   // Lists with incomplete tasks for dashboard
   const listsWithTasks = lists
@@ -113,10 +112,10 @@ export default function Dashboard() {
               size="sm"
               variant="outline"
               className="border-primary/30 text-primary hover:bg-primary/10"
-              onClick={() => setQuestDialogOpen(true)}
+              onClick={() => navigate('/app/quests')}
             >
-              <Plus className="h-4 w-4 mr-2" />
-              Új küldetés
+              Összes küldetés
+              <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
 
@@ -128,21 +127,27 @@ export default function Dashboard() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.6 + index * 0.1 }}
-                  className="flex items-center gap-4 p-3 rounded-lg bg-surface-1/50 hover:bg-surface-1/70 transition-colors"
+                  className="flex items-start gap-3 p-3 rounded-lg bg-surface-1/50 hover:bg-surface-1/70 transition-colors"
                 >
                   <button
                     onClick={() => completeQuest(quest.id)}
-                    className="w-2 h-2 rounded-full bg-primary hover:ring-2 hover:ring-primary/50 transition-all"
+                    className="w-2 h-2 rounded-full bg-primary hover:ring-2 hover:ring-primary/50 transition-all mt-2 flex-shrink-0"
                   />
-                  <div className="flex-1">
-                    <h3 className="font-medium text-text-primary">{quest.title}</h3>
-                    <p className="text-sm text-text-muted">{quest.description}</p>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-text-primary text-sm sm:text-base">{quest.title}</h3>
+                    <p className="text-xs sm:text-sm text-text-muted line-clamp-2">{quest.description}</p>
+                    <div className="flex items-center gap-3 mt-1.5 sm:hidden">
+                      <div className="flex items-center gap-1 text-xs text-text-muted">
+                        <Clock className="h-3 w-3" />{quest.estimatedTime}p
+                      </div>
+                      <div className="text-xs text-primary font-medium">+{quest.xpReward} XP</div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-text-muted">
+                  <div className="hidden sm:flex items-center gap-2 text-sm text-text-muted flex-shrink-0">
                     <Clock className="h-4 w-4" />
                     {quest.estimatedTime}p
                   </div>
-                  <div className="text-sm text-primary font-medium">
+                  <div className="hidden sm:block text-sm text-primary font-medium flex-shrink-0">
                     +{quest.xpReward} XP
                   </div>
                 </motion.div>
@@ -324,7 +329,6 @@ export default function Dashboard() {
         </Card>
       </motion.div>
 
-      <QuestDialog open={questDialogOpen} onOpenChange={setQuestDialogOpen} />
     </div>
   );
 }

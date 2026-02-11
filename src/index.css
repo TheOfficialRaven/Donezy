@@ -92,11 +92,14 @@
   
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
   }
   
   body {
     @apply bg-surface-0 text-text-primary antialiased;
     font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+    max-width: 100vw;
     background: 
       radial-gradient(ellipse at top, hsl(var(--surface-2)) 0%, transparent 50%),
       radial-gradient(ellipse at bottom, hsl(var(--surface-1)) 0%, transparent 50%),

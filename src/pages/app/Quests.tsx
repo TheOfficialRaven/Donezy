@@ -1,15 +1,14 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Filter, Search, Clock, Zap, CheckCircle, Circle } from 'lucide-react';
+import { Filter, Search, Clock, Zap, CheckCircle, Circle, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAppStore } from '@/stores/useAppStore';
-import { usePersonaStore } from '@/stores/usePersonaStore';
 import { cn } from '@/lib/utils';
-import QuestDialog from '@/components/dialogs/QuestDialog';
+import { getLocalDateString } from '@/lib/dateUtils';
 import ConfirmDialog from '@/components/dialogs/ConfirmDialog';
 import { toast } from 'sonner';
 
@@ -31,28 +30,35 @@ export default function Quests() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
-  const [questDialogOpen, setQuestDialogOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [questToDelete, setQuestToDelete] = useState<string | null>(null);
 
-  const { quests, completeQuest, addQuest, deleteQuest } = useAppStore();
-  const { currentPersona } = usePersonaStore();
+  const { quests, completeQuest, deleteQuest } = useAppStore();
+
+  const today = getLocalDateString();
 
   const categories = Array.from(new Set(quests.map(q => q.category))).filter(Boolean);
 
+  // Daily: incomplete quests with today's date (or no date)
   const questsToday = quests.filter(q =>
     !q.completed &&
-    (!q.dueDate || q.dueDate === new Date().toISOString().split('T')[0])
+    (!q.dueDate || q.dueDate === today) &&
+    q.questType !== 'weekly'
   );
 
+  // Weekly: incomplete quests with future due date within this week
   const questsWeekly = quests.filter(q =>
     !q.completed &&
     q.dueDate &&
-    new Date(q.dueDate) > new Date() &&
-    new Date(q.dueDate) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    q.dueDate > today &&
+    new Date(q.dueDate) <= new Date(Date.now() + 7 * 86400000)
   );
 
-  const questsCompleted = quests.filter(q => q.completed);
+  // Completed: only today's completions
+  const questsCompleted = quests.filter(q =>
+    q.completed &&
+    q.completedAt?.startsWith(today)
+  );
 
   const filteredQuests = (questList: typeof quests) => {
     return questList.filter(quest => {
@@ -77,102 +83,12 @@ export default function Quests() {
     }
   };
 
-  const handleAcceptSuggested = async (suggestion: ReturnType<typeof generateSuggestedQuests>[0]) => {
-    await addQuest({
-      title: suggestion.title,
-      description: suggestion.description,
-      category: suggestion.category,
-      difficulty: suggestion.difficulty,
-      estimatedTime: suggestion.estimatedTime,
-      xpReward: suggestion.xpReward,
-      essenceReward: suggestion.essenceReward,
-      completed: false,
-      dueDate: new Date().toISOString().split('T')[0],
-      tags: suggestion.tags,
-      persona: currentPersona.id,
-    });
-    toast.success('Javasolt küldetés elfogadva!');
-  };
-
-  const generateSuggestedQuests = () => {
-    const suggestions = currentPersona.questPresets.map((preset, index) => ({
-      id: `suggested-${index}`,
-      title: getSuggestedQuestTitle(preset),
-      description: getSuggestedQuestDescription(preset),
-      category: 'Javasolt',
-      difficulty: 'medium' as const,
-      estimatedTime: 45,
-      xpReward: 100,
-      essenceReward: 20,
-      completed: false,
-      tags: [preset],
-      persona: currentPersona.id
-    }));
-    return suggestions.slice(0, 3);
-  };
-
-  const getSuggestedQuestTitle = (preset: string) => {
-    const titles: Record<string, string> = {
-      'study-session': 'Tanulási blokk teljesítése',
-      'exam-prep': 'Vizsga felkészülés',
-      'daily-focus': 'Napi fókusz célok',
-      'meeting-prep': 'Meeting előkészítése',
-      'habit-building': 'Új szokás kialakítása',
-      'reading-goal': 'Olvasási cél',
-      'client-outreach': 'Ügyfél kapcsolattartás',
-      'project-delivery': 'Projekt leadás',
-      'household-task': 'Háztartási feladat',
-      'budget-review': 'Költségvetés áttekintése',
-      'project-milestone': 'Projekt mérföldkő',
-      'skill-learning': 'Készségfejlesztés',
-      'network-building': 'Networking',
-      'meditation': 'Meditáció',
-      'journaling': 'Napló írás',
-      'skill-upgrade': 'Képzés',
-      'invoice-chase': 'Számla kezelés',
-      'family-activity': 'Családi tevékenység',
-      'decluttering': 'Rendrakás',
-    };
-    return titles[preset] || 'Egyéni küldetés';
-  };
-
-  const getSuggestedQuestDescription = (preset: string) => {
-    const descriptions: Record<string, string> = {
-      'study-session': 'Koncentrált tanulás megszakítások nélkül',
-      'exam-prep': 'Felkészülés a közelgő vizsgára',
-      'daily-focus': '3 legfontosabb feladat elvégzése',
-      'meeting-prep': 'Agenda és anyagok előkészítése',
-      'habit-building': 'Új pozitív szokás gyakorlása',
-      'reading-goal': 'Tervezett olvasmány folytatása',
-      'client-outreach': 'Kapcsolatfelvétel potenciális ügyfelekkel',
-      'project-delivery': 'Projekt befejezése és átadása',
-      'household-task': 'Otthoni teendők elvégzése',
-      'budget-review': 'Havi kiadások és bevételek elemzése',
-      'project-milestone': 'Következő projektszakasz elérése',
-      'skill-learning': 'Új készség tanulása',
-      'network-building': 'Kapcsolatok építése',
-      'meditation': '10 perc meditáció',
-      'journaling': 'Napi gondolatok leírása',
-      'skill-upgrade': 'Képzés vagy kurzus elvégzése',
-      'invoice-chase': 'Kintlévőségek kezelése',
-      'family-activity': 'Közös családi program',
-      'decluttering': 'Felesleges tárgyak selejtezése',
-    };
-    return descriptions[preset] || 'Személyre szabott küldetés leírása';
-  };
-
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-heading font-bold text-text-primary">Küldetések</h1>
-          <p className="text-text-secondary">Alakítsd át feladataidat izgalmas küldetésekké</p>
-        </div>
-        <Button className="bg-primary hover:bg-primary/90 text-surface-0" onClick={() => setQuestDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Új küldetés
-        </Button>
+      <div>
+        <h1 className="text-3xl font-heading font-bold text-text-primary">Küldetések</h1>
+        <p className="text-text-secondary">A küldetések automatikusan generálódnak a célcsoportod alapján</p>
       </div>
 
       {/* Search and Filter */}
@@ -230,9 +146,6 @@ export default function Quests() {
           <TabsTrigger value="completed" className="data-[state=active]:bg-primary data-[state=active]:text-surface-0">
             Teljesített ({questsCompleted.length})
           </TabsTrigger>
-          <TabsTrigger value="suggested" className="data-[state=active]:bg-primary data-[state=active]:text-surface-0">
-            Javaslatok
-          </TabsTrigger>
         </TabsList>
 
         {/* Today */}
@@ -240,28 +153,34 @@ export default function Quests() {
           <div className="grid gap-4">
             {filteredQuests(questsToday).map((quest, index) => (
               <motion.div key={quest.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
-                <Card className="glass p-6 hover-lift">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4 flex-1">
-                      <button onClick={() => handleCompleteQuest(quest.id)} className="mt-1 text-text-muted hover:text-primary transition-colors">
-                        <Circle className="h-5 w-5" />
-                      </button>
-                      <div className="flex-1">
-                        <h3 className="font-heading font-semibold text-text-primary mb-2">{quest.title}</h3>
-                        <p className="text-text-secondary mb-3">{quest.description}</p>
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <Badge className={cn('text-xs', difficultyColors[quest.difficulty])}>{difficultyLabels[quest.difficulty]}</Badge>
-                          <div className="flex items-center gap-1 text-sm text-text-muted"><Clock className="h-4 w-4" />{quest.estimatedTime} perc</div>
-                          <div className="flex items-center gap-1 text-sm text-primary"><Zap className="h-4 w-4" />+{quest.xpReward} XP</div>
-                          <Badge variant="outline" className="text-xs border-white/20">{quest.category}</Badge>
-                        </div>
+                <Card className="glass p-4 sm:p-6 hover-lift">
+                  <div className="flex items-start gap-3 sm:gap-4">
+                    <button onClick={() => handleCompleteQuest(quest.id)} className="mt-1 text-text-muted hover:text-primary transition-colors flex-shrink-0">
+                      <Circle className="h-5 w-5" />
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <h3 className="font-heading font-semibold text-text-primary text-sm sm:text-base">{quest.title}</h3>
+                        {quest.generated && (
+                          <Badge className="text-xs bg-primary/15 text-primary border-primary/30">
+                            <Sparkles className="h-3 w-3 mr-1" />Auto
+                          </Badge>
+                        )}
                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button onClick={() => handleCompleteQuest(quest.id)} className="bg-success hover:bg-success/90 text-surface-0">
+                      <p className="text-text-secondary text-sm mb-3">{quest.description}</p>
+                      <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                        <Badge className={cn('text-xs', difficultyColors[quest.difficulty])}>{difficultyLabels[quest.difficulty]}</Badge>
+                        <div className="flex items-center gap-1 text-xs sm:text-sm text-text-muted"><Clock className="h-3 w-3 sm:h-4 sm:w-4" />{quest.estimatedTime}p</div>
+                        <div className="flex items-center gap-1 text-xs sm:text-sm text-primary"><Zap className="h-3 w-3 sm:h-4 sm:w-4" />+{quest.xpReward} XP</div>
+                        <Badge variant="outline" className="text-xs border-white/20">{quest.category}</Badge>
+                      </div>
+                      <Button onClick={() => handleCompleteQuest(quest.id)} className="bg-success hover:bg-success/90 text-surface-0 mt-3 sm:hidden w-full" size="sm">
                         Teljesítés
                       </Button>
                     </div>
+                    <Button onClick={() => handleCompleteQuest(quest.id)} className="bg-success hover:bg-success/90 text-surface-0 hidden sm:inline-flex flex-shrink-0">
+                      Teljesítés
+                    </Button>
                   </div>
                 </Card>
               </motion.div>
@@ -270,11 +189,7 @@ export default function Quests() {
               <Card className="glass p-12 text-center">
                 <Zap className="h-16 w-16 text-text-disabled mx-auto mb-4" />
                 <h3 className="text-lg font-heading font-semibold text-text-primary mb-2">Nincsenek mai küldetések</h3>
-                <p className="text-text-muted mb-4">Hozz létre új küldetéseket a nap kezdéshez!</p>
-                <Button className="bg-primary hover:bg-primary/90 text-surface-0" onClick={() => setQuestDialogOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Első küldetés létrehozása
-                </Button>
+                <p className="text-text-muted">A küldetések automatikusan generálódnak minden nap a célcsoportod alapján.</p>
               </Card>
             )}
           </div>
@@ -285,32 +200,49 @@ export default function Quests() {
           <div className="grid gap-4">
             {filteredQuests(questsWeekly).map((quest, index) => (
               <motion.div key={quest.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
-                <Card className="glass p-6 hover-lift">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4 flex-1">
-                      <Circle className="h-5 w-5 mt-1 text-text-muted" />
-                      <div className="flex-1">
-                        <h3 className="font-heading font-semibold text-text-primary mb-2">{quest.title}</h3>
-                        <p className="text-text-secondary mb-3">{quest.description}</p>
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <Badge className={cn('text-xs', difficultyColors[quest.difficulty])}>{difficultyLabels[quest.difficulty]}</Badge>
-                          <div className="flex items-center gap-1 text-sm text-text-muted"><Clock className="h-4 w-4" />{quest.estimatedTime} perc</div>
-                          <div className="flex items-center gap-1 text-sm text-primary"><Zap className="h-4 w-4" />+{quest.xpReward} XP</div>
-                          {quest.dueDate && <Badge variant="outline" className="text-xs border-warning text-warning">{new Date(quest.dueDate).toLocaleDateString('hu-HU')}</Badge>}
-                        </div>
+                <Card className="glass p-4 sm:p-6 hover-lift">
+                  <div className="flex items-start gap-3 sm:gap-4">
+                    <button onClick={() => handleCompleteQuest(quest.id)} className="mt-1 text-text-muted hover:text-primary transition-colors flex-shrink-0">
+                      <Circle className="h-5 w-5" />
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <h3 className="font-heading font-semibold text-text-primary text-sm sm:text-base">{quest.title}</h3>
+                        {quest.generated && (
+                          <Badge className="text-xs bg-primary/15 text-primary border-primary/30">
+                            <Sparkles className="h-3 w-3 mr-1" />Auto
+                          </Badge>
+                        )}
                       </div>
+                      <p className="text-text-secondary text-sm mb-3">{quest.description}</p>
+                      <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                        <Badge className={cn('text-xs', difficultyColors[quest.difficulty])}>{difficultyLabels[quest.difficulty]}</Badge>
+                        <div className="flex items-center gap-1 text-xs sm:text-sm text-text-muted"><Clock className="h-3 w-3 sm:h-4 sm:w-4" />{quest.estimatedTime}p</div>
+                        <div className="flex items-center gap-1 text-xs sm:text-sm text-primary"><Zap className="h-3 w-3 sm:h-4 sm:w-4" />+{quest.xpReward} XP</div>
+                        {quest.dueDate && <Badge variant="outline" className="text-xs border-warning text-warning">Határidő: {new Date(quest.dueDate).toLocaleDateString('hu-HU')}</Badge>}
+                      </div>
+                      <Button onClick={() => handleCompleteQuest(quest.id)} className="bg-success hover:bg-success/90 text-surface-0 mt-3 sm:hidden w-full" size="sm">
+                        Teljesítés
+                      </Button>
                     </div>
-                    <Button onClick={() => handleCompleteQuest(quest.id)} variant="outline" className="border-primary/30 text-primary hover:bg-primary/10">
-                      Elkezdés
+                    <Button onClick={() => handleCompleteQuest(quest.id)} className="bg-success hover:bg-success/90 text-surface-0 hidden sm:inline-flex flex-shrink-0">
+                      Teljesítés
                     </Button>
                   </div>
                 </Card>
               </motion.div>
             ))}
+            {filteredQuests(questsWeekly).length === 0 && (
+              <Card className="glass p-12 text-center">
+                <Zap className="h-16 w-16 text-text-disabled mx-auto mb-4" />
+                <h3 className="text-lg font-heading font-semibold text-text-primary mb-2">Nincsenek heti küldetések</h3>
+                <p className="text-text-muted">A heti küldetések automatikusan generálódnak minden hétfőn.</p>
+              </Card>
+            )}
           </div>
         </TabsContent>
 
-        {/* Completed */}
+        {/* Completed (today only) */}
         <TabsContent value="completed" className="space-y-4">
           <div className="grid gap-4">
             {filteredQuests(questsCompleted).map((quest, index) => (
@@ -319,59 +251,36 @@ export default function Quests() {
                   <div className="flex items-start gap-4">
                     <CheckCircle className="h-5 w-5 mt-1 text-success" />
                     <div className="flex-1">
-                      <h3 className="font-heading font-semibold text-text-primary mb-2 line-through">{quest.title}</h3>
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="font-heading font-semibold text-text-primary line-through">{quest.title}</h3>
+                        {quest.generated && (
+                          <Badge className="text-xs bg-primary/15 text-primary border-primary/30">
+                            <Sparkles className="h-3 w-3 mr-1" />Auto
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-text-secondary mb-3">{quest.description}</p>
                       <div className="flex items-center gap-3 flex-wrap">
                         <Badge className="text-xs bg-success/20 text-success border-success/30">Teljesítve</Badge>
                         <div className="flex items-center gap-1 text-sm text-success"><Zap className="h-4 w-4" />+{quest.xpReward} XP megszerzve</div>
-                        {quest.completedAt && <span className="text-xs text-text-muted">{new Date(quest.completedAt).toLocaleDateString('hu-HU')}</span>}
+                        {quest.completedAt && <span className="text-xs text-text-muted">{new Date(quest.completedAt).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}</span>}
                       </div>
                     </div>
                   </div>
                 </Card>
               </motion.div>
             ))}
+            {filteredQuests(questsCompleted).length === 0 && (
+              <Card className="glass p-12 text-center">
+                <CheckCircle className="h-16 w-16 text-text-disabled mx-auto mb-4" />
+                <h3 className="text-lg font-heading font-semibold text-text-primary mb-2">Még nincs mai teljesítés</h3>
+                <p className="text-text-muted">Teljesíts küldetéseket a Napi vagy Heti fülön!</p>
+              </Card>
+            )}
           </div>
-        </TabsContent>
-
-        {/* Suggested */}
-        <TabsContent value="suggested" className="space-y-4">
-          <Card className="glass p-6 border border-primary/30">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-                <Zap className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-heading font-semibold text-text-primary">{currentPersona.label} küldetések</h3>
-                <p className="text-sm text-text-secondary">Személyre szabott javaslatok a típusodra</p>
-              </div>
-            </div>
-            <div className="grid gap-4">
-              {generateSuggestedQuests().map((quest, index) => (
-                <motion.div key={quest.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
-                  <Card className="bg-surface-1/30 p-4 hover-lift border border-primary/20">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-text-primary mb-2">{quest.title}</h4>
-                        <p className="text-sm text-text-secondary mb-3">{quest.description}</p>
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-1 text-sm text-text-muted"><Clock className="h-4 w-4" />{quest.estimatedTime} perc</div>
-                          <div className="flex items-center gap-1 text-sm text-primary"><Zap className="h-4 w-4" />+{quest.xpReward} XP</div>
-                        </div>
-                      </div>
-                      <Button size="sm" className="bg-primary hover:bg-primary/90 text-surface-0" onClick={() => handleAcceptSuggested(quest)}>
-                        Elfogadás
-                      </Button>
-                    </div>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
-          </Card>
         </TabsContent>
       </Tabs>
 
-      <QuestDialog open={questDialogOpen} onOpenChange={setQuestDialogOpen} />
       <ConfirmDialog
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}

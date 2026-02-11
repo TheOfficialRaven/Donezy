@@ -9,14 +9,14 @@ export default function UserStats() {
   const xpProgress = (userStats.xp / userStats.xpToNextLevel) * 100;
 
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-2 sm:gap-4">
       {/* XP Progress Ring */}
       <motion.div 
         className="relative"
         whileHover={{ scale: 1.05 }}
         transition={{ type: 'spring', stiffness: 400 }}
       >
-        <div className="w-12 h-12 rounded-full bg-surface-1 border-2 border-primary/30 flex items-center justify-center relative overflow-hidden">
+        <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-surface-1 border-2 border-primary/30 flex items-center justify-center relative overflow-hidden">
           <div 
             className="absolute inset-0 rounded-full border-2 border-primary"
             style={{
@@ -25,13 +25,13 @@ export default function UserStats() {
               WebkitMask: 'radial-gradient(circle closest-side, transparent 65%, black 66%)'
             }}
           />
-          <span className="text-xs font-bold text-text-primary z-10">
+          <span className="text-[10px] sm:text-xs font-bold text-text-primary z-10">
             {userStats.level}
           </span>
         </div>
       </motion.div>
 
-      {/* Stats */}
+      {/* Stats - Desktop */}
       <div className="hidden sm:flex flex-col gap-1">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5">
@@ -59,13 +59,11 @@ export default function UserStats() {
       </div>
 
       {/* Mobile - Compact view */}
-      <div className="sm:hidden flex items-center gap-2">
-        <div className="flex items-center gap-1">
-          <Gem className="h-4 w-4 text-secondary" />
-          <span className="text-sm font-medium text-text-primary">
-            {userStats.essence}
-          </span>
-        </div>
+      <div className="sm:hidden flex items-center gap-1">
+        <Gem className="h-3.5 w-3.5 text-secondary" />
+        <span className="text-xs font-medium text-text-primary">
+          {userStats.essence}
+        </span>
       </div>
     </div>
   );

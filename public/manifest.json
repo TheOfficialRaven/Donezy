@@ -9,15 +9,15 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/Donezy-logo.png",
-      "sizes": "512x512",
-      "type": "image/png",
+      "src": "/donezy-pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
     },
     {
-      "src": "/donezy-logo.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/Donezy-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any"
     }
   ]

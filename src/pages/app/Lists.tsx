@@ -39,6 +39,8 @@ export default function Lists() {
   const [editingList, setEditingList] = useState<TodoList | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [listToDelete, setListToDelete] = useState<string | null>(null);
+  const [taskDeleteConfirmOpen, setTaskDeleteConfirmOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<{ listId: string; taskId: string } | null>(null);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [taskDialogListId, setTaskDialogListId] = useState<string>('');
@@ -66,9 +68,18 @@ export default function Lists() {
     setNewTaskPriorities({ ...newTaskPriorities, [listId]: 'medium' });
   };
 
-  const handleDeleteTask = async (listId: string, taskId: string) => {
-    await deleteTask(listId, taskId);
-    toast.success('Feladat törölve.');
+  const confirmDeleteTask = (listId: string, taskId: string) => {
+    setTaskToDelete({ listId, taskId });
+    setTaskDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteTask = async () => {
+    if (taskToDelete) {
+      await deleteTask(taskToDelete.listId, taskToDelete.taskId);
+      toast.success('Feladat törölve.');
+      setTaskDeleteConfirmOpen(false);
+      setTaskToDelete(null);
+    }
   };
 
   const handleEditList = (list: TodoList) => {
@@ -181,15 +192,15 @@ export default function Lists() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleEditTask(list.id, task)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-text-muted hover:text-primary"
+                        className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity text-text-muted hover:text-primary flex-shrink-0 w-8 h-8 p-0"
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDeleteTask(list.id, task.id)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-text-muted hover:text-danger"
+                        onClick={() => confirmDeleteTask(list.id, task.id)}
+                        className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity text-text-muted hover:text-danger flex-shrink-0 w-8 h-8 p-0"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -273,6 +284,15 @@ export default function Lists() {
         description="Biztosan törölni szeretnéd ezt a listát és az összes benne lévő feladatot? Ez a művelet nem vonható vissza."
         confirmLabel="Törlés"
         onConfirm={handleDeleteList}
+        destructive
+      />
+      <ConfirmDialog
+        open={taskDeleteConfirmOpen}
+        onOpenChange={setTaskDeleteConfirmOpen}
+        title="Feladat törlése"
+        description="Biztosan törölni szeretnéd ezt a feladatot?"
+        confirmLabel="Törlés"
+        onConfirm={handleDeleteTask}
         destructive
       />
     </div>

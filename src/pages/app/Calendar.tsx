@@ -97,12 +97,12 @@ export default function Calendar() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-3">
-          <Card className="glass p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-4">
-                <h2 className="text-2xl font-heading font-bold text-text-primary">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="lg:col-span-3 min-w-0">
+          <Card className="glass p-3 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+              <div className="flex items-center gap-2 sm:gap-4">
+                <h2 className="text-lg sm:text-2xl font-heading font-bold text-text-primary">
                   {currentDate.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long' })}
                 </h2>
                 <div className="flex gap-1">
@@ -110,10 +110,10 @@ export default function Calendar() {
                   <Button variant="ghost" size="sm" onClick={() => navigateMonth('next')}><ChevronRight className="h-4 w-4" /></Button>
                 </div>
               </div>
-              <div className="flex bg-surface-1/50 rounded-lg p-1">
+              <div className="flex bg-surface-1/50 rounded-lg p-1 self-start sm:self-auto">
                 {(['month', 'week', 'day'] as ViewMode[]).map((mode) => (
                   <Button key={mode} variant={viewMode === mode ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode(mode)}
-                    className={cn('px-3 py-1 text-xs', viewMode === mode ? 'bg-primary text-surface-0' : 'text-text-secondary hover:text-text-primary')}>
+                    className={cn('px-2 sm:px-3 py-1 text-xs', viewMode === mode ? 'bg-primary text-surface-0' : 'text-text-secondary hover:text-text-primary')}>
                     {mode === 'month' ? 'Hónap' : mode === 'week' ? 'Hét' : 'Nap'}
                   </Button>
                 ))}
@@ -121,7 +121,7 @@ export default function Calendar() {
             </div>
 
             {viewMode === 'month' && (
-              <div className="grid grid-cols-7 gap-1">
+              <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
                 {[
                   { key: 'mon', label: 'H' },
                   { key: 'tue', label: 'K' },
@@ -131,22 +131,22 @@ export default function Calendar() {
                   { key: 'sat', label: 'Sz' },
                   { key: 'sun', label: 'V' },
                 ].map((d) => (
-                  <div key={d.key} className="p-2 text-center text-sm font-medium text-text-muted">{d.label}</div>
+                  <div key={d.key} className="p-1 sm:p-2 text-center text-xs sm:text-sm font-medium text-text-muted">{d.label}</div>
                 ))}
                 {getDaysInMonth().map((date, index) => {
                   const dayEvents = getEventsForDate(date);
                   return (
                     <motion.div key={index} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.01 }}
-                      className={cn("min-h-[100px] p-2 border border-white/5 rounded-lg transition-colors cursor-pointer hover:bg-surface-1/30",
+                      className={cn("min-h-[48px] sm:min-h-[100px] p-1 sm:p-2 border border-white/5 rounded-md sm:rounded-lg transition-colors cursor-pointer hover:bg-surface-1/30",
                         !isSameMonth(date, currentDate) && "text-text-disabled bg-surface-1/10",
                         isToday(date) && "bg-primary/20 border-primary/30"
                       )}
                       onClick={() => { setCurrentDate(date); setViewMode('day'); }}
                     >
-                      <div className={cn("text-sm font-medium mb-1", isToday(date) ? "text-primary" : isSameMonth(date, currentDate) ? "text-text-primary" : "text-text-disabled")}>
+                      <div className={cn("text-xs sm:text-sm font-medium mb-0.5 sm:mb-1", isToday(date) ? "text-primary" : isSameMonth(date, currentDate) ? "text-text-primary" : "text-text-disabled")}>
                         {date.getDate()}
                       </div>
-                      <div className="space-y-1">
+                      <div className="space-y-0.5 sm:space-y-1 hidden sm:block">
                         {dayEvents.slice(0, 2).map((event) => (
                           <div key={event.id} className="text-xs p-1 rounded text-surface-0 truncate cursor-pointer" style={{ backgroundColor: event.color }} onClick={(e) => { e.stopPropagation(); handleEditEvent(event); }}>
                             {formatTime(event.startTime)} {event.title}
@@ -154,6 +154,14 @@ export default function Calendar() {
                         ))}
                         {dayEvents.length > 2 && <div className="text-xs text-text-muted">+{dayEvents.length - 2} további</div>}
                       </div>
+                      {/* Mobile: just show dots for events */}
+                      {dayEvents.length > 0 && (
+                        <div className="flex gap-0.5 sm:hidden mt-0.5">
+                          {dayEvents.slice(0, 3).map((event) => (
+                            <div key={event.id} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: event.color }} />
+                          ))}
+                        </div>
+                      )}
                     </motion.div>
                   );
                 })}
@@ -161,24 +169,24 @@ export default function Calendar() {
             )}
 
             {viewMode === 'week' && (
-              <div className="overflow-x-auto">
-                <div className="grid grid-cols-8 gap-1 min-w-[700px]">
-                  <div className="p-2" />
+              <div className="overflow-x-auto -mx-1 px-1 scrollbar-custom">
+                <div className="grid grid-cols-8 gap-0.5 sm:gap-1 min-w-[560px]">
+                  <div className="p-1 sm:p-2" />
                   {getWeekDays().map((d) => (
-                    <div key={d.toISOString()} className={cn("p-2 text-center text-sm font-medium", isToday(d) ? "text-primary" : "text-text-muted")}>
+                    <div key={d.toISOString()} className={cn("p-1 sm:p-2 text-center text-xs sm:text-sm font-medium", isToday(d) ? "text-primary" : "text-text-muted")}>
                       {d.toLocaleDateString('hu-HU', { weekday: 'short' })} {d.getDate()}
                     </div>
                   ))}
                   {hours.map((hour) => (
                     <>
-                      <div key={`h-${hour}`} className="p-2 text-xs text-text-muted text-right">{hour}:00</div>
+                      <div key={`h-${hour}`} className="p-1 sm:p-2 text-xs text-text-muted text-right">{hour}:00</div>
                       {getWeekDays().map((d) => {
                         const dayEvents = getEventsForDate(d).filter(e => new Date(e.startTime).getHours() === hour);
                         return (
-                          <div key={`${d.toISOString()}-${hour}`} className="p-1 border border-white/5 min-h-[40px] cursor-pointer hover:bg-surface-1/20"
+                          <div key={`${d.toISOString()}-${hour}`} className="p-0.5 sm:p-1 border border-white/5 min-h-[32px] sm:min-h-[40px] cursor-pointer hover:bg-surface-1/20"
                             onClick={() => { setCurrentDate(d); handleNewEvent(); }}>
                             {dayEvents.map((ev) => (
-                              <div key={ev.id} className="text-xs p-1 rounded text-surface-0 truncate cursor-pointer mb-1" style={{ backgroundColor: ev.color }} onClick={(e) => { e.stopPropagation(); handleEditEvent(ev); }}>
+                              <div key={ev.id} className="text-xs p-0.5 sm:p-1 rounded text-surface-0 truncate cursor-pointer mb-0.5" style={{ backgroundColor: ev.color }} onClick={(e) => { e.stopPropagation(); handleEditEvent(ev); }}>
                                 {ev.title}
                               </div>
                             ))}
@@ -193,20 +201,20 @@ export default function Calendar() {
 
             {viewMode === 'day' && (
               <div>
-                <h3 className="text-lg font-semibold text-text-primary mb-4">
+                <h3 className="text-base sm:text-lg font-semibold text-text-primary mb-4">
                   {currentDate.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}
                 </h3>
                 <div className="space-y-1">
                   {hours.map((hour) => {
                     const hourEvents = getEventsForDate(currentDate).filter(e => new Date(e.startTime).getHours() === hour);
                     return (
-                      <div key={hour} className="flex gap-3 min-h-[50px]">
-                        <div className="w-16 text-sm text-text-muted text-right pt-2 flex-shrink-0">{hour}:00</div>
-                        <div className="flex-1 border-t border-white/5 pt-2 cursor-pointer hover:bg-surface-1/20 rounded px-2" onClick={() => handleNewEvent()}>
+                      <div key={hour} className="flex gap-2 sm:gap-3 min-h-[44px] sm:min-h-[50px]">
+                        <div className="w-12 sm:w-16 text-xs sm:text-sm text-text-muted text-right pt-2 flex-shrink-0">{hour}:00</div>
+                        <div className="flex-1 min-w-0 border-t border-white/5 pt-2 cursor-pointer hover:bg-surface-1/20 rounded px-1 sm:px-2" onClick={() => handleNewEvent()}>
                           {hourEvents.map((ev) => (
-                            <div key={ev.id} className="p-2 rounded text-surface-0 text-sm mb-1 cursor-pointer" style={{ backgroundColor: ev.color }} onClick={(e) => { e.stopPropagation(); handleEditEvent(ev); }}>
+                            <div key={ev.id} className="p-1.5 sm:p-2 rounded text-surface-0 text-xs sm:text-sm mb-1 cursor-pointer" style={{ backgroundColor: ev.color }} onClick={(e) => { e.stopPropagation(); handleEditEvent(ev); }}>
                               <span className="font-medium">{ev.title}</span>
-                              <span className="ml-2 opacity-75">{formatTime(ev.startTime)} - {formatTime(ev.endTime)}</span>
+                              <span className="ml-1 sm:ml-2 opacity-75 text-xs">{formatTime(ev.startTime)} - {formatTime(ev.endTime)}</span>
                             </div>
                           ))}
                         </div>

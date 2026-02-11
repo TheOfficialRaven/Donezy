@@ -53,7 +53,7 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-surface-0">
       {/* Hero Section */}
-      <section className="relative overflow-hidden py-20 px-4">
+      <section className="relative overflow-hidden py-12 sm:py-20 px-4">
         {/* Background gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-secondary/10" />
 
@@ -62,15 +62,15 @@ export default function Landing() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="text-center mb-16"
+            className="text-center mb-12 sm:mb-16"
           >
-            <div className="flex items-center justify-center gap-5 mb-6">
-              <DonezyLogo className="w-20 h-20 md:w-28 md:h-28" />
-              <h1 className="text-5xl md:text-7xl font-heading font-bold">
+            <div className="flex items-center justify-center gap-3 sm:gap-5 mb-6">
+              <DonezyLogo className="w-14 h-14 sm:w-20 sm:h-20 md:w-28 md:h-28" />
+              <h1 className="text-4xl sm:text-5xl md:text-7xl font-heading font-bold">
                 <span className="text-gradient-primary">Donezy</span>
               </h1>
             </div>
-            <p className="text-xl md:text-2xl text-text-secondary max-w-3xl mx-auto mb-8">
+            <p className="text-base sm:text-xl md:text-2xl text-text-secondary max-w-3xl mx-auto mb-8 px-2">
               Gamifikált produktivitási platform, amely átalakítja a mindennapjaidat
               egy izgalmas kaland sorozattá
             </p>
@@ -104,28 +104,28 @@ export default function Landing() {
             transition={{ duration: 1, delay: 0.3 }}
             className="relative max-w-4xl mx-auto"
           >
-            <div className="glass-intense rounded-2xl p-8 hover-lift">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-success to-success/60 flex items-center justify-center glow-primary">
-                    <Zap className="h-6 w-6 text-surface-0" />
+            <div className="glass-intense rounded-2xl p-4 sm:p-8 hover-lift">
+              <div className="flex items-start sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-success to-success/60 flex items-center justify-center glow-primary flex-shrink-0">
+                    <Zap className="h-5 w-5 sm:h-6 sm:w-6 text-surface-0" />
                   </div>
-                  <div>
-                    <h3 className="font-heading font-semibold text-text-primary">Reggeli rutinok elvégzése</h3>
-                    <p className="text-sm text-text-muted">Kávé, újságolvasás és napi célok átgondolása</p>
+                  <div className="min-w-0">
+                    <h3 className="font-heading font-semibold text-text-primary text-sm sm:text-base">Reggeli rutinok elvégzése</h3>
+                    <p className="text-xs sm:text-sm text-text-muted truncate">Kávé, újságolvasás és napi célok átgondolása</p>
                   </div>
                 </div>
                 <Button
                   size="sm"
-                  className="bg-success hover:bg-success/90 text-surface-0"
+                  className="bg-success hover:bg-success/90 text-surface-0 flex-shrink-0"
                 >
                   Kész
                 </Button>
               </div>
 
-              <div className="flex items-center gap-4 text-sm text-text-muted">
+              <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-text-muted">
                 <span className="flex items-center gap-1">
-                  <Zap className="h-4 w-4 text-primary" /> +50 XP
+                  <Zap className="h-3 w-3 sm:h-4 sm:w-4 text-primary" /> +50 XP
                 </span>
                 <span>30 perc</span>
                 <span className="px-2 py-1 bg-primary/20 text-primary rounded-full text-xs">Rutin</span>
@@ -290,10 +290,10 @@ export default function Landing() {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="text-4xl md:text-5xl font-heading font-bold text-text-primary mb-6">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-heading font-bold text-text-primary mb-6">
               Kezdj el most
             </h2>
-            <p className="text-xl text-text-secondary mb-8 max-w-2xl mx-auto">
+            <p className="text-base sm:text-xl text-text-secondary mb-8 max-w-2xl mx-auto px-2">
               Hozz létre fiókot és kezdj el építeni egy produktívabb életstílust
             </p>
 

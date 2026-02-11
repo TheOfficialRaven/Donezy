@@ -12,6 +12,15 @@ import {
   levelUpEssenceBonus,
   type AchievementStats,
 } from '@/lib/xpSystem';
+import {
+  generateDailyQuests,
+  generateWeeklyQuests,
+} from '@/lib/questGenerator';
+import {
+  getLocalDateString,
+  getLocalYesterday,
+  getLocalMondayOfWeek,
+} from '@/lib/dateUtils';
 
 // ============ TYPES ============
 
@@ -29,6 +38,8 @@ export interface Quest {
   dueDate?: string;
   tags: string[];
   persona?: string;
+  generated?: boolean;
+  questType?: 'daily' | 'weekly';
 }
 
 export interface Note {
@@ -75,6 +86,8 @@ export interface UserStats {
   tasksCompleted: number;
   notesCreated: number;
   lastActiveDate: string;
+  lastQuestGenDate?: string;
+  lastWeeklyGenDate?: string;
 }
 
 export interface Task {
@@ -113,8 +126,6 @@ interface AppState {
 
   // Quest actions
   completeQuest: (questId: string) => Promise<void>;
-  addQuest: (quest: Omit<Quest, 'id'>) => Promise<void>;
-  updateQuest: (questId: string, updates: Partial<Quest>) => Promise<void>;
   deleteQuest: (questId: string) => Promise<void>;
 
   // List actions
@@ -152,7 +163,7 @@ const defaultStats: UserStats = {
   totalQuestsCompleted: 0,
   tasksCompleted: 0,
   notesCreated: 0,
-  lastActiveDate: new Date().toISOString().split('T')[0],
+  lastActiveDate: '',
 };
 
 export const useAppStore = create<AppState>()((set, get) => {
@@ -275,13 +286,11 @@ export const useAppStore = create<AppState>()((set, get) => {
     const { uid } = get();
     if (!uid) return;
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     if (currentStats.lastActiveDate === today) return;
 
-    // Calculate streak
-    const yesterday = new Date(Date.now() - 86400000)
-      .toISOString()
-      .split('T')[0];
+    // Calculate streak (using local dates)
+    const yesterday = getLocalYesterday();
     const newStreak =
       currentStats.lastActiveDate === yesterday
         ? currentStats.streak + 1
@@ -340,6 +349,93 @@ export const useAppStore = create<AppState>()((set, get) => {
     await checkAchievements(newStats);
   };
 
+  /**
+   * Generates daily and/or weekly quests if not already generated today/this week.
+   * Cleans up old uncompleted generated daily quests.
+   */
+  const generateQuestsIfNeeded = async (stats: UserStats) => {
+    const { uid, quests, lists } = get();
+    if (!uid) return;
+
+    const today = getLocalDateString();
+    const persona = (() => {
+      try {
+        const stored = localStorage.getItem('donezy-persona');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          return parsed?.state?.currentPersona?.id || 'worker';
+        }
+      } catch { /* ignore */ }
+      return 'worker';
+    })();
+
+    const genOptions = { persona, level: stats.level, quests, lists, uid, date: today };
+
+    // --- Clean up old completed quests (from previous days) ---
+    const oldCompletedQuests = quests.filter(
+      (q) => q.completed && q.completedAt && !q.completedAt.startsWith(today)
+    );
+    for (const q of oldCompletedQuests) {
+      await dbService.deleteQuest(uid, q.id);
+    }
+
+    // --- Daily Quests ---
+    // Regenerate if: not generated today, OR persona changed since last generation
+    const existingDailyGenerated = quests.filter(
+      (q) => q.generated && q.questType === 'daily' && q.dueDate === today
+    );
+    const personaMismatch = existingDailyGenerated.length > 0 &&
+      existingDailyGenerated.some((q) => q.persona && q.persona !== persona);
+
+    if (stats.lastQuestGenDate !== today || personaMismatch) {
+      // Clean up old/mismatched daily generated quests
+      const dailyToRemove = quests.filter(
+        (q) => q.generated && q.questType === 'daily' && !q.completed &&
+          (q.dueDate !== today || (q.persona && q.persona !== persona))
+      );
+      for (const q of dailyToRemove) {
+        await dbService.deleteQuest(uid, q.id);
+      }
+
+      // Generate new daily quests
+      const dailyQuests = generateDailyQuests(genOptions);
+      for (const quest of dailyQuests) {
+        await dbService.addQuest(uid, quest);
+      }
+
+      await dbService.updateStats(uid, { lastQuestGenDate: today });
+      toast.success(`${dailyQuests.length} új napi küldetés generálva!`, { duration: 3000 });
+    }
+
+    // --- Weekly Quests (Monday or first login of the week) ---
+    const mondayOfWeek = getLocalMondayOfWeek(today);
+
+    const existingWeeklyGenerated = quests.filter(
+      (q) => q.generated && q.questType === 'weekly' && !q.completed
+    );
+    const weeklyPersonaMismatch = existingWeeklyGenerated.length > 0 &&
+      existingWeeklyGenerated.some((q) => q.persona && q.persona !== persona);
+
+    if (!stats.lastWeeklyGenDate || stats.lastWeeklyGenDate < mondayOfWeek || weeklyPersonaMismatch) {
+      // Clean up mismatched weekly quests
+      if (weeklyPersonaMismatch) {
+        for (const q of existingWeeklyGenerated.filter((q) => q.persona && q.persona !== persona)) {
+          await dbService.deleteQuest(uid, q.id);
+        }
+      }
+
+      const weeklyQuests = generateWeeklyQuests(genOptions);
+      for (const quest of weeklyQuests) {
+        await dbService.addQuest(uid, quest);
+      }
+
+      await dbService.updateStats(uid, { lastWeeklyGenDate: today });
+      if (weeklyQuests.length > 0) {
+        toast.success(`${weeklyQuests.length} új heti küldetés generálva!`, { duration: 3000 });
+      }
+    }
+  };
+
   // ============ STORE DEFINITION ============
 
   return {
@@ -375,6 +471,12 @@ export const useAppStore = create<AppState>()((set, get) => {
           if (!_dailyChecked) {
             _dailyChecked = true;
             handleDailyLogin(mergedStats);
+
+            // Schedule quest generation independently (wait for other data to load)
+            setTimeout(() => {
+              const currentStats = get().userStats;
+              generateQuestsIfNeeded(currentStats);
+            }, 3000);
           }
         })
       );
@@ -448,10 +550,10 @@ export const useAppStore = create<AppState>()((set, get) => {
       const quest = quests.find((q) => q.id === questId);
       if (!quest || quest.completed) return;
 
-      // Mark quest as completed in Firebase
+      // Mark quest as completed in Firebase (use local date prefix for correct day filtering)
       await dbService.updateQuest(uid, questId, {
         completed: true,
-        completedAt: new Date().toISOString(),
+        completedAt: getLocalDateString() + 'T' + new Date().toTimeString().slice(0, 8),
       });
 
       // Award XP + essence via unified processing
@@ -462,18 +564,6 @@ export const useAppStore = create<AppState>()((set, get) => {
           totalQuestsCompleted: userStats.totalQuestsCompleted + 1,
         },
       });
-    },
-
-    addQuest: async (quest) => {
-      const { uid } = get();
-      if (!uid) return;
-      await dbService.addQuest(uid, quest);
-    },
-
-    updateQuest: async (questId, updates) => {
-      const { uid } = get();
-      if (!uid) return;
-      await dbService.updateQuest(uid, questId, updates);
     },
 
     deleteQuest: async (questId) => {
