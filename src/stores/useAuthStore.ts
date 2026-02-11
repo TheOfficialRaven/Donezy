@@ -19,8 +19,8 @@ interface AuthState {
 
   // Actions
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
-  signIn: (email: string, password: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signIn: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
+  signInWithGoogle: (rememberMe?: boolean) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   resendVerificationEmail: (email: string, password: string) => Promise<void>;
@@ -47,10 +47,10 @@ export const useAuthStore = create<AuthState>()((set) => ({
     }
   },
 
-  signIn: async (email, password) => {
+  signIn: async (email, password, rememberMe = false) => {
     set({ loading: true, error: null, needsEmailVerification: false });
     try {
-      await authSignIn(email, password);
+      await authSignIn(email, password, rememberMe);
       set({ loading: false });
     } catch (err: any) {
       if (err.code === 'auth/email-not-verified') {
@@ -62,10 +62,10 @@ export const useAuthStore = create<AuthState>()((set) => ({
     }
   },
 
-  signInWithGoogle: async () => {
+  signInWithGoogle: async (rememberMe = false) => {
     set({ loading: true, error: null });
     try {
-      await authSignInWithGoogle();
+      await authSignInWithGoogle(rememberMe);
       set({ loading: false });
     } catch (err: any) {
       set({ loading: false, error: getFirebaseErrorMessage(err.code) });

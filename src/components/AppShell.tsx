@@ -3,10 +3,13 @@ import { motion } from 'framer-motion';
 import Header from './layout/Header';
 import Sidebar from './layout/Sidebar';
 import BottomNav from './layout/BottomNav';
+import AlarmPopup from './AlarmPopup';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAlarmSystem } from '@/hooks/useAlarmSystem';
 
 export default function AppShell() {
   const isMobile = useIsMobile();
+  const { activeAlarms, dismissAlarm, dismissAll, snoozeAlarm } = useAlarmSystem();
 
   return (
     <div className="min-h-screen bg-surface-0 flex overflow-x-hidden max-w-[100vw]">
@@ -29,6 +32,14 @@ export default function AppShell() {
         {/* Mobile Bottom Navigation */}
         {isMobile && <BottomNav />}
       </div>
+
+      {/* Alarm popup overlay */}
+      <AlarmPopup
+        alarms={activeAlarms}
+        onDismiss={dismissAlarm}
+        onDismissAll={dismissAll}
+        onSnooze={snoozeAlarm}
+      />
     </div>
   );
 }

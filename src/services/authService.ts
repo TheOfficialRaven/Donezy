@@ -7,6 +7,9 @@ import {
   sendEmailVerification,
   onAuthStateChanged,
   updateProfile,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
   type User,
 } from 'firebase/auth';
 import { ref, set, get } from 'firebase/database';
@@ -45,7 +48,10 @@ export async function signUp(email: string, password: string, displayName: strin
   return userCredential.user;
 }
 
-export async function signIn(email: string, password: string) {
+export async function signIn(email: string, password: string, rememberMe: boolean = false) {
+  // Set persistence based on "remember me" choice
+  await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+
   const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
   if (!userCredential.user.emailVerified) {
@@ -63,7 +69,10 @@ export async function resendVerificationEmail(email: string, password: string) {
   await firebaseSignOut(auth);
 }
 
-export async function signInWithGoogle() {
+export async function signInWithGoogle(rememberMe: boolean = false) {
+  // Set persistence based on "remember me" choice
+  await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+
   const userCredential = await signInWithPopup(auth, googleProvider);
   const user = userCredential.user;
 

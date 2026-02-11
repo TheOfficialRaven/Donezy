@@ -29,7 +29,7 @@ export default function NoteDialog({ open, onOpenChange, note }: NoteDialogProps
         title: note.title,
         content: note.content,
         folder: note.folder,
-        tags: note.tags.join(', '),
+        tags: (note.tags || []).join(', '),
       });
     } else {
       setFormData({ title: '', content: '', folder: 'Általános', tags: '' });

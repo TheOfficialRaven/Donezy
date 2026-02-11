@@ -16,6 +16,7 @@ export default function Auth() {
   const [resetEmail, setResetEmail] = useState('');
   const [resetSent, setResetSent] = useState(false);
   const [verificationResent, setVerificationResent] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -35,7 +36,7 @@ export default function Auth() {
 
     try {
       if (isLogin) {
-        await signIn(formData.email, formData.password);
+        await signIn(formData.email, formData.password, rememberMe);
         navigate('/app/dashboard');
       } else {
         await signUp(formData.email, formData.password, formData.name);
@@ -60,7 +61,7 @@ export default function Auth() {
   const handleGoogleSignIn = async () => {
     clearError();
     try {
-      await signInWithGoogle();
+      await signInWithGoogle(rememberMe);
       navigate('/app/dashboard');
     } catch {
       // Error is handled in the store
@@ -383,7 +384,27 @@ export default function Auth() {
                   </div>
 
                   {isLogin && (
-                    <div className="flex items-center justify-end text-sm">
+                    <div className="flex items-center justify-between text-sm">
+                      <label className="flex items-center gap-2 cursor-pointer group select-none">
+                        <div className="relative">
+                          <input
+                            type="checkbox"
+                            checked={rememberMe}
+                            onChange={(e) => setRememberMe(e.target.checked)}
+                            className="peer sr-only"
+                          />
+                          <div className="w-4 h-4 rounded border border-white/20 bg-surface-1/50 peer-checked:bg-primary peer-checked:border-primary transition-all duration-200 flex items-center justify-center group-hover:border-primary/50">
+                            {rememberMe && (
+                              <svg className="w-3 h-3 text-surface-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-text-secondary group-hover:text-text-primary transition-colors">
+                          Maradj bejelentkezve
+                        </span>
+                      </label>
                       <button
                         type="button"
                         onClick={() => { setShowResetPassword(true); clearError(); }}

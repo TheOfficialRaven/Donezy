@@ -13,6 +13,7 @@ interface EventDialogProps {
   onOpenChange: (open: boolean) => void;
   event?: CalendarEvent | null;
   defaultCategory?: string;
+  defaultStartTime?: Date;
 }
 
 const categories = [
@@ -26,12 +27,23 @@ const categories = [
   { value: 'Időblokk', color: '#818CF8' },
 ];
 
-export default function EventDialog({ open, onOpenChange, event, defaultCategory }: EventDialogProps) {
+export default function EventDialog({ open, onOpenChange, event, defaultCategory, defaultStartTime }: EventDialogProps) {
   const { addEvent, updateEvent } = useAppStore();
 
-  const now = new Date();
-  const defaultStart = new Date(now.getTime() + 60 * 60 * 1000);
-  const defaultEnd = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+  const getDefaults = () => {
+    if (defaultStartTime) {
+      const start = new Date(defaultStartTime);
+      const end = new Date(start.getTime() + 60 * 60 * 1000); // +1 hour
+      return { start, end };
+    }
+    const now = new Date();
+    return {
+      start: new Date(now.getTime() + 60 * 60 * 1000),
+      end: new Date(now.getTime() + 2 * 60 * 60 * 1000),
+    };
+  };
+
+  const { start: defaultStart, end: defaultEnd } = getDefaults();
 
   const formatDatetimeLocal = (d: Date) => {
     const pad = (n: number) => n.toString().padStart(2, '0');
@@ -58,16 +70,17 @@ export default function EventDialog({ open, onOpenChange, event, defaultCategory
         reminder: event.reminder || 15,
       });
     } else {
+      const { start, end } = getDefaults();
       setFormData({
         title: '',
         description: '',
-        startTime: formatDatetimeLocal(defaultStart),
-        endTime: formatDatetimeLocal(defaultEnd),
+        startTime: formatDatetimeLocal(start),
+        endTime: formatDatetimeLocal(end),
         category: defaultCategory || 'Személyes',
         reminder: 15,
       });
     }
-  }, [event, open, defaultCategory]);
+  }, [event, open, defaultCategory, defaultStartTime]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Filter, Search, Clock, Zap, CheckCircle, Circle, Sparkles } from 'lucide-react';
+import { Filter, Search, Clock, Zap, CheckCircle, Circle, Sparkles, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAppStore } from '@/stores/useAppStore';
 import { cn } from '@/lib/utils';
-import { getLocalDateString } from '@/lib/dateUtils';
+import { getLocalDateString, getLocalMondayOfWeek, getLocalSundayOfWeek } from '@/lib/dateUtils';
 import ConfirmDialog from '@/components/dialogs/ConfirmDialog';
 import { toast } from 'sonner';
 
@@ -36,28 +36,33 @@ export default function Quests() {
   const { quests, completeQuest, deleteQuest } = useAppStore();
 
   const today = getLocalDateString();
+  const mondayOfWeek = getLocalMondayOfWeek(today);
+  const sundayOfWeek = getLocalSundayOfWeek(today);
 
   const categories = Array.from(new Set(quests.map(q => q.category))).filter(Boolean);
 
-  // Daily: incomplete quests with today's date (or no date)
+  // Daily: incomplete generated daily quests for today
   const questsToday = quests.filter(q =>
     !q.completed &&
-    (!q.dueDate || q.dueDate === today) &&
-    q.questType !== 'weekly'
+    q.questType === 'daily' &&
+    (!q.dueDate || q.dueDate === today)
   );
 
-  // Weekly: incomplete quests with future due date within this week
+  // Weekly: incomplete weekly quests for the current week (Monday–Sunday)
   const questsWeekly = quests.filter(q =>
     !q.completed &&
+    q.questType === 'weekly' &&
     q.dueDate &&
-    q.dueDate > today &&
-    new Date(q.dueDate) <= new Date(Date.now() + 7 * 86400000)
+    q.dueDate >= mondayOfWeek &&
+    q.dueDate <= sundayOfWeek
   );
 
-  // Completed: only today's completions
+  // Completed: today's daily completions + this week's weekly completions
   const questsCompleted = quests.filter(q =>
-    q.completed &&
-    q.completedAt?.startsWith(today)
+    q.completed && (
+      (q.questType === 'daily' && q.completedAt?.startsWith(today)) ||
+      (q.questType === 'weekly' && q.dueDate && q.dueDate >= mondayOfWeek && q.dueDate <= sundayOfWeek)
+    )
   );
 
   const filteredQuests = (questList: typeof quests) => {
@@ -198,40 +203,89 @@ export default function Quests() {
         {/* Weekly */}
         <TabsContent value="weekly" className="space-y-4">
           <div className="grid gap-4">
-            {filteredQuests(questsWeekly).map((quest, index) => (
-              <motion.div key={quest.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
-                <Card className="glass p-4 sm:p-6 hover-lift">
-                  <div className="flex items-start gap-3 sm:gap-4">
-                    <button onClick={() => handleCompleteQuest(quest.id)} className="mt-1 text-text-muted hover:text-primary transition-colors flex-shrink-0">
-                      <Circle className="h-5 w-5" />
-                    </button>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        <h3 className="font-heading font-semibold text-text-primary text-sm sm:text-base">{quest.title}</h3>
-                        {quest.generated && (
-                          <Badge className="text-xs bg-primary/15 text-primary border-primary/30">
-                            <Sparkles className="h-3 w-3 mr-1" />Auto
-                          </Badge>
+            {filteredQuests(questsWeekly).map((quest, index) => {
+              const isProgressQuest = quest.trackingType && quest.targetCount;
+              const progress = quest.currentProgress || 0;
+              const target = quest.targetCount || 0;
+              const progressPercent = isProgressQuest ? Math.min((progress / target) * 100, 100) : 0;
+
+              return (
+                <motion.div key={quest.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
+                  <Card className="glass p-4 sm:p-6 hover-lift">
+                    <div className="flex items-start gap-3 sm:gap-4">
+                      {!isProgressQuest ? (
+                        <button onClick={() => handleCompleteQuest(quest.id)} className="mt-1 text-text-muted hover:text-primary transition-colors flex-shrink-0">
+                          <Circle className="h-5 w-5" />
+                        </button>
+                      ) : (
+                        <div className="mt-1 text-primary flex-shrink-0">
+                          <Target className="h-5 w-5" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <h3 className="font-heading font-semibold text-text-primary text-sm sm:text-base">{quest.title}</h3>
+                          {quest.generated && (
+                            <Badge className="text-xs bg-primary/15 text-primary border-primary/30">
+                              <Sparkles className="h-3 w-3 mr-1" />Auto
+                            </Badge>
+                          )}
+                          {isProgressQuest && (
+                            <Badge className="text-xs bg-accent/15 text-accent border-accent/30">
+                              <Target className="h-3 w-3 mr-1" />Haladás
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-text-secondary text-sm mb-3">{quest.description}</p>
+
+                        {/* Progress bar for progress-based quests */}
+                        {isProgressQuest && (
+                          <div className="mb-3">
+                            <div className="flex items-center justify-between text-xs mb-1.5">
+                              <span className="text-text-muted">
+                                {quest.trackingType === 'tasks_completed' && 'Elvégzett feladatok'}
+                                {quest.trackingType === 'quests_completed' && 'Elvégzett küldetések'}
+                                {quest.trackingType === 'notes_created' && 'Létrehozott jegyzetek'}
+                              </span>
+                              <span className="font-semibold text-primary">{progress} / {target}</span>
+                            </div>
+                            <div className="w-full h-2.5 bg-surface-1/50 rounded-full overflow-hidden border border-white/5">
+                              <motion.div
+                                className="h-full bg-gradient-to-r from-primary to-accent rounded-full"
+                                initial={{ width: 0 }}
+                                animate={{ width: `${progressPercent}%` }}
+                                transition={{ duration: 0.5, ease: 'easeOut' }}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                          <Badge className={cn('text-xs', difficultyColors[quest.difficulty])}>{difficultyLabels[quest.difficulty]}</Badge>
+                          {quest.estimatedTime > 0 && (
+                            <div className="flex items-center gap-1 text-xs sm:text-sm text-text-muted"><Clock className="h-3 w-3 sm:h-4 sm:w-4" />{quest.estimatedTime}p</div>
+                          )}
+                          <div className="flex items-center gap-1 text-xs sm:text-sm text-primary"><Zap className="h-3 w-3 sm:h-4 sm:w-4" />+{quest.xpReward} XP</div>
+                          {quest.dueDate && <Badge variant="outline" className="text-xs border-warning text-warning">Határidő: {new Date(quest.dueDate + 'T12:00:00').toLocaleDateString('hu-HU')}</Badge>}
+                        </div>
+
+                        {/* Only show complete button for non-progress quests */}
+                        {!isProgressQuest && (
+                          <Button onClick={() => handleCompleteQuest(quest.id)} className="bg-success hover:bg-success/90 text-surface-0 mt-3 sm:hidden w-full" size="sm">
+                            Teljesítés
+                          </Button>
                         )}
                       </div>
-                      <p className="text-text-secondary text-sm mb-3">{quest.description}</p>
-                      <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                        <Badge className={cn('text-xs', difficultyColors[quest.difficulty])}>{difficultyLabels[quest.difficulty]}</Badge>
-                        <div className="flex items-center gap-1 text-xs sm:text-sm text-text-muted"><Clock className="h-3 w-3 sm:h-4 sm:w-4" />{quest.estimatedTime}p</div>
-                        <div className="flex items-center gap-1 text-xs sm:text-sm text-primary"><Zap className="h-3 w-3 sm:h-4 sm:w-4" />+{quest.xpReward} XP</div>
-                        {quest.dueDate && <Badge variant="outline" className="text-xs border-warning text-warning">Határidő: {new Date(quest.dueDate).toLocaleDateString('hu-HU')}</Badge>}
-                      </div>
-                      <Button onClick={() => handleCompleteQuest(quest.id)} className="bg-success hover:bg-success/90 text-surface-0 mt-3 sm:hidden w-full" size="sm">
-                        Teljesítés
-                      </Button>
+                      {!isProgressQuest && (
+                        <Button onClick={() => handleCompleteQuest(quest.id)} className="bg-success hover:bg-success/90 text-surface-0 hidden sm:inline-flex flex-shrink-0">
+                          Teljesítés
+                        </Button>
+                      )}
                     </div>
-                    <Button onClick={() => handleCompleteQuest(quest.id)} className="bg-success hover:bg-success/90 text-surface-0 hidden sm:inline-flex flex-shrink-0">
-                      Teljesítés
-                    </Button>
-                  </div>
-                </Card>
-              </motion.div>
-            ))}
+                  </Card>
+                </motion.div>
+              );
+            })}
             {filteredQuests(questsWeekly).length === 0 && (
               <Card className="glass p-12 text-center">
                 <Zap className="h-16 w-16 text-text-disabled mx-auto mb-4" />
@@ -242,7 +296,7 @@ export default function Quests() {
           </div>
         </TabsContent>
 
-        {/* Completed (today only) */}
+        {/* Completed */}
         <TabsContent value="completed" className="space-y-4">
           <div className="grid gap-4">
             {filteredQuests(questsCompleted).map((quest, index) => (
@@ -251,11 +305,19 @@ export default function Quests() {
                   <div className="flex items-start gap-4">
                     <CheckCircle className="h-5 w-5 mt-1 text-success" />
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <h3 className="font-heading font-semibold text-text-primary line-through">{quest.title}</h3>
                         {quest.generated && (
                           <Badge className="text-xs bg-primary/15 text-primary border-primary/30">
                             <Sparkles className="h-3 w-3 mr-1" />Auto
+                          </Badge>
+                        )}
+                        {quest.questType === 'weekly' && (
+                          <Badge variant="outline" className="text-xs border-accent/30 text-accent">Heti</Badge>
+                        )}
+                        {quest.trackingType && quest.targetCount && (
+                          <Badge className="text-xs bg-accent/15 text-accent border-accent/30">
+                            <Target className="h-3 w-3 mr-1" />{quest.targetCount}/{quest.targetCount}
                           </Badge>
                         )}
                       </div>

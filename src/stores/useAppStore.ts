@@ -20,6 +20,7 @@ import {
   getLocalDateString,
   getLocalYesterday,
   getLocalMondayOfWeek,
+  getLocalSundayOfWeek,
 } from '@/lib/dateUtils';
 
 // ============ TYPES ============
@@ -40,6 +41,10 @@ export interface Quest {
   persona?: string;
   generated?: boolean;
   questType?: 'daily' | 'weekly';
+  // Progress-based quest fields (for weekly quests like "Complete X tasks this week")
+  targetCount?: number;
+  currentProgress?: number;
+  trackingType?: 'tasks_completed' | 'quests_completed' | 'notes_created';
 }
 
 export interface Note {
@@ -171,6 +176,7 @@ export const useAppStore = create<AppState>()((set, get) => {
 
   let _dailyChecked = false;
   let _achievementsSeeded = false;
+  let _questGenerationInProgress = false;
 
   /**
    * Core XP processing: awards XP, handles level-ups (with essence bonus),
@@ -350,89 +356,180 @@ export const useAppStore = create<AppState>()((set, get) => {
   };
 
   /**
-   * Generates daily and/or weekly quests if not already generated today/this week.
-   * Cleans up old uncompleted generated daily quests.
+   * Updates progress on active weekly progress-based quests for a given tracking type.
+   * Auto-completes the quest and awards rewards when the target is reached.
    */
-  const generateQuestsIfNeeded = async (stats: UserStats) => {
-    const { uid, quests, lists } = get();
+  const updateWeeklyQuestProgress = async (trackingType: 'tasks_completed' | 'quests_completed' | 'notes_created') => {
+    const { uid, quests, userStats } = get();
     if (!uid) return;
 
-    const today = getLocalDateString();
-    const persona = (() => {
-      try {
-        const stored = localStorage.getItem('donezy-persona');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          return parsed?.state?.currentPersona?.id || 'worker';
-        }
-      } catch { /* ignore */ }
-      return 'worker';
-    })();
-
-    const genOptions = { persona, level: stats.level, quests, lists, uid, date: today };
-
-    // --- Clean up old completed quests (from previous days) ---
-    const oldCompletedQuests = quests.filter(
-      (q) => q.completed && q.completedAt && !q.completedAt.startsWith(today)
+    const activeProgressQuests = quests.filter(
+      (q) => q.generated && q.questType === 'weekly' && !q.completed &&
+        q.trackingType === trackingType && q.targetCount
     );
-    for (const q of oldCompletedQuests) {
-      await dbService.deleteQuest(uid, q.id);
+
+    for (const quest of activeProgressQuests) {
+      const newProgress = (quest.currentProgress || 0) + 1;
+
+      if (newProgress >= quest.targetCount!) {
+        // Target reached → auto-complete the quest!
+        await dbService.updateQuest(uid, quest.id, {
+          currentProgress: quest.targetCount,
+          completed: true,
+          completedAt: getLocalDateString() + 'T' + new Date().toTimeString().slice(0, 8),
+        });
+
+        // Award XP + essence
+        await processAction(quest.xpReward, {
+          essenceGained: quest.essenceReward,
+          statUpdates: {
+            questsCompleted: userStats.questsCompleted + 1,
+            totalQuestsCompleted: userStats.totalQuestsCompleted + 1,
+          },
+        });
+
+        toast.success(`Heti küldetés teljesítve: ${quest.title}! 🎉`, { duration: 4000 });
+      } else {
+        // Just update progress
+        await dbService.updateQuest(uid, quest.id, {
+          currentProgress: newProgress,
+        });
+      }
     }
+  };
 
-    // --- Daily Quests ---
-    // Regenerate if: not generated today, OR persona changed since last generation
-    const existingDailyGenerated = quests.filter(
-      (q) => q.generated && q.questType === 'daily' && q.dueDate === today
-    );
-    const personaMismatch = existingDailyGenerated.length > 0 &&
-      existingDailyGenerated.some((q) => q.persona && q.persona !== persona);
+  /**
+   * Generates daily and/or weekly quests if not already generated today/this week.
+   * Cleans up old uncompleted generated daily quests.
+   * Uses a lock + double-check (stats flag + existing quests) to prevent duplicate generation.
+   */
+  const generateQuestsIfNeeded = async (stats: UserStats) => {
+    // Prevent concurrent generation calls
+    if (_questGenerationInProgress) return;
+    _questGenerationInProgress = true;
 
-    if (stats.lastQuestGenDate !== today || personaMismatch) {
-      // Clean up old/mismatched daily generated quests
-      const dailyToRemove = quests.filter(
-        (q) => q.generated && q.questType === 'daily' && !q.completed &&
-          (q.dueDate !== today || (q.persona && q.persona !== persona))
+    try {
+      const { uid, lists } = get();
+      if (!uid) return;
+
+      const today = getLocalDateString();
+      const persona = (() => {
+        try {
+          const stored = localStorage.getItem('donezy-persona');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            return parsed?.state?.currentPersona?.id || 'worker';
+          }
+        } catch { /* ignore */ }
+        return 'worker';
+      })();
+
+      // Re-read quests from store (they may have loaded since the timeout was scheduled)
+      const quests = get().quests;
+      const genOptions = { persona, level: stats.level, quests, lists, uid, date: today };
+
+      // --- Clean up old completed quests (from previous days) ---
+      const oldCompletedQuests = quests.filter(
+        (q) => q.completed && q.completedAt && !q.completedAt.startsWith(today)
       );
-      for (const q of dailyToRemove) {
+      for (const q of oldCompletedQuests) {
+        await dbService.deleteQuest(uid, q.id);
+      }
+      // Also remove old uncompleted generated daily quests from previous days
+      const oldUncompletedDaily = quests.filter(
+        (q) => q.generated && q.questType === 'daily' && q.dueDate && q.dueDate !== today && !q.completed
+      );
+      for (const q of oldUncompletedDaily) {
         await dbService.deleteQuest(uid, q.id);
       }
 
-      // Generate new daily quests
-      const dailyQuests = generateDailyQuests(genOptions);
-      for (const quest of dailyQuests) {
-        await dbService.addQuest(uid, quest);
-      }
+      // --- Daily Quests ---
+      // Check BOTH the stats flag AND existing quests to decide if generation is needed.
+      // This double-check prevents regeneration even if one check has a race condition.
+      const allDailyForToday = quests.filter(
+        (q) => q.generated && q.questType === 'daily' && q.dueDate === today
+      );
+      const hasCompletedDailyToday = allDailyForToday.some((q) => q.completed);
 
-      await dbService.updateStats(uid, { lastQuestGenDate: today });
-      toast.success(`${dailyQuests.length} új napi küldetés generálva!`, { duration: 3000 });
-    }
+      // Persona mismatch: only allow swap if NO quests have been completed today
+      const dailyPersonaMismatch = !hasCompletedDailyToday &&
+        allDailyForToday.length > 0 &&
+        allDailyForToday.every((q) => q.persona && q.persona !== persona);
 
-    // --- Weekly Quests (Monday or first login of the week) ---
-    const mondayOfWeek = getLocalMondayOfWeek(today);
+      // Generate daily quests only if:
+      // 1. Stats say we haven't generated today AND no daily quests exist for today, OR
+      // 2. All existing daily quests have wrong persona and none are completed
+      const needsDailyGen =
+        (stats.lastQuestGenDate !== today && allDailyForToday.length === 0) ||
+        dailyPersonaMismatch;
 
-    const existingWeeklyGenerated = quests.filter(
-      (q) => q.generated && q.questType === 'weekly' && !q.completed
-    );
-    const weeklyPersonaMismatch = existingWeeklyGenerated.length > 0 &&
-      existingWeeklyGenerated.some((q) => q.persona && q.persona !== persona);
-
-    if (!stats.lastWeeklyGenDate || stats.lastWeeklyGenDate < mondayOfWeek || weeklyPersonaMismatch) {
-      // Clean up mismatched weekly quests
-      if (weeklyPersonaMismatch) {
-        for (const q of existingWeeklyGenerated.filter((q) => q.persona && q.persona !== persona)) {
-          await dbService.deleteQuest(uid, q.id);
+      if (needsDailyGen) {
+        // Clean up mismatched daily quests (if persona swap)
+        if (dailyPersonaMismatch) {
+          for (const q of allDailyForToday) {
+            await dbService.deleteQuest(uid, q.id);
+          }
         }
+
+        // Generate new daily quests
+        const dailyQuests = generateDailyQuests(genOptions);
+        for (const quest of dailyQuests) {
+          await dbService.addQuest(uid, quest);
+        }
+
+        await dbService.updateStats(uid, { lastQuestGenDate: today });
+        toast.success(`${dailyQuests.length} új napi küldetés generálva!`, { duration: 3000 });
+      } else if (stats.lastQuestGenDate !== today && allDailyForToday.length > 0) {
+        // Quests exist but stats flag is outdated → fix the flag without regenerating
+        await dbService.updateStats(uid, { lastQuestGenDate: today });
       }
 
-      const weeklyQuests = generateWeeklyQuests(genOptions);
-      for (const quest of weeklyQuests) {
-        await dbService.addQuest(uid, quest);
-      }
+      // --- Weekly Quests ---
+      const mondayOfWeek = getLocalMondayOfWeek(today);
+      const sundayOfWeek = getLocalSundayOfWeek(today);
 
-      await dbService.updateStats(uid, { lastWeeklyGenDate: today });
-      if (weeklyQuests.length > 0) {
-        toast.success(`${weeklyQuests.length} új heti küldetés generálva!`, { duration: 3000 });
+      // Find ALL weekly quests for the current week (completed or not)
+      const allWeeklyThisWeek = quests.filter(
+        (q) => q.generated && q.questType === 'weekly' &&
+          q.dueDate && q.dueDate >= mondayOfWeek && q.dueDate <= sundayOfWeek
+      );
+      const hasCompletedWeeklyThisWeek = allWeeklyThisWeek.some((q) => q.completed);
+
+      // Persona mismatch: only allow swap if NO weekly quests have been completed this week
+      const weeklyPersonaMismatch = !hasCompletedWeeklyThisWeek &&
+        allWeeklyThisWeek.length > 0 &&
+        allWeeklyThisWeek.every((q) => q.persona && q.persona !== persona);
+
+      // Generate weekly quests only if:
+      // 1. Stats say we haven't generated this week AND no weekly quests exist for this week, OR
+      // 2. All existing weekly quests have wrong persona and none are completed
+      const needsWeeklyGen =
+        ((!stats.lastWeeklyGenDate || stats.lastWeeklyGenDate < mondayOfWeek) && allWeeklyThisWeek.length === 0) ||
+        weeklyPersonaMismatch;
+
+      if (needsWeeklyGen) {
+        // Clean up mismatched weekly quests
+        if (weeklyPersonaMismatch) {
+          for (const q of allWeeklyThisWeek) {
+            await dbService.deleteQuest(uid, q.id);
+          }
+        }
+
+        const weeklyQuests = generateWeeklyQuests(genOptions);
+        for (const quest of weeklyQuests) {
+          await dbService.addQuest(uid, quest);
+        }
+
+        await dbService.updateStats(uid, { lastWeeklyGenDate: today });
+        if (weeklyQuests.length > 0) {
+          toast.success(`${weeklyQuests.length} új heti küldetés generálva!`, { duration: 3000 });
+        }
+      } else if ((!stats.lastWeeklyGenDate || stats.lastWeeklyGenDate < mondayOfWeek) && allWeeklyThisWeek.length > 0) {
+        // Weekly quests exist but stats flag is outdated → fix the flag without regenerating
+        await dbService.updateStats(uid, { lastWeeklyGenDate: today });
       }
+    } finally {
+      _questGenerationInProgress = false;
     }
   };
 
@@ -456,6 +553,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       get()._unsubscribers.forEach((unsub) => unsub());
       _dailyChecked = false;
       _achievementsSeeded = false;
+      _questGenerationInProgress = false;
 
       const unsubscribers: (() => void)[] = [];
 
@@ -528,6 +626,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       get()._unsubscribers.forEach((unsub) => unsub());
       _dailyChecked = false;
       _achievementsSeeded = false;
+      _questGenerationInProgress = false;
       set({
         uid: null,
         userStats: defaultStats,
@@ -564,6 +663,9 @@ export const useAppStore = create<AppState>()((set, get) => {
           totalQuestsCompleted: userStats.totalQuestsCompleted + 1,
         },
       });
+
+      // Update progress on weekly quests that track quest completions
+      await updateWeeklyQuestProgress('quests_completed');
     },
 
     deleteQuest: async (questId) => {
@@ -619,6 +721,9 @@ export const useAppStore = create<AppState>()((set, get) => {
               tasksCompleted: (userStats.tasksCompleted || 0) + 1,
             },
           });
+
+          // Update progress on weekly quests that track task completions
+          await updateWeeklyQuestProgress('tasks_completed');
           return;
         }
       }
@@ -645,6 +750,9 @@ export const useAppStore = create<AppState>()((set, get) => {
           notesCreated: (userStats.notesCreated || 0) + 1,
         },
       });
+
+      // Update progress on weekly quests that track note creation
+      await updateWeeklyQuestProgress('notes_created');
     },
 
     updateNote: async (noteId, updates) => {

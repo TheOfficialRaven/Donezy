@@ -12,12 +12,38 @@ import { getLocalDateString } from '@/lib/dateUtils';
 
 export default function Dashboard() {
   const { currentPersona } = usePersonaStore();
-  const { userStats, quests, lists, completeQuest, updateTask } = useAppStore();
+  const { userStats, quests, lists, events, completeQuest, updateTask } = useAppStore();
   const navigate = useNavigate();
 
   const today = getLocalDateString();
   const todayQuests = quests.filter(q => !q.completed).slice(0, 3);
   const completedToday = quests.filter(q => q.completed && q.completedAt?.startsWith(today)).length;
+
+  // Upcoming events (from now onwards, sorted by start time, max 4)
+  const now = new Date();
+  const upcomingEvents = events
+    .filter(e => new Date(e.startTime) >= new Date(now.getTime() - 30 * 60 * 1000)) // include events started up to 30 min ago
+    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+    .slice(0, 4);
+
+  const formatEventTime = (dateString: string) =>
+    new Date(dateString).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' });
+
+  const formatEventDate = (dateString: string) => {
+    const eventDate = new Date(dateString);
+    const todayDate = new Date();
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    if (eventDate.toDateString() === todayDate.toDateString()) return 'Ma';
+    if (eventDate.toDateString() === tomorrow.toDateString()) return 'Holnap';
+    return eventDate.toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' });
+  };
+
+  const isEventSoon = (startTime: string) => {
+    const diff = new Date(startTime).getTime() - now.getTime();
+    return diff > 0 && diff < 60 * 60 * 1000; // within 1 hour
+  };
 
   // Lists with incomplete tasks for dashboard
   const listsWithTasks = lists
@@ -261,6 +287,78 @@ export default function Dashboard() {
                     )}
                   </div>
                 </div>
+              ))}
+            </div>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Upcoming Events */}
+      {upcomingEvents.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+        >
+          <Card className="glass p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-heading font-semibold text-text-primary">
+                Közelgő események
+              </h2>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-primary/30 text-primary hover:bg-primary/10"
+                onClick={() => navigate('/app/calendar')}
+              >
+                Naptár
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              {upcomingEvents.map((event, index) => (
+                <motion.div
+                  key={event.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.7 + index * 0.1 }}
+                  className={cn(
+                    "flex items-center gap-3 p-3 rounded-lg transition-colors cursor-pointer",
+                    isEventSoon(event.startTime)
+                      ? "bg-primary/10 border border-primary/20"
+                      : "bg-surface-1/50 hover:bg-surface-1/70"
+                  )}
+                  onClick={() => navigate('/app/calendar')}
+                >
+                  <div
+                    className="w-1 h-10 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: event.color }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium text-text-primary text-sm sm:text-base truncate">
+                        {event.title}
+                      </h3>
+                      {isEventSoon(event.startTime) && (
+                        <Badge className="text-xs bg-primary/20 text-primary border-primary/30 flex-shrink-0">
+                          Hamarosan
+                        </Badge>
+                      )}
+                    </div>
+                    {event.description && (
+                      <p className="text-xs text-text-muted truncate">{event.description}</p>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-end flex-shrink-0 text-right">
+                    <span className="text-xs font-medium text-text-secondary">
+                      {formatEventDate(event.startTime)}
+                    </span>
+                    <span className="text-xs text-text-muted">
+                      {formatEventTime(event.startTime)} – {formatEventTime(event.endTime)}
+                    </span>
+                  </div>
+                </motion.div>
               ))}
             </div>
           </Card>

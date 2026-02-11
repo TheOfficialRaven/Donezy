@@ -24,6 +24,7 @@ export default function Calendar() {
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [defaultCategory, setDefaultCategory] = useState<string | undefined>(undefined);
+  const [defaultStartTime, setDefaultStartTime] = useState<Date | undefined>(undefined);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<string | null>(null);
 
@@ -51,15 +52,17 @@ export default function Calendar() {
   const today = new Date();
   const upcomingEvents = events.filter(e => new Date(e.startTime) >= today).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()).slice(0, 5);
 
-  const handleNewEvent = (category?: string) => {
+  const handleNewEvent = (category?: string, startTime?: Date) => {
     setEditingEvent(null);
     setDefaultCategory(category);
+    setDefaultStartTime(startTime);
     setEventDialogOpen(true);
   };
 
   const handleEditEvent = (event: CalendarEvent) => {
     setEditingEvent(event);
     setDefaultCategory(undefined);
+    setDefaultStartTime(undefined);
     setEventDialogOpen(true);
   };
 
@@ -184,7 +187,7 @@ export default function Calendar() {
                         const dayEvents = getEventsForDate(d).filter(e => new Date(e.startTime).getHours() === hour);
                         return (
                           <div key={`${d.toISOString()}-${hour}`} className="p-0.5 sm:p-1 border border-white/5 min-h-[32px] sm:min-h-[40px] cursor-pointer hover:bg-surface-1/20"
-                            onClick={() => { setCurrentDate(d); handleNewEvent(); }}>
+                            onClick={() => { const clickedTime = new Date(d); clickedTime.setHours(hour, 0, 0, 0); setCurrentDate(d); handleNewEvent(undefined, clickedTime); }}>
                             {dayEvents.map((ev) => (
                               <div key={ev.id} className="text-xs p-0.5 sm:p-1 rounded text-surface-0 truncate cursor-pointer mb-0.5" style={{ backgroundColor: ev.color }} onClick={(e) => { e.stopPropagation(); handleEditEvent(ev); }}>
                                 {ev.title}
@@ -210,7 +213,7 @@ export default function Calendar() {
                     return (
                       <div key={hour} className="flex gap-2 sm:gap-3 min-h-[44px] sm:min-h-[50px]">
                         <div className="w-12 sm:w-16 text-xs sm:text-sm text-text-muted text-right pt-2 flex-shrink-0">{hour}:00</div>
-                        <div className="flex-1 min-w-0 border-t border-white/5 pt-2 cursor-pointer hover:bg-surface-1/20 rounded px-1 sm:px-2" onClick={() => handleNewEvent()}>
+                        <div className="flex-1 min-w-0 border-t border-white/5 pt-2 cursor-pointer hover:bg-surface-1/20 rounded px-1 sm:px-2" onClick={() => { const clickedTime = new Date(currentDate); clickedTime.setHours(hour, 0, 0, 0); handleNewEvent(undefined, clickedTime); }}>
                           {hourEvents.map((ev) => (
                             <div key={ev.id} className="p-1.5 sm:p-2 rounded text-surface-0 text-xs sm:text-sm mb-1 cursor-pointer" style={{ backgroundColor: ev.color }} onClick={(e) => { e.stopPropagation(); handleEditEvent(ev); }}>
                               <span className="font-medium">{ev.title}</span>
@@ -299,7 +302,7 @@ export default function Calendar() {
         </div>
       </div>
 
-      <EventDialog open={eventDialogOpen} onOpenChange={setEventDialogOpen} event={editingEvent} defaultCategory={defaultCategory} />
+      <EventDialog open={eventDialogOpen} onOpenChange={setEventDialogOpen} event={editingEvent} defaultCategory={defaultCategory} defaultStartTime={defaultStartTime} />
       <ConfirmDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen} title="Esemény törlése" description="Biztosan törölni szeretnéd ezt az eseményt?" confirmLabel="Törlés" onConfirm={handleDeleteEvent} destructive />
     </div>
   );

@@ -173,7 +173,7 @@ export default function Notes() {
                 </p>
               </div>
               <div className="space-y-3">
-                {note.tags.length > 0 && (
+                {note.tags?.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {note.tags.map(tag => (
                       <Badge key={tag} variant="outline" className="text-xs border-white/20 text-text-muted">#{tag}</Badge>

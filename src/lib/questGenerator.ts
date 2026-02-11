@@ -14,6 +14,9 @@ interface QuestTemplate {
   dayPreference?: number[];
   keywords: string[];
   frequency: 'daily' | 'weekly';
+  // Progress-based quest support (for weekly quests that auto-track progress)
+  trackingType?: 'tasks_completed' | 'quests_completed' | 'notes_created';
+  baseTargetCount?: number; // base target count, scales with level
 }
 
 // ============ SEEDED RANDOM ============
@@ -787,6 +790,178 @@ const TEMPLATES: QuestTemplate[] = [
     keywords: ['számla', 'fizetés'],
     frequency: 'weekly',
   },
+
+  // ═══════════════════════════════════════
+  //  PROGRESS-BASED WEEKLY QUESTS (all personas)
+  //  These auto-track progress and complete when the target is reached.
+  // ═══════════════════════════════════════
+
+  // --- Tasks completed this week ---
+  {
+    id: 'prog_tasks_student',
+    titles: ['Heti feladat kihívás', 'Feladat mester', 'Produktív hét'],
+    descriptions: ['Teljesíts megadott számú feladatot ezen a héten a listáidból!', 'Legyél produktív és pipáld ki a feladataidat a héten!'],
+    category: 'Produktivitás',
+    baseDifficulty: 'medium',
+    baseTime: 0,
+    personas: ['student'],
+    keywords: ['feladat', 'teljesít'],
+    frequency: 'weekly',
+    trackingType: 'tasks_completed',
+    baseTargetCount: 8,
+  },
+  {
+    id: 'prog_tasks_worker',
+    titles: ['Munka kihívás', 'Feladatok teljesítése', 'Heti produktivitás'],
+    descriptions: ['Teljesíts megadott számú feladatot ezen a héten!', 'Mutasd meg a produktivitásodat a heti feladat kihívással!'],
+    category: 'Produktivitás',
+    baseDifficulty: 'medium',
+    baseTime: 0,
+    personas: ['worker'],
+    keywords: ['feladat', 'munka'],
+    frequency: 'weekly',
+    trackingType: 'tasks_completed',
+    baseTargetCount: 10,
+  },
+  {
+    id: 'prog_tasks_freelancer',
+    titles: ['Freelancer kihívás', 'Projekt feladatok', 'Heti haladás'],
+    descriptions: ['Teljesíts megadott számú feladatot ezen a héten a projektjeidből!', 'Haladj a projektjeiddel – teljesítsd a heti feladat célt!'],
+    category: 'Produktivitás',
+    baseDifficulty: 'medium',
+    baseTime: 0,
+    personas: ['freelancer'],
+    keywords: ['feladat', 'projekt'],
+    frequency: 'weekly',
+    trackingType: 'tasks_completed',
+    baseTargetCount: 10,
+  },
+  {
+    id: 'prog_tasks_selfdev',
+    titles: ['Fejlődési kihívás', 'Heti teljesítmény', 'Célok felé'],
+    descriptions: ['Teljesíts megadott számú feladatot ezen a héten az önfejlesztési utadon!', 'Minden elvégzett feladat egy lépés a jobb verzió felé!'],
+    category: 'Fejlődés',
+    baseDifficulty: 'medium',
+    baseTime: 0,
+    personas: ['selfdev'],
+    keywords: ['feladat', 'fejlődés'],
+    frequency: 'weekly',
+    trackingType: 'tasks_completed',
+    baseTargetCount: 8,
+  },
+  {
+    id: 'prog_tasks_organizer',
+    titles: ['Háztartási kihívás', 'Heti feladat cél', 'Szervezett hét'],
+    descriptions: ['Teljesíts megadott számú feladatot ezen a héten a rendezett életért!', 'Tartsd a lendületet – teljesítsd a heti feladat célodat!'],
+    category: 'Szervezés',
+    baseDifficulty: 'medium',
+    baseTime: 0,
+    personas: ['organizer'],
+    keywords: ['feladat', 'szervez'],
+    frequency: 'weekly',
+    trackingType: 'tasks_completed',
+    baseTargetCount: 10,
+  },
+
+  // --- Quests completed this week ---
+  {
+    id: 'prog_quests_all',
+    titles: ['Küldetés mester', 'Heti küldetés kihívás', 'Küldetés sorozat'],
+    descriptions: ['Teljesítsd az összes napi küldetésedet ezen a héten!', 'Legyél következetes – végezd el a napi küldetéseidet minden nap!'],
+    category: 'Fejlődés',
+    baseDifficulty: 'hard',
+    baseTime: 0,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['küldetés', 'napi'],
+    frequency: 'weekly',
+    trackingType: 'quests_completed',
+    baseTargetCount: 10,
+  },
+
+  // --- Notes created this week ---
+  {
+    id: 'prog_notes_student',
+    titles: ['Jegyzetek hete', 'Tudásgyűjtő', 'Heti jegyzetelés'],
+    descriptions: ['Készíts megadott számú jegyzetet ezen a héten!', 'Rögzítsd a gondolataidat és tanulnivalóidat jegyzetekben!'],
+    category: 'Tanulás',
+    baseDifficulty: 'easy',
+    baseTime: 0,
+    personas: ['student'],
+    keywords: ['jegyzet', 'tanulás'],
+    frequency: 'weekly',
+    trackingType: 'notes_created',
+    baseTargetCount: 3,
+  },
+  {
+    id: 'prog_notes_selfdev',
+    titles: ['Reflexiós hét', 'Gondolatok rögzítése', 'Heti naplózás'],
+    descriptions: ['Készíts megadott számú jegyzetet ezen a héten a gondolataidról!', 'Írd le a felismeréseidet, céljaidat és haladásodat!'],
+    category: 'Fejlődés',
+    baseDifficulty: 'easy',
+    baseTime: 0,
+    personas: ['selfdev'],
+    keywords: ['jegyzet', 'napló'],
+    frequency: 'weekly',
+    trackingType: 'notes_created',
+    baseTargetCount: 3,
+  },
+
+  // --- Planning-focused weekly quests ---
+  {
+    id: 'plan_week_student',
+    titles: ['Heti tanulási terv', 'Tanulás megtervezése', 'Heti tanrend összeállítás'],
+    descriptions: ['Készítsd el a jövő heti tanulási tervedet: mit, mikor, mennyit tanulsz.', 'Tervezd meg a vizsgaidőszakot vagy a heti tanulási blokkjaidat előre.'],
+    category: 'Szervezés',
+    baseDifficulty: 'medium',
+    baseTime: 25,
+    personas: ['student'],
+    keywords: ['terv', 'tanulás', 'hét'],
+    frequency: 'weekly',
+  },
+  {
+    id: 'plan_week_worker',
+    titles: ['Heti munka tervezés', 'Prioritások meghatározása', 'Heti sprint tervezés'],
+    descriptions: ['Tervezd meg a következő hét fő feladatait és prioritásait.', 'Határozd meg a heti 3 legfontosabb célodat és a hozzájuk tartozó lépéseket.'],
+    category: 'Produktivitás',
+    baseDifficulty: 'medium',
+    baseTime: 20,
+    personas: ['worker'],
+    keywords: ['terv', 'prioritás', 'hét'],
+    frequency: 'weekly',
+  },
+  {
+    id: 'plan_week_selfdev',
+    titles: ['Önfejlesztési terv', 'Heti célok kitűzése', 'Fejlődési roadmap'],
+    descriptions: ['Tűzz ki 3 konkrét fejlődési célt a hétre és írd le a lépéseket.', 'Tervezd meg az önfejlesztési rutinodat a következő hétre.'],
+    category: 'Fejlődés',
+    baseDifficulty: 'medium',
+    baseTime: 20,
+    personas: ['selfdev'],
+    keywords: ['terv', 'cél', 'fejlődés'],
+    frequency: 'weekly',
+  },
+  {
+    id: 'plan_week_freelancer',
+    titles: ['Üzleti tervezés', 'Heti ügyfél stratégia', 'Freelancer roadmap'],
+    descriptions: ['Tervezd meg a heti ügyfélmunkákat, határidőket és üzleti teendőket.', 'Készíts heti áttekintést a projektjeidről és az üzleti céljaidról.'],
+    category: 'Produktivitás',
+    baseDifficulty: 'medium',
+    baseTime: 25,
+    personas: ['freelancer'],
+    keywords: ['terv', 'üzlet', 'projekt'],
+    frequency: 'weekly',
+  },
+  {
+    id: 'plan_week_organizer',
+    titles: ['Heti családi tervezés', 'Háztartás szervezés', 'Heti menetrend'],
+    descriptions: ['Tervezd meg a család hetét: programok, étkezések, teendők.', 'Készíts átfogó heti tervet a háztartás és család számára.'],
+    category: 'Szervezés',
+    baseDifficulty: 'medium',
+    baseTime: 25,
+    personas: ['organizer'],
+    keywords: ['terv', 'család', 'hét'],
+    frequency: 'weekly',
+  },
 ];
 
 // ============ HELPER FUNCTIONS ============
@@ -963,10 +1138,30 @@ export function generateWeeklyQuests(options: GenerateOptions): Omit<Quest, 'id'
     return true;
   });
 
+  // Separate progress-based and regular templates
+  const progressTemplates = applicable.filter((t) => t.trackingType);
+  const regularTemplates = applicable.filter((t) => !t.trackingType);
+
   const habitWeights = analyzeUserHabits(lists);
   const recentTitles = getRecentQuestTitles(quests, 14);
 
-  const scores = applicable.map((t) => {
+  // Select 1 progress-based quest (if available)
+  let selectedProgress: QuestTemplate[] = [];
+  if (progressTemplates.length > 0) {
+    const progScores = progressTemplates.map((t) => {
+      let score = 1;
+      score += (habitWeights[t.category] || 1) * 0.3;
+      const hasRecent = t.titles.some((title) => recentTitles.has(title.toLowerCase()));
+      if (hasRecent) score *= 0.15;
+      score += rng() * 0.6;
+      return score;
+    });
+    selectedProgress = weightedSelect(progressTemplates, progScores, rng, 1);
+  }
+
+  // Select 2 regular quests (or more if no progress templates)
+  const regularCount = selectedProgress.length > 0 ? 2 : 3;
+  const regScores = regularTemplates.map((t) => {
     let score = 1;
     score += (habitWeights[t.category] || 1) * 0.3;
     const hasRecent = t.titles.some((title) => recentTitles.has(title.toLowerCase()));
@@ -974,8 +1169,9 @@ export function generateWeeklyQuests(options: GenerateOptions): Omit<Quest, 'id'
     score += rng() * 0.6;
     return score;
   });
+  const selectedRegular = weightedSelect(regularTemplates, regScores, rng, regularCount);
 
-  const selected = weightedSelect(applicable, scores, rng, 2);
+  const selected = [...selectedProgress, ...selectedRegular];
 
   // Weekly due date = Sunday of the current week (local time)
   const weeklyDueDate = getLocalSundayOfWeek(date);
@@ -986,9 +1182,20 @@ export function generateWeeklyQuests(options: GenerateOptions): Omit<Quest, 'id'
     const difficulty = scaleDifficulty(template.baseDifficulty, level);
     const rewards = calculateRewards(difficulty, level);
 
-    return {
+    // Calculate target count for progress-based quests (scales with level)
+    const targetCount = template.baseTargetCount
+      ? Math.floor(template.baseTargetCount + Math.floor(level / 5) * 2)
+      : undefined;
+
+    // For progress-based quests, update description with target count
+    let description = template.descriptions[descIdx];
+    if (targetCount) {
+      description = description.replace('megadott számú', `${targetCount}`);
+    }
+
+    const quest: Omit<Quest, 'id'> = {
       title: template.titles[titleIdx],
-      description: template.descriptions[descIdx],
+      description,
       category: template.category,
       difficulty,
       estimatedTime: template.baseTime,
@@ -1001,5 +1208,14 @@ export function generateWeeklyQuests(options: GenerateOptions): Omit<Quest, 'id'
       generated: true,
       questType: 'weekly' as const,
     };
+
+    // Add progress tracking fields if applicable
+    if (template.trackingType && targetCount) {
+      quest.trackingType = template.trackingType;
+      quest.targetCount = targetCount;
+      quest.currentProgress = 0;
+    }
+
+    return quest;
   });
 }
