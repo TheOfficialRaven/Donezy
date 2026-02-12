@@ -177,10 +177,13 @@ export const useAppStore = create<AppState>()((set, get) => {
   let _dailyChecked = false;
   let _achievementsSeeded = false;
   let _questGenerationInProgress = false;
+  let _dailyActivityDate = ''; // Tracks if daily activity was already recorded this session
 
   /**
    * Core XP processing: awards XP, handles level-ups (with essence bonus),
    * updates stats in Firebase, and checks achievements.
+   * Also handles daily activity tracking — the streak only updates
+   * when the user performs a real action (not just a page visit).
    */
   const processAction = async (
     xpGained: number,
@@ -192,8 +195,43 @@ export const useAppStore = create<AppState>()((set, get) => {
     const { uid, userStats } = get();
     if (!uid) return;
 
+    // --- Daily activity check (first real action of the day updates streak) ---
+    let dailyBonusXp = 0;
+    let dailyStatUpdates: Partial<UserStats> = {};
+    const today = getLocalDateString();
+
+    if (_dailyActivityDate !== today && userStats.lastActiveDate !== today) {
+      _dailyActivityDate = today;
+
+      const yesterday = getLocalYesterday();
+      const newStreak =
+        userStats.lastActiveDate === yesterday
+          ? userStats.streak + 1
+          : 1;
+
+      const streakBonus = Math.min(
+        newStreak * DAILY_LOGIN_STREAK_BONUS,
+        DAILY_LOGIN_MAX_BONUS
+      );
+      dailyBonusXp = DAILY_LOGIN_BASE_XP + streakBonus;
+      dailyStatUpdates = {
+        lastActiveDate: today,
+        streak: newStreak,
+      };
+
+      // Notify daily activity
+      if (newStreak > 1) {
+        toast.success(
+          `Napi aktivitás! ${newStreak} napos sorozat! +${dailyBonusXp} XP`,
+          { duration: 4000 }
+        );
+      } else {
+        toast.success(`Napi aktivitás! +${dailyBonusXp} XP`, { duration: 3000 });
+      }
+    }
+
     // Calculate new XP and handle level-ups
-    let xp = userStats.xp + xpGained;
+    let xp = userStats.xp + xpGained + dailyBonusXp;
     let level = userStats.level;
     let xpToNextLevel = userStats.xpToNextLevel;
     let lvlUpEssence = 0;
@@ -214,6 +252,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       level,
       xpToNextLevel,
       essence: totalNewEssence,
+      ...dailyStatUpdates,
       ...(options.statUpdates || {}),
     };
 
@@ -283,76 +322,6 @@ export const useAppStore = create<AppState>()((set, get) => {
         essence: currentEssence + totalEssenceEarned,
       });
     }
-  };
-
-  /**
-   * Handles daily login: updates streak, awards daily XP, checks streak achievements.
-   */
-  const handleDailyLogin = async (currentStats: UserStats) => {
-    const { uid } = get();
-    if (!uid) return;
-
-    const today = getLocalDateString();
-    if (currentStats.lastActiveDate === today) return;
-
-    // Calculate streak (using local dates)
-    const yesterday = getLocalYesterday();
-    const newStreak =
-      currentStats.lastActiveDate === yesterday
-        ? currentStats.streak + 1
-        : 1;
-
-    // Daily XP: base + streak bonus (capped)
-    const streakBonus = Math.min(
-      newStreak * DAILY_LOGIN_STREAK_BONUS,
-      DAILY_LOGIN_MAX_BONUS
-    );
-    const dailyXp = DAILY_LOGIN_BASE_XP + streakBonus;
-
-    // Calculate level from daily XP
-    let xp = currentStats.xp + dailyXp;
-    let level = currentStats.level;
-    let xpToNextLevel = currentStats.xpToNextLevel;
-    let lvlUpEssence = 0;
-
-    while (xp >= xpToNextLevel) {
-      xp -= xpToNextLevel;
-      level++;
-      xpToNextLevel = Math.floor(xpToNextLevel * 1.2);
-      lvlUpEssence += levelUpEssenceBonus(level);
-    }
-
-    const statsUpdate: Partial<UserStats> = {
-      xp,
-      level,
-      xpToNextLevel,
-      lastActiveDate: today,
-      streak: newStreak,
-      essence: currentStats.essence + lvlUpEssence,
-    };
-
-    await dbService.updateStats(uid, statsUpdate);
-
-    // Notifications
-    if (newStreak > 1) {
-      toast.success(
-        `Napi bejelentkezés! ${newStreak} napos sorozat! +${dailyXp} XP`,
-        { duration: 4000 }
-      );
-    } else {
-      toast.success(`Napi bejelentkezés! +${dailyXp} XP`, { duration: 3000 });
-    }
-
-    if (level > currentStats.level) {
-      toast.success(
-        `Szintlépés! Elérted a ${level}. szintet! +${lvlUpEssence} Essence`,
-        { duration: 5000 }
-      );
-    }
-
-    // Check streak-related achievements
-    const newStats: UserStats = { ...currentStats, ...statsUpdate };
-    await checkAchievements(newStats);
   };
 
   /**
@@ -554,6 +523,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       _dailyChecked = false;
       _achievementsSeeded = false;
       _questGenerationInProgress = false;
+      _dailyActivityDate = '';
 
       const unsubscribers: (() => void)[] = [];
 
@@ -565,10 +535,9 @@ export const useAppStore = create<AppState>()((set, get) => {
             : defaultStats;
           set({ userStats: mergedStats });
 
-          // Handle daily login once after first data load
+          // Generate quests once after first data load
           if (!_dailyChecked) {
             _dailyChecked = true;
-            handleDailyLogin(mergedStats);
 
             // Schedule quest generation independently (wait for other data to load)
             setTimeout(() => {
@@ -627,6 +596,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       _dailyChecked = false;
       _achievementsSeeded = false;
       _questGenerationInProgress = false;
+      _dailyActivityDate = '';
       set({
         uid: null,
         userStats: defaultStats,
