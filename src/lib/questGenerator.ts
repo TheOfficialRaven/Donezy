@@ -1,6 +1,20 @@
 import type { Quest, TodoList, UserStats } from '@/stores/useAppStore';
 import { getLocalSundayOfWeek } from '@/lib/dateUtils';
 
+// ============ INTEREST GROUP METADATA ============
+// Shared between quest generator, Quests page, and Dashboard
+
+export const INTEREST_GROUPS: Record<string, { label: string; icon: string; color: string }> = {
+  health:       { label: 'Egészség & Fitnesz',   icon: 'Heart',    color: 'hsl(0 80% 60%)' },
+  finance:      { label: 'Pénzügyek',             icon: 'Banknote', color: 'hsl(45 90% 50%)' },
+  social:       { label: 'Társas kapcsolatok',     icon: 'Users',    color: 'hsl(330 80% 60%)' },
+  productivity: { label: 'Produktivitás',          icon: 'Rocket',   color: 'hsl(200 85% 55%)' },
+  learning:     { label: 'Tanulás & Fejlődés',    icon: 'BookOpen', color: 'hsl(150 60% 45%)' },
+  creativity:   { label: 'Kreativitás',            icon: 'Palette',  color: 'hsl(280 75% 60%)' },
+  home:         { label: 'Otthoni rend',           icon: 'Home',     color: 'hsl(30 80% 55%)' },
+  mental:       { label: 'Mentális jólét',         icon: 'Brain',    color: 'hsl(170 70% 50%)' },
+};
+
 // ============ TYPES ============
 
 interface QuestTemplate {
@@ -17,6 +31,8 @@ interface QuestTemplate {
   // Progress-based quest support (for weekly quests that auto-track progress)
   trackingType?: 'tasks_completed' | 'quests_completed' | 'notes_created';
   baseTargetCount?: number; // base target count, scales with level
+  // Preference-based: only shown if user selected this interest in onboarding
+  preferenceTag?: string;
 }
 
 // ============ SEEDED RANDOM ============
@@ -792,6 +808,1150 @@ const TEMPLATES: QuestTemplate[] = [
   },
 
   // ═══════════════════════════════════════
+  //  ADDITIONAL PERSONA-SPECIFIC TEMPLATES
+  //  (deeper, richer quest pool per persona)
+  // ═══════════════════════════════════════
+
+  // --- Student (additional daily) ---
+  {
+    id: 's_pomodoro',
+    titles: ['Pomodoro tanulás', 'Időzített tanulási blokk', 'Fókusz sprint'],
+    descriptions: ['Alkalmazz Pomodoro technikát: 25 perc tanulás, 5 perc szünet, ismételd 3x.', 'Használj időzítőt a koncentrált tanuláshoz – 25 perces blokkokban haladj.'],
+    category: 'Tanulás',
+    baseDifficulty: 'medium',
+    baseTime: 90,
+    personas: ['student'],
+    keywords: ['pomodoro', 'időzít', 'fókusz'],
+    frequency: 'daily',
+  },
+  {
+    id: 's_desk_org',
+    titles: ['Tanulósarok rendezése', 'Íróasztal takarítás', 'Rendezett tanulóhely'],
+    descriptions: ['Rendezd be a tanulóhelyedet: tiszta asztal, rendezett jegyzet, töltött laptop.', 'Készítsd elő a tanulóhelyed – a rendezett környezet javítja a koncentrációt.'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['student'],
+    keywords: ['asztal', 'rendez', 'tanulóhely'],
+    frequency: 'daily',
+  },
+  {
+    id: 's_vocab',
+    titles: ['Nyelvgyakorlás', 'Szókincs bővítés', 'Napi nyelvi kihívás'],
+    descriptions: ['Gyakorolj idegen nyelvet 15 percig: új szavak, mondatok, hallgatás.', 'Bővítsd a szókincsedet – tanulj meg 10 új szót vagy kifejezést.'],
+    category: 'Tanulás',
+    baseDifficulty: 'easy',
+    baseTime: 15,
+    personas: ['student'],
+    keywords: ['nyelv', 'szó', 'angol'],
+    frequency: 'daily',
+  },
+  {
+    id: 's_teach_back',
+    titles: ['Tanítsd el valakinek', 'Magyarázd el a tananyagot', 'Tudásmegosztás'],
+    descriptions: ['Magyarázz el egy mai témát valakinek – a tanítás a legjobb tanulás.', 'Foglald össze hangosan vagy írd le a mai legfontosabb tanulságot.'],
+    category: 'Tanulás',
+    baseDifficulty: 'easy',
+    baseTime: 15,
+    personas: ['student'],
+    keywords: ['tanít', 'magyaráz'],
+    frequency: 'daily',
+  },
+  {
+    id: 's_campus_walk',
+    titles: ['Kampusz séta', 'Levegőzés órák között', 'Frissítő séta'],
+    descriptions: ['Sétálj 15 percet a friss levegőn órák/tanulás között.', 'Menj ki egy gyors sétára – a mozgás javítja a memóriát.'],
+    category: 'Egészség',
+    baseDifficulty: 'easy',
+    baseTime: 15,
+    personas: ['student'],
+    keywords: ['séta', 'friss', 'levegő'],
+    frequency: 'daily',
+  },
+
+  // --- Student (additional weekly) ---
+  {
+    id: 's_library',
+    titles: ['Könyvtári kutatás', 'Könyvtári tanulás', 'Források keresése'],
+    descriptions: ['Menj el a könyvtárba és kutatj legalább 1 órát a tananyagodhoz.', 'Keress kiegészítő forrásokat az aktuális témádhoz a könyvtárban vagy online adatbázisokban.'],
+    category: 'Tanulás',
+    baseDifficulty: 'medium',
+    baseTime: 60,
+    personas: ['student'],
+    keywords: ['könyvtár', 'kutatás'],
+    frequency: 'weekly',
+  },
+  {
+    id: 's_practice_exam',
+    titles: ['Próbavizsga', 'Gyakorló teszt megoldása', 'Önellenőrzés'],
+    descriptions: ['Oldj meg egy próbavizsgát vagy gyakorló tesztet időre.', 'Teszteld a tudásodat egy korábbi vizsga vagy kvíz segítségével.'],
+    category: 'Tanulás',
+    baseDifficulty: 'hard',
+    baseTime: 90,
+    personas: ['student'],
+    keywords: ['vizsga', 'teszt', 'gyakorol'],
+    frequency: 'weekly',
+  },
+  {
+    id: 's_skill_outside',
+    titles: ['Tanórán kívüli fejlődés', 'Új készség tanulása', 'Hobbihoz kapcsolódó tanulás'],
+    descriptions: ['Szánj időt egy olyan készség fejlesztésére ami nem a tananyag de érdekel.', 'Tanulj programozni, rajzolni, zenélni vagy bármi mást ami érdekel.'],
+    category: 'Fejlődés',
+    baseDifficulty: 'medium',
+    baseTime: 60,
+    personas: ['student'],
+    keywords: ['készség', 'hobbi'],
+    frequency: 'weekly',
+  },
+
+  // --- Worker (additional daily) ---
+  {
+    id: 'w_skill_article',
+    titles: ['Szakmai cikk olvasás', 'Iparági hír áttekintés', 'Tudásfrissítés'],
+    descriptions: ['Olvass el egy szakmai cikket vagy blogposztot a szakterületedről.', 'Tartsd naprakészen a tudásodat – olvasd a legújabb iparági híreket.'],
+    category: 'Tanulás',
+    baseDifficulty: 'easy',
+    baseTime: 15,
+    personas: ['worker'],
+    keywords: ['cikk', 'szakmai', 'olvas'],
+    frequency: 'daily',
+  },
+  {
+    id: 'w_desk_stretch',
+    titles: ['Irodai nyújtás', 'Ergonómiai szünet', 'Mozgás az íróasztalnál'],
+    descriptions: ['Végezz 5 perc nyújtást és testtartás-korrekciót az asztalodnál.', 'Állj fel, nyújtózz és végezz néhány egyszerű gyakorlatot a hátadnak.'],
+    category: 'Egészség',
+    baseDifficulty: 'easy',
+    baseTime: 5,
+    personas: ['worker'],
+    dayPreference: [1, 2, 3, 4, 5],
+    keywords: ['nyújtás', 'ergonómia'],
+    frequency: 'daily',
+  },
+  {
+    id: 'w_gratitude_work',
+    titles: ['Munkahelyi pozitívum', 'Munkanapi hála', 'Jó dolgok a munkában'],
+    descriptions: ['Keress 3 pozitív dolgot a mai munkanapodban.', 'Fejezd ki háládat egy kollégának a segítségéért vagy munkájáért.'],
+    category: 'Fejlődés',
+    baseDifficulty: 'easy',
+    baseTime: 5,
+    personas: ['worker'],
+    keywords: ['hála', 'pozitív', 'kolléga'],
+    frequency: 'daily',
+  },
+  {
+    id: 'w_boundary',
+    titles: ['Munkaidő határ', 'Fejeződj be időben', 'Work-life balance'],
+    descriptions: ['Tartsd be a munkaidő végét – zárd le a napot és kapcsolj ki.', 'Ma ne dolgozz túlórát. Zárd le az e-maileket és pihenj.'],
+    category: 'Egészség',
+    baseDifficulty: 'easy',
+    baseTime: 5,
+    personas: ['worker'],
+    dayPreference: [1, 2, 3, 4, 5],
+    keywords: ['határ', 'egyensúly'],
+    frequency: 'daily',
+  },
+  {
+    id: 'w_learn_tool',
+    titles: ['Új eszköz felfedezése', 'Produktivitási trükk', 'Hatékonyabb munkamódszer'],
+    descriptions: ['Tanulj meg egy új gyorsbillentyűt, eszközt vagy módszert ami gyorsabbá teszi a munkádat.', 'Fedezz fel egy új funkciót a használt szoftveredben.'],
+    category: 'Tanulás',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['worker'],
+    keywords: ['eszköz', 'trükk', 'hatékony'],
+    frequency: 'daily',
+  },
+
+  // --- Worker (additional weekly) ---
+  {
+    id: 'w_mentor',
+    titles: ['Mentor konzultáció', 'Tapasztaltabb kolléga megkeresése', 'Karriertanácsadás'],
+    descriptions: ['Kérj tanácsot egy tapasztaltabb kollégától vagy mentortól ezen a héten.', 'Beszélj valakivel aki inspirál téged a szakmádban.'],
+    category: 'Szociális',
+    baseDifficulty: 'medium',
+    baseTime: 30,
+    personas: ['worker'],
+    keywords: ['mentor', 'tanács'],
+    frequency: 'weekly',
+  },
+  {
+    id: 'w_automate',
+    titles: ['Munkafolyamat egyszerűsítés', 'Automatizálás keresés', 'Hatékonyság javítás'],
+    descriptions: ['Keress egy ismétlődő feladatot amit automatizálhatsz vagy egyszerűsíthetsz.', 'Készíts sablont, makrót vagy egyszerűsíts egy munkafolyamatot.'],
+    category: 'Produktivitás',
+    baseDifficulty: 'hard',
+    baseTime: 60,
+    personas: ['worker'],
+    keywords: ['automatizál', 'egyszerűsít'],
+    frequency: 'weekly',
+  },
+  {
+    id: 'w_social_lunch',
+    titles: ['Szociális ebéd', 'Kollégával közös ebéd', 'Csapatépítő beszélgetés'],
+    descriptions: ['Ebédelj együtt egy kollégáddal és beszéljetek nem munka témákról is.', 'Szánj időt a munkahelyi kapcsolatok ápolására egy közös étkezéssel.'],
+    category: 'Szociális',
+    baseDifficulty: 'easy',
+    baseTime: 45,
+    personas: ['worker'],
+    keywords: ['ebéd', 'kolléga', 'szociális'],
+    frequency: 'weekly',
+  },
+
+  // --- Selfdev (additional daily) ---
+  {
+    id: 'd_cold_exposure',
+    titles: ['Komfortzóna mikro-kihívás', 'Napi bátorság', 'Apró kihívás'],
+    descriptions: ['Csinálj egy apró dolgot ami kicsit kívül esik a komfortzónádon.', 'Zuhanyozz hidegebb vízzel, szólíts meg valakit, vagy próbálj ki valami újat.'],
+    category: 'Fejlődés',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['selfdev'],
+    keywords: ['kihívás', 'komfort'],
+    frequency: 'daily',
+  },
+  {
+    id: 'd_screen_limit',
+    titles: ['Képernyőidő csökkentés', 'Tudatos telefon-használat', 'Digitális tudatosság'],
+    descriptions: ['Csökkentsd a social media használatodat ma – állíts be időkorlátot.', 'Figyelj tudatosan a telefon-felkapásokra és tegyél le ha nem kell.'],
+    category: 'Fejlődés',
+    baseDifficulty: 'easy',
+    baseTime: 5,
+    personas: ['selfdev'],
+    keywords: ['telefon', 'képernyő', 'social'],
+    frequency: 'daily',
+  },
+  {
+    id: 'd_visualization',
+    titles: ['Cél vizualizáció', 'Jövőkép képzelés', 'Motivációs percek'],
+    descriptions: ['Zárd be a szemed 5 percre és képzeld el magad a céljaid elérése után.', 'Vizualizáld a heted, hónapod vagy éved sikerét részletesen.'],
+    category: 'Fejlődés',
+    baseDifficulty: 'easy',
+    baseTime: 5,
+    personas: ['selfdev'],
+    keywords: ['vizualizáció', 'cél', 'motiváció'],
+    frequency: 'daily',
+  },
+  {
+    id: 'd_teach_share',
+    titles: ['Tudásmegosztás', 'Oszd meg amit tanultál', 'Inspirálj másokat'],
+    descriptions: ['Oszd meg egy baráttal vagy online amit ma tanultál.', 'Írj egy rövid posztot vagy mesélj valakinek egy érdekes felismerésedről.'],
+    category: 'Szociális',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['selfdev'],
+    keywords: ['megosztás', 'tanít'],
+    frequency: 'daily',
+  },
+  {
+    id: 'd_nature_time',
+    titles: ['Természet idő', 'Szabadtéri séta', 'Zöldben töltött idő'],
+    descriptions: ['Tölts legalább 20 percet a természetben – parkban, erdőben vagy kertben.', 'Menj ki a szabadba és figyelj a természetre tudatosan.'],
+    category: 'Egészség',
+    baseDifficulty: 'easy',
+    baseTime: 20,
+    personas: ['selfdev'],
+    keywords: ['természet', 'séta', 'zöld'],
+    frequency: 'daily',
+  },
+
+  // --- Selfdev (additional weekly) ---
+  {
+    id: 'd_new_experience',
+    titles: ['Új élmény', 'Ismeretlen kipróbálása', 'Első alkalommal'],
+    descriptions: ['Próbálj ki ezen a héten valamit amit még sosem csináltál.', 'Menj egy új helyre, kóstolj egy új ételt, vagy próbálj egy új tevékenységet.'],
+    category: 'Fejlődés',
+    baseDifficulty: 'hard',
+    baseTime: 60,
+    personas: ['selfdev'],
+    keywords: ['új', 'élmény', 'első'],
+    frequency: 'weekly',
+  },
+  {
+    id: 'd_habit_audit',
+    titles: ['Szokás audit', 'Rutin áttekintés', 'Szokások értékelése'],
+    descriptions: ['Tekintsd át a szokásaidat: melyik működik, melyiket kell változtatni.', 'Értékeld a heti szokásaidat és tervezz módosításokat ahol kell.'],
+    category: 'Szervezés',
+    baseDifficulty: 'medium',
+    baseTime: 25,
+    personas: ['selfdev'],
+    keywords: ['szokás', 'audit', 'rutin'],
+    frequency: 'weekly',
+  },
+  {
+    id: 'd_gratitude_letter',
+    titles: ['Hálalevél írás', 'Köszönet kifejezés', 'Értékelés valakinek'],
+    descriptions: ['Írj egy rövid levelet vagy üzenetet valakinek akit értékelsz.', 'Fejezd ki a háládat egy fontos személynek az életedben.'],
+    category: 'Szociális',
+    baseDifficulty: 'medium',
+    baseTime: 20,
+    personas: ['selfdev'],
+    keywords: ['hála', 'levél', 'köszönet'],
+    frequency: 'weekly',
+  },
+
+  // --- Freelancer (additional daily) ---
+  {
+    id: 'f_networking_dm',
+    titles: ['Networking üzenet', 'Kapcsolatépítő DM', 'Szakmai köszönés'],
+    descriptions: ['Küldj egy személyes üzenetet egy szakmai kapcsolatodnak.', 'Írj egy rövid üzenetet egy potenciális együttműködő partnernek.'],
+    category: 'Szociális',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['freelancer'],
+    keywords: ['networking', 'üzenet'],
+    frequency: 'daily',
+  },
+  {
+    id: 'f_quick_finance',
+    titles: ['Pénzügyi gyorscheck', 'Bevétel/kiadás ellenőrzés', 'Számlák állapota'],
+    descriptions: ['Ellenőrizd gyorsan a bankszámlád, függő számláid és kifizetéseid.', 'Nézd meg a mai bevételeket és kiadásokat – tarts mindent naprakészen.'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['freelancer'],
+    keywords: ['pénz', 'számla', 'bevétel'],
+    frequency: 'daily',
+  },
+  {
+    id: 'f_skill_15',
+    titles: ['15 perces skill boost', 'Gyors készségfejlesztés', 'Mikro-tanulás'],
+    descriptions: ['Szánj 15 percet egy konkrét szaktudás gyakorlására.', 'Nézz meg egy rövid tutorialt vagy cikket a szakterületedről.'],
+    category: 'Tanulás',
+    baseDifficulty: 'easy',
+    baseTime: 15,
+    personas: ['freelancer'],
+    keywords: ['készség', 'tanulás', 'gyors'],
+    frequency: 'daily',
+  },
+  {
+    id: 'f_outdoor_break',
+    titles: ['Szabadtéri szünet', 'Levegőzés a munkából', 'Séta a blokk körül'],
+    descriptions: ['Menj ki 15 percre a szabadba – sétálj, lélegezz, töltődj.', 'Szakítsd meg a munkát egy rövid szabadtéri sétával.'],
+    category: 'Egészség',
+    baseDifficulty: 'easy',
+    baseTime: 15,
+    personas: ['freelancer'],
+    keywords: ['séta', 'szabadtér', 'szünet'],
+    frequency: 'daily',
+  },
+  {
+    id: 'f_idea_capture',
+    titles: ['Ötlet rögzítés', 'Napi brainstorm', 'Kreatív jegyzet'],
+    descriptions: ['Jegyezz le 3 új ötletet: projekthez, tartalomhoz vagy üzletfejlesztéshez.', 'Szánj 10 percet szabad brainstormingra és írd le ami eszedbe jut.'],
+    category: 'Kreativitás',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['freelancer'],
+    keywords: ['ötlet', 'brainstorm'],
+    frequency: 'daily',
+  },
+
+  // --- Freelancer (additional weekly) ---
+  {
+    id: 'f_testimonial',
+    titles: ['Visszajelzés kérés', 'Ügyfél ajánlás gyűjtés', 'Review begyűjtés'],
+    descriptions: ['Kérj visszajelzést egy korábbi ügyfeledtől a munkádról.', 'Gyűjts be egy ajánlást vagy értékelést ami erősíti a portfóliódat.'],
+    category: 'Produktivitás',
+    baseDifficulty: 'medium',
+    baseTime: 20,
+    personas: ['freelancer'],
+    keywords: ['visszajelzés', 'ajánlás'],
+    frequency: 'weekly',
+  },
+  {
+    id: 'f_financial_plan',
+    titles: ['Személyes pénzügyi terv', 'Havi bevétel tervezés', 'Pénzügyi cél kitűzés'],
+    descriptions: ['Tekintsd át a havi bevételeid/kiadásaid és tervezd a következő hónapot.', 'Határozd meg a pénzügyi céljaidat és a szükséges lépéseket.'],
+    category: 'Szervezés',
+    baseDifficulty: 'hard',
+    baseTime: 45,
+    personas: ['freelancer'],
+    keywords: ['pénzügyi', 'terv', 'bevétel'],
+    frequency: 'weekly',
+  },
+  {
+    id: 'f_brand_refresh',
+    titles: ['Személyes márka frissítés', 'Online profil update', 'LinkedIn/Portfolio átnézés'],
+    descriptions: ['Frissítsd az online profiljaidat: LinkedIn, portfólió, közösségi média bio.', 'Gondold át a személyes márkádat és frissítsd ahol szükséges.'],
+    category: 'Kreativitás',
+    baseDifficulty: 'medium',
+    baseTime: 30,
+    personas: ['freelancer'],
+    keywords: ['márka', 'profil', 'frissít'],
+    frequency: 'weekly',
+  },
+
+  // --- Organizer (additional daily) ---
+  {
+    id: 'o_plants',
+    titles: ['Növények gondozása', 'Kert/virágok öntözése', 'Zöld percek'],
+    descriptions: ['Gondozd a növényeidet: öntözés, levelek átnézése, átültetés ha kell.', 'Szánj 10 percet a növényeid gondozására.'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['organizer'],
+    keywords: ['növény', 'kert', 'öntöz'],
+    frequency: 'daily',
+  },
+  {
+    id: 'o_one_drawer',
+    titles: ['Egy fiók rendje', 'Kis terület selejtezés', 'Mikro-rendrakás'],
+    descriptions: ['Válassz EGY fiókot, polcot vagy dobozt és rakd rendbe teljesen.', 'Selejtezz ki legalább 3 felesleges tárgyat egy kis területről.'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 15,
+    personas: ['organizer'],
+    keywords: ['fiók', 'selejtez', 'rendez'],
+    frequency: 'daily',
+  },
+  {
+    id: 'o_family_gratitude',
+    titles: ['Családi hála', 'Szeretetnyelvek gyakorlása', 'Pozitív szó a családnak'],
+    descriptions: ['Mondj valami szépet minden családtagodnak ma.', 'Fejezd ki háládat és szeretetedet a családod felé egy apró gesztussal.'],
+    category: 'Szociális',
+    baseDifficulty: 'easy',
+    baseTime: 5,
+    personas: ['organizer'],
+    keywords: ['család', 'hála', 'szeretet'],
+    frequency: 'daily',
+  },
+  {
+    id: 'o_self_care',
+    titles: ['Önkarbantartás idő', 'Személyes ápolás', 'Időt magadra'],
+    descriptions: ['Szánj 20 percet kizárólag magadra: fürdő, bőrápolás, nyugalom.', 'Ne felejtkezz el magadról – csinálj valamit ami jól esik csak neked.'],
+    category: 'Egészség',
+    baseDifficulty: 'easy',
+    baseTime: 20,
+    personas: ['organizer'],
+    keywords: ['ápolás', 'magad', 'pihenés'],
+    frequency: 'daily',
+  },
+  {
+    id: 'o_digital_tidy',
+    titles: ['Digitális rendrakás', 'Email és fájlok rendezése', 'Telefon takarítás'],
+    descriptions: ['Rendezd az e-mailjeidet, töröld a felesleges fájlokat és appokat.', 'Szánj 15 percet a digitális rendrakásra: értesítések, fotók, letöltések.'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 15,
+    personas: ['organizer'],
+    keywords: ['digitális', 'email', 'rendez'],
+    frequency: 'daily',
+  },
+
+  // --- Organizer (additional weekly) ---
+  {
+    id: 'o_subscription_audit',
+    titles: ['Előfizetés felülvizsgálat', 'Ismétlődő kiadások átnézése', 'Felesleges tagságok lemondása'],
+    descriptions: ['Nézd át az előfizetéseidet és mondd le amit nem használsz.', 'Ellenőrizd a havi ismétlődő kiadásaidat és optimalizálj.'],
+    category: 'Szervezés',
+    baseDifficulty: 'medium',
+    baseTime: 25,
+    personas: ['organizer'],
+    keywords: ['előfizetés', 'kiadás', 'lemond'],
+    frequency: 'weekly',
+  },
+  {
+    id: 'o_pantry_clean',
+    titles: ['Kamra/hűtő rendezés', 'Élelmiszer leltár', 'Lejárat ellenőrzés'],
+    descriptions: ['Rendezd ki a kamrát és hűtőt: dobd ki a lejártat, rendszerezd a többit.', 'Készíts leltárt a meglévő élelmiszerekből a hatékonyabb bevásárláshoz.'],
+    category: 'Szervezés',
+    baseDifficulty: 'medium',
+    baseTime: 30,
+    personas: ['organizer'],
+    keywords: ['kamra', 'hűtő', 'élelmiszer'],
+    frequency: 'weekly',
+  },
+  {
+    id: 'o_family_meeting',
+    titles: ['Családi megbeszélés', 'Heti családi egyeztetés', 'Közös tervezés'],
+    descriptions: ['Tartsatok rövid családi megbeszélést: mi volt jó, mi a terv a következő hétre.', 'Beszéljétek meg a család igényeit, terveit és elosztjátok a feladatokat.'],
+    category: 'Szociális',
+    baseDifficulty: 'medium',
+    baseTime: 30,
+    personas: ['organizer'],
+    keywords: ['család', 'megbeszélés', 'terv'],
+    frequency: 'weekly',
+  },
+
+  // ═══════════════════════════════════════
+  //  EXPANDED PERSONA POOL — ROUND 3
+  //  Even more variety per persona
+  // ═══════════════════════════════════════
+
+  // --- Student (expanded daily) ---
+  {
+    id: 's_essay_draft',
+    titles: ['Esszé/dolgozat vázlat', 'Írás tervezés', 'Gondolattérkép készítés'],
+    descriptions: ['Készíts vázlatot vagy gondolattérképet a következő beadandódhoz.', 'Tervezd meg a dolgozatod szerkezetét: bevezető, kifejtés, összegzés.'],
+    category: 'Tanulás',
+    baseDifficulty: 'medium',
+    baseTime: 30,
+    personas: ['student'],
+    keywords: ['esszé', 'dolgozat', 'vázlat'],
+    frequency: 'daily',
+  },
+  {
+    id: 's_study_group_org',
+    titles: ['Tanulócsoport szervezés', 'Közös tanulás', 'Csoportos megbeszélés'],
+    descriptions: ['Szervezz vagy csatlakozz egy tanulócsoporthoz közös felkészüléshez.', 'Gyakoroljatok együtt egy nehezebb témát csoportban.'],
+    category: 'Szociális',
+    baseDifficulty: 'easy',
+    baseTime: 15,
+    personas: ['student'],
+    keywords: ['csoport', 'közös', 'tanulás'],
+    frequency: 'daily',
+  },
+  {
+    id: 's_vocab_drill',
+    titles: ['Szókincs gyakorlás', 'Fogalom ismétlés', 'Definíciók tanulása'],
+    descriptions: ['Gyakorold a kulcsfogalmakat és definíciókat 15 percig.', 'Ismételd át a legfontosabb szakkifejezéseket a tananyagodból.'],
+    category: 'Tanulás',
+    baseDifficulty: 'easy',
+    baseTime: 15,
+    personas: ['student'],
+    keywords: ['szókincs', 'fogalom', 'definíció'],
+    frequency: 'daily',
+  },
+  {
+    id: 's_online_resource',
+    titles: ['Online forrás keresés', 'Kiegészítő anyag', 'Videó lecke nézés'],
+    descriptions: ['Keress egy hasznos YouTube videót vagy cikket a tananyagodhoz.', 'Nézz egy oktató videót vagy olvass el egy kiegészítő cikket.'],
+    category: 'Tanulás',
+    baseDifficulty: 'easy',
+    baseTime: 20,
+    personas: ['student'],
+    keywords: ['online', 'videó', 'forrás'],
+    frequency: 'daily',
+  },
+  {
+    id: 's_practice_problems',
+    titles: ['Gyakorló feladatok', 'Próba feladatsor', 'Önellenőrzés'],
+    descriptions: ['Oldj meg gyakorló feladatokat a nehezebb témakörökből.', 'Teszteld tudásodat próba feladatokkal vagy régi vizsga kérdésekkel.'],
+    category: 'Tanulás',
+    baseDifficulty: 'medium',
+    baseTime: 35,
+    personas: ['student'],
+    keywords: ['gyakorlás', 'feladat', 'teszt'],
+    frequency: 'daily',
+  },
+
+  // --- Student (expanded weekly) ---
+  {
+    id: 's_week_study_review',
+    titles: ['Heti tanulmányi összefoglaló', 'Tanulási visszatekintés', 'Heti progress check'],
+    descriptions: ['Tekintsd át mit tanultál ezen a héten és mit kell ismételned.', 'Készíts heti összefoglalót a tananyagról és tervezd a következő hetet.'],
+    category: 'Tanulás',
+    baseDifficulty: 'medium',
+    baseTime: 30,
+    personas: ['student'],
+    keywords: ['heti', 'összefoglaló', 'tanulás'],
+    frequency: 'weekly',
+  },
+  {
+    id: 's_study_environment',
+    titles: ['Tanulókörnyezet rendezés', 'Íróasztal tisztítás', 'Tanulósarok frissítés'],
+    descriptions: ['Rendezd be a tanulóhelyed: tiszta asztal, rendezett jegyzetei, feltöltött eszközök.', 'Készítsd elő a tanulókörnyezetedet a következő hétre.'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 20,
+    personas: ['student'],
+    keywords: ['környezet', 'rendezés', 'asztal'],
+    frequency: 'weekly',
+  },
+
+  // --- Worker (expanded daily) ---
+  {
+    id: 'w_inbox_zero',
+    titles: ['Inbox rendezés', 'Email feldolgozás', 'Levelezés nullázás'],
+    descriptions: ['Dolgozd fel az összes olvasatlan emailedet: válaszolj, archiválj vagy töröld.', 'Érd el az inbox zero-t — ne maradjon feldolgozatlan levél.'],
+    category: 'Produktivitás',
+    baseDifficulty: 'easy',
+    baseTime: 15,
+    personas: ['worker'],
+    keywords: ['email', 'inbox', 'levél'],
+    frequency: 'daily',
+  },
+  {
+    id: 'w_priority_matrix',
+    titles: ['Prioritás mátrix', 'Eisenhower rendszerezés', 'Fontos vs. sürgős'],
+    descriptions: ['Rendezd a mai feladataidat fontos/sürgős mátrixba és fókuszálj a lényegesre.', 'Kategorizáld a teendőidet: csináld, delegáld, tervezd, vagy hagyd el.'],
+    category: 'Produktivitás',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['worker'],
+    keywords: ['prioritás', 'mátrix', 'fontos'],
+    frequency: 'daily',
+  },
+  {
+    id: 'w_learn_tool',
+    titles: ['Új eszköz tanulás', 'Shortcut felfedezés', 'Munkaeszköz tipp'],
+    descriptions: ['Tanulj meg egy új shortcutot vagy funkciót a mindennapi munkaeszközödben.', 'Fedezz fel egy hasznos funkciót amit eddig nem használtál a munkádban.'],
+    category: 'Tanulás',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['worker'],
+    keywords: ['eszköz', 'shortcut', 'tanulás'],
+    frequency: 'daily',
+  },
+  {
+    id: 'w_feedback_give',
+    titles: ['Visszajelzés adás', 'Kolléga elismerés', 'Konstruktív feedback'],
+    descriptions: ['Adj konstruktív visszajelzést egy kollégádnak a munkájáról.', 'Ismerd el egy csapattársad munkáját — építő visszajelzéssel.'],
+    category: 'Szociális',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['worker'],
+    keywords: ['visszajelzés', 'kolléga', 'elismerés'],
+    frequency: 'daily',
+  },
+  {
+    id: 'w_standup_prep',
+    titles: ['Standup előkészítés', 'Napi beszámoló', 'Haladás áttekintés'],
+    descriptions: ['Készülj a napi standupra: mit csináltál tegnap, mit csinálsz ma, mi blokkol.', 'Foglald össze röviden a haladásodat és a mai tervedet.'],
+    category: 'Produktivitás',
+    baseDifficulty: 'easy',
+    baseTime: 5,
+    personas: ['worker'],
+    keywords: ['standup', 'beszámoló', 'haladás'],
+    frequency: 'daily',
+  },
+
+  // --- Worker (expanded weekly) ---
+  {
+    id: 'w_career_step',
+    titles: ['Karrier lépés', 'Szakmai fejlődés', 'Karrierterv haladás'],
+    descriptions: ['Tegyél egy konkrét lépést a karriered fejlesztéséért ezen a héten.', 'Dolgozz a szakmai fejlődéseden: tanulj, networkölj, vagy frissítsd a CV-d.'],
+    category: 'Fejlődés',
+    baseDifficulty: 'medium',
+    baseTime: 30,
+    personas: ['worker'],
+    keywords: ['karrier', 'fejlődés', 'szakmai'],
+    frequency: 'weekly',
+  },
+  {
+    id: 'w_week_retro',
+    titles: ['Heti retrospektív', 'Munka visszatekintés', 'Heti kiértékelés'],
+    descriptions: ['Értékeld az elmúlt hetet: mi ment jól, min javíthatsz, mit tanultál.', 'Végezz heti retrospektívet a munkádról és tervezd a következő hetet.'],
+    category: 'Produktivitás',
+    baseDifficulty: 'medium',
+    baseTime: 20,
+    personas: ['worker'],
+    keywords: ['retrospektív', 'heti', 'értékelés'],
+    frequency: 'weekly',
+  },
+
+  // --- Selfdev (expanded daily) ---
+  {
+    id: 'd_affirmation',
+    titles: ['Napi affirmáció', 'Pozitív mantra', 'Önerősítő mondatok'],
+    descriptions: ['Mondj el 5 pozitív affirmációt magadról reggel.', 'Gyakorold a pozitív önbeszédet — erősítsd a hitedet önmagadban.'],
+    category: 'Fejlődés',
+    baseDifficulty: 'easy',
+    baseTime: 5,
+    personas: ['selfdev'],
+    keywords: ['affirmáció', 'pozitív', 'mantra'],
+    frequency: 'daily',
+  },
+  {
+    id: 'd_comfort_zone',
+    titles: ['Komfortzóna kihívás', 'Bátorság gyakorlat', 'Félelem legyőzés'],
+    descriptions: ['Csinálj ma valamit ami kicsit kívül esik a komfortzónádon.', 'Vállalj egy apró kihívást ami fejleszti a bátorságodat.'],
+    category: 'Fejlődés',
+    baseDifficulty: 'medium',
+    baseTime: 15,
+    personas: ['selfdev'],
+    keywords: ['komfortzóna', 'kihívás', 'bátorság'],
+    frequency: 'daily',
+  },
+  {
+    id: 'd_vision_review',
+    titles: ['Jövőkép áttekintés', 'Célok vizualizálás', 'Álom táblád frissítés'],
+    descriptions: ['Tekintsd át a hosszú távú céljaidat és vizualizáld az elérésüket.', 'Olvass el néhány hosszú távú célodat és gondolkodj el a következő lépésekről.'],
+    category: 'Fejlődés',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['selfdev'],
+    keywords: ['jövőkép', 'cél', 'vizualizálás'],
+    frequency: 'daily',
+  },
+  {
+    id: 'd_skill_practice',
+    titles: ['Készség gyakorlás', 'Szándékos gyakorlás', 'Mester szint felé'],
+    descriptions: ['Gyakorolj szándékosan egy készséget amit fejleszteni akarsz.', 'Szánj 20 percet egy konkrét készség tudatos fejlesztésére.'],
+    category: 'Tanulás',
+    baseDifficulty: 'medium',
+    baseTime: 20,
+    personas: ['selfdev'],
+    keywords: ['készség', 'gyakorlás', 'fejlesztés'],
+    frequency: 'daily',
+  },
+  {
+    id: 'd_mindset_content',
+    titles: ['Gondolkodásmód tartalom', 'Inspiráló podcast', 'Motivációs tartalom'],
+    descriptions: ['Hallgass egy inspiráló podcastot vagy nézz egy motivációs TED talkot.', 'Fogyassz fejlődés-orientált tartalmat — könyv, podcast, videó.'],
+    category: 'Fejlődés',
+    baseDifficulty: 'easy',
+    baseTime: 20,
+    personas: ['selfdev'],
+    keywords: ['podcast', 'motiváció', 'tartalom'],
+    frequency: 'daily',
+  },
+
+  // --- Selfdev (expanded weekly) ---
+  {
+    id: 'd_30day_progress',
+    titles: ['30 napos kihívás haladás', 'Kihívás mérföldkő', 'Challenge check-in'],
+    descriptions: ['Értékeld a haladásodat a folyamatban lévő kihívásodban.', 'Ellenőrizd hol tartasz a jelenlegi önfejlesztő kihívásoddal.'],
+    category: 'Fejlődés',
+    baseDifficulty: 'medium',
+    baseTime: 15,
+    personas: ['selfdev'],
+    keywords: ['kihívás', '30 nap', 'haladás'],
+    frequency: 'weekly',
+  },
+  {
+    id: 'd_values_check',
+    titles: ['Értékek felülvizsgálat', 'Iránytű ellenőrzés', 'Prioritás egyeztetés'],
+    descriptions: ['Vizsgáld meg a heti döntéseidet: összhangban voltak az értékeiddel?', 'Ellenőrizd hogy a heted tükrözte-e amit igazán fontosnak tartasz.'],
+    category: 'Fejlődés',
+    baseDifficulty: 'medium',
+    baseTime: 20,
+    personas: ['selfdev'],
+    keywords: ['értékek', 'iránytű', 'prioritás'],
+    frequency: 'weekly',
+  },
+
+  // --- Freelancer (expanded daily) ---
+  {
+    id: 'f_client_followup',
+    titles: ['Ügyfél utánkövetés', 'Follow-up üzenet', 'Projekt státusz küldés'],
+    descriptions: ['Küldj státusz frissítést egy aktív ügyfelednek a projekt haladásáról.', 'Kövess utána egy korábbi ajánlatnak vagy megbeszélésnek.'],
+    category: 'Produktivitás',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['freelancer'],
+    keywords: ['ügyfél', 'utánkövetés', 'státusz'],
+    frequency: 'daily',
+  },
+  {
+    id: 'f_content_create',
+    titles: ['Tartalom készítés', 'Social media poszt', 'Szakmai jelenlét építés'],
+    descriptions: ['Készíts egy rövid posztot a szakmai közösségi médiádra.', 'Oszd meg a tudásodat: írj egy tippet, gondolatot vagy tanulságot.'],
+    category: 'Kreativitás',
+    baseDifficulty: 'easy',
+    baseTime: 15,
+    personas: ['freelancer'],
+    keywords: ['tartalom', 'poszt', 'közösségi'],
+    frequency: 'daily',
+  },
+  {
+    id: 'f_admin_30',
+    titles: ['Admin 30 perc', 'Ügyvitel rendezés', 'Számlázás és papírok'],
+    descriptions: ['Szánj 30 percet az adminisztratív feladatokra: számlák, szerződések, emailek.', 'Intézd el a halmozódó admin ügyeket: iktatás, számlázás, válaszolás.'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 30,
+    personas: ['freelancer'],
+    keywords: ['admin', 'számla', 'szervezés'],
+    frequency: 'daily',
+  },
+  {
+    id: 'f_time_track',
+    titles: ['Időkövetés indítás', 'Munkaóra naplózás', 'Idő rögzítés'],
+    descriptions: ['Kövesd nyomon a mai munkaidődet projektenként.', 'Rögzítsd pontosan mennyi időt töltöttél az egyes projekteken ma.'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 5,
+    personas: ['freelancer'],
+    keywords: ['időkövetés', 'munkaóra', 'napló'],
+    frequency: 'daily',
+  },
+  {
+    id: 'f_learn_market',
+    titles: ['Piac figyelés', 'Trend követés', 'Versenyelem analízis'],
+    descriptions: ['Nézd meg mit csinálnak a versenytársaid és a piacod trendjeit.', 'Tájékozódj a szakterületed legújabb trendjeiben és lehetőségeiben.'],
+    category: 'Tanulás',
+    baseDifficulty: 'easy',
+    baseTime: 15,
+    personas: ['freelancer'],
+    keywords: ['piac', 'trend', 'verseny'],
+    frequency: 'daily',
+  },
+
+  // --- Freelancer (expanded weekly) ---
+  {
+    id: 'f_pipeline_review',
+    titles: ['Pipeline áttekintés', 'Projekt csővezeték', 'Munka tervezés'],
+    descriptions: ['Tekintsd át a projekt pipeline-odat: mi jön, mi vár ajánlatra, mi zárul.', 'Értékeld a munkaterheidet és tervezz a következő hétekre.'],
+    category: 'Produktivitás',
+    baseDifficulty: 'medium',
+    baseTime: 25,
+    personas: ['freelancer'],
+    keywords: ['pipeline', 'projekt', 'tervezés'],
+    frequency: 'weekly',
+  },
+  {
+    id: 'f_brand_building',
+    titles: ['Márkaépítés', 'Portfólió frissítés', 'Online jelenlét erősítés'],
+    descriptions: ['Frissítsd a portfóliódat, weboldalad vagy LinkedIn profilodat.', 'Dolgozz a személyes márkádon: frissíts egy platformot vagy készíts új tartalmat.'],
+    category: 'Kreativitás',
+    baseDifficulty: 'medium',
+    baseTime: 30,
+    personas: ['freelancer'],
+    keywords: ['márka', 'portfólió', 'online'],
+    frequency: 'weekly',
+  },
+
+  // --- Organizer (expanded daily) ---
+  {
+    id: 'o_meal_plan_day',
+    titles: ['Mai étkezés tervezés', 'Menü összeállítás', 'Recept keresés'],
+    descriptions: ['Tervezd meg a mai/holnapi étkezéseket: reggeli, ebéd, vacsora.', 'Válassz recepteket és ellenőrizd hogy megvan-e minden hozzávaló.'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['organizer'],
+    keywords: ['étkezés', 'menü', 'recept'],
+    frequency: 'daily',
+  },
+  {
+    id: 'o_chore_assign',
+    titles: ['Feladat kiosztás', 'Háztartási feladat delegálás', 'Közös teendők'],
+    descriptions: ['Oszd ki a mai háztartási feladatokat a családtagok között.', 'Szervezd meg ki mit csinál ma otthon — egyenletes elosztásban.'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 5,
+    personas: ['organizer'],
+    keywords: ['feladat', 'kiosztás', 'háztartás'],
+    frequency: 'daily',
+  },
+  {
+    id: 'o_bill_check',
+    titles: ['Számla ellenőrzés', 'Csekk fizetés', 'Pénzügyi napirend'],
+    descriptions: ['Ellenőrizd a beérkezett számlákat és fizess ha szükséges.', 'Nézd át a mai pénzügyi teendőket: számlák, átutalások, határidők.'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['organizer'],
+    keywords: ['számla', 'fizetés', 'pénzügy'],
+    frequency: 'daily',
+  },
+  {
+    id: 'o_stock_check',
+    titles: ['Készlet ellenőrzés', 'Hiánylista készítés', 'Kamra leltár'],
+    descriptions: ['Ellenőrizd az otthoni készleteket: konyha, fürdő, háztartási szerek.', 'Készíts hiánylistát amiket pótolni kell a következő bevásárláskor.'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['organizer'],
+    keywords: ['készlet', 'hiány', 'kamra'],
+    frequency: 'daily',
+  },
+  {
+    id: 'o_family_checkin',
+    titles: ['Családi check-in', 'Hogyan vagytok?', 'Napi összehangolás'],
+    descriptions: ['Kérdezd meg a családtagjaidat hogyan telt a napjuk és mire van szükségük.', 'Végezz egy rövid családi check-in-t: mi történt ma, mi lesz holnap.'],
+    category: 'Szociális',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['organizer'],
+    keywords: ['család', 'check-in', 'beszélgetés'],
+    frequency: 'daily',
+  },
+
+  // --- Organizer (expanded weekly) ---
+  {
+    id: 'o_family_meeting',
+    titles: ['Családi megbeszélés', 'Heti családi gyűlés', 'Közös tervezés'],
+    descriptions: ['Tartsatok családi megbeszélést: mit csináltatok, mi jön, mire van szükség.', 'Szervezzetek heti családi gyűlést a tervezéshez és összehangoláshoz.'],
+    category: 'Szociális',
+    baseDifficulty: 'medium',
+    baseTime: 30,
+    personas: ['organizer'],
+    keywords: ['család', 'gyűlés', 'tervezés'],
+    frequency: 'weekly',
+  },
+  {
+    id: 'o_home_project',
+    titles: ['Otthoni projekt haladás', 'Háztartási fejlesztés', 'DIY feladat'],
+    descriptions: ['Haladj az otthoni projekteddel: festés, javítás, rendezés, berendezés.', 'Dolgozz egy otthoni fejlesztésen amit már régóta tervezel.'],
+    category: 'Szervezés',
+    baseDifficulty: 'hard',
+    baseTime: 60,
+    personas: ['organizer'],
+    keywords: ['projekt', 'fejlesztés', 'otthon'],
+    frequency: 'weekly',
+  },
+
+  // ═══════════════════════════════════════
+  //  UNIVERSAL TEMPLATES (all personas)
+  //  These are general life tasks that everyone needs.
+  //  Available to ALL personas for a well-rounded experience.
+  // ═══════════════════════════════════════
+
+  // --- Universal Daily: Health & Wellness ---
+  {
+    id: 'u_morning_move',
+    titles: ['Reggeli mozgás', 'Ébresztő torna', 'Nap indító mozgás'],
+    descriptions: ['Kezdd a napodat 10 perc mozgással: nyújtás, torna vagy séta.', 'Mozdulj meg reggel – frissebben fogod kezdeni a napodat.'],
+    category: 'Egészség',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['reggeli', 'mozgás', 'torna'],
+    frequency: 'daily',
+  },
+  {
+    id: 'u_hydration',
+    titles: ['Vízfogyasztás', 'Igyál elég vizet', 'Hidratálás'],
+    descriptions: ['Igyál meg legalább 8 pohár vizet ma – kövesd nyomon!', 'Figyelj a vízfogyasztásodra: tegyél ki egy palackot és idd meg napközben.'],
+    category: 'Egészség',
+    baseDifficulty: 'easy',
+    baseTime: 5,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['víz', 'ital', 'hidratál'],
+    frequency: 'daily',
+  },
+  {
+    id: 'u_walk_outside',
+    titles: ['Séta a szabadban', '20 perc séta', 'Levegőzés'],
+    descriptions: ['Sétálj legalább 20 percet a szabadban – parkban, utcán, bárhol.', 'Menj ki a friss levegőre és sétálj – a tested és elméd is megköszöni.'],
+    category: 'Egészség',
+    baseDifficulty: 'easy',
+    baseTime: 20,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['séta', 'levegő', 'szabadban'],
+    frequency: 'daily',
+  },
+  {
+    id: 'u_stretch',
+    titles: ['Nyújtás', 'Testtartás javítás', '5 perc nyújtózás'],
+    descriptions: ['Végezz 5 perc nyújtást – különösen nyak, váll és derék.', 'Szakíts meg egy hosszabb ülést nyújtással a jobb testtartásért.'],
+    category: 'Egészség',
+    baseDifficulty: 'easy',
+    baseTime: 5,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['nyújtás', 'testtartás'],
+    frequency: 'daily',
+  },
+  {
+    id: 'u_healthy_meal',
+    titles: ['Egészséges étkezés', 'Tudatos étel választás', 'Tápláló obéd'],
+    descriptions: ['Válassz egészséges opciót legalább egy étkezésnél ma.', 'Figyelj arra mit eszel: válassz zöldséget, gyümölcsöt vagy teljes kiőrlést.'],
+    category: 'Egészség',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['egészséges', 'étel', 'táplálkozás'],
+    frequency: 'daily',
+  },
+  {
+    id: 'u_wind_down',
+    titles: ['Esti levezetés', 'Lefekvési rutin', 'Nyugodt este'],
+    descriptions: ['Kezdd el az esti rutint 1 órával lefekvés előtt: nem képernyő, nyugalom.', 'Készülj a pihenésre: tedd le a telefont, igyál egy teát, lazíts.'],
+    category: 'Egészség',
+    baseDifficulty: 'easy',
+    baseTime: 30,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['este', 'alvás', 'rutin'],
+    frequency: 'daily',
+  },
+
+  // --- Universal Daily: Organization & Household ---
+  {
+    id: 'u_tidy_space',
+    titles: ['Környezet rendezés', '10 perc rendrakás', 'Gyors takarítás'],
+    descriptions: ['Szánj 10 percet a közvetlen környezeted rendezésére.', 'Pakolj el, töröld le a felületet, mosd el az edényt – csak 10 perc!'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['rendez', 'takarít', 'pakol'],
+    frequency: 'daily',
+  },
+  {
+    id: 'u_cook_simple',
+    titles: ['Otthoni főzés', 'Egyszerű házi étel', 'Főzz ma otthon'],
+    descriptions: ['Készíts otthon ételt ma – nem kell bonyolult, csak házi legyen.', 'Főzz egy egyszerű, egészséges ételt ahelyett hogy rendelnél.'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 30,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['főzés', 'étel', 'otthon'],
+    frequency: 'daily',
+  },
+  {
+    id: 'u_expense_note',
+    titles: ['Napi kiadás feljegyzés', 'Költés nyomon követés', 'Pénztárca check'],
+    descriptions: ['Jegyezd fel a mai kiadásaidat – tartsd szem előtt mire megy a pénzed.', 'Nézd meg mennyit költöttél ma és kategorrizáld a kiadásokat.'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 5,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['kiadás', 'pénz', 'költés'],
+    frequency: 'daily',
+  },
+  {
+    id: 'u_plan_tomorrow',
+    titles: ['Holnap megtervezése', 'Következő nap előkészítése', 'Esti tervezés'],
+    descriptions: ['Írd össze a holnapi 3 legfontosabb teendődet lefekvés előtt.', 'Készítsd elő a holnapi napodat: ruha, táska, teendők listája.'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['holnap', 'terv', 'előkészít'],
+    frequency: 'daily',
+  },
+
+  // --- Universal Daily: Social & Growth ---
+  {
+    id: 'u_connect',
+    titles: ['Kapcsolattartás', 'Hívj fel valakit', 'Szociális pillanat'],
+    descriptions: ['Hívd fel vagy írd meg egy barátod/családtagod akit régóta nem kerestél.', 'Szánj 10 percet egy fontos emberi kapcsolat ápolására.'],
+    category: 'Szociális',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['hív', 'barát', 'család', 'kapcsolat'],
+    frequency: 'daily',
+  },
+  {
+    id: 'u_learn_something',
+    titles: ['Tanulj valami újat', 'Napi érdekesség', 'Tudásbővítés'],
+    descriptions: ['Tanulj meg egy új dolgot ma: egy szót, egy tényt, egy trükköt.', 'Nézz meg egy rövid videót, olvass egy cikket – bővítsd a látókörödet.'],
+    category: 'Tanulás',
+    baseDifficulty: 'easy',
+    baseTime: 15,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['tanul', 'új', 'érdekesség'],
+    frequency: 'daily',
+  },
+  {
+    id: 'u_screen_break',
+    titles: ['Képernyőszünet', 'Szem pihentetés', 'Digitális szünet'],
+    descriptions: ['Tarts legalább 3 alkalommal 5 perces szünetet a képernyőtől.', 'Alkalmazzd a 20-20-20 szabályt: 20 percenként nézz 20 másodpercig 20 lábra.'],
+    category: 'Egészség',
+    baseDifficulty: 'easy',
+    baseTime: 5,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['képernyő', 'szünet', 'szem'],
+    frequency: 'daily',
+  },
+  {
+    id: 'u_gratitude_general',
+    titles: ['Napi hálaadás', '3 dolog amiért hálás vagy', 'Pozitív percek'],
+    descriptions: ['Gondolj 3 dologra amiért ma hálás vagy – írd le vagy mondd ki.', 'Fejezd be a napodat azzal hogy felidézed a nap legjobb pillanatait.'],
+    category: 'Fejlődés',
+    baseDifficulty: 'easy',
+    baseTime: 5,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['hála', 'pozitív'],
+    frequency: 'daily',
+  },
+  {
+    id: 'u_inbox_process',
+    titles: ['Üzenetek feldolgozása', 'Inbox rendezés', 'Értesítések kitakarítása'],
+    descriptions: ['Dolgozd fel az összegyűlt üzeneteidet, emailjeidet és értesítéseidet.', 'Rendezd az inboxodat: válaszolj, archiválj, törölj.'],
+    category: 'Produktivitás',
+    baseDifficulty: 'easy',
+    baseTime: 15,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['email', 'üzenet', 'inbox'],
+    frequency: 'daily',
+  },
+
+  // --- Universal Weekly ---
+  {
+    id: 'u_weekly_groceries',
+    titles: ['Heti bevásárlás', 'Élelmiszer beszerzés', 'Bevásárlólista alapján vásárlás'],
+    descriptions: ['Tervezd meg és végezd el a heti bevásárlást lista alapján.', 'Szerezd be a hétre szükséges élelmiszereket és háztartási cikkeket.'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 60,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['bevásárlás', 'bolt', 'élelmiszer'],
+    frequency: 'weekly',
+  },
+  {
+    id: 'u_home_clean',
+    titles: ['Heti takarítás', 'Egy szoba alapos takarítása', 'Otthon frissítés'],
+    descriptions: ['Válassz egy szobát vagy területet és takaríts alaposan.', 'Végezd el a heti nagytakarítást: porszívózás, felmosás, por törlés.'],
+    category: 'Szervezés',
+    baseDifficulty: 'medium',
+    baseTime: 60,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['takarítás', 'tisztaság'],
+    frequency: 'weekly',
+  },
+  {
+    id: 'u_finance_review',
+    titles: ['Heti pénzügyi áttekintés', 'Költségvetés ellenőrzés', 'Kiadások összesítése'],
+    descriptions: ['Tekintsd át a heti kiadásaidat és hasonlítsd össze a terveddel.', 'Összesítsd a heti kiadásokat, keresd a spórolási lehetőségeket.'],
+    category: 'Szervezés',
+    baseDifficulty: 'medium',
+    baseTime: 20,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['pénz', 'költség', 'áttekintés'],
+    frequency: 'weekly',
+  },
+  {
+    id: 'u_meal_plan',
+    titles: ['Étkezés tervezés', 'Heti menü összeállítás', 'Meal prep ötletek'],
+    descriptions: ['Tervezd meg a következő hét étkezéseit és készíts bevásárlólistát.', 'Gondold végig mit fogsz főzni/enni jövő héten és szervezd meg.'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 20,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['étel', 'menü', 'terv'],
+    frequency: 'weekly',
+  },
+  {
+    id: 'u_social_plan',
+    titles: ['Szociális program', 'Találkozó szervezés', 'Közös program barátokkal'],
+    descriptions: ['Szervezz vagy vegyél részt egy szociális programon ezen a héten.', 'Hívd el egy barátodat kávézni, sétálni vagy bármilyen közös programra.'],
+    category: 'Szociális',
+    baseDifficulty: 'medium',
+    baseTime: 60,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['barát', 'program', 'közös'],
+    frequency: 'weekly',
+  },
+  {
+    id: 'u_fitness_goal',
+    titles: ['Heti fitness cél', 'Sportolás a héten', 'Aktív hét'],
+    descriptions: ['Sportolj legalább 3x ezen a héten: edzés, futás, úszás, bármi.', 'Tűzz ki egy konkrét fitness célt a hétre és tartsd be.'],
+    category: 'Egészség',
+    baseDifficulty: 'medium',
+    baseTime: 120,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['sport', 'edzés', 'fitness'],
+    frequency: 'weekly',
+  },
+  {
+    id: 'u_self_reflection',
+    titles: ['Heti önreflexió', 'Heti értékelés', 'Mit tanultam a héten'],
+    descriptions: ['Gondold végig a hetedet: mi ment jól, min változtatnál, mire vagy büszke.', 'Írj egy rövid összefoglalót a hetedről – sikerei, tanulságai.'],
+    category: 'Fejlődés',
+    baseDifficulty: 'easy',
+    baseTime: 15,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['reflexió', 'értékel', 'hét'],
+    frequency: 'weekly',
+  },
+  {
+    id: 'u_digital_cleanup',
+    titles: ['Digitális nagytakarítás', 'Fájlok és appok rendezése', 'Digitális rend'],
+    descriptions: ['Rendezd a fájljaidat, töröld a felesleges appokat és frissítsd a jelszavaidat.', 'Szánj 30 percet a digitális élettered rendezésére.'],
+    category: 'Szervezés',
+    baseDifficulty: 'medium',
+    baseTime: 30,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['digitális', 'fájl', 'rendez'],
+    frequency: 'weekly',
+  },
+
+  // ═══════════════════════════════════════
   //  PROGRESS-BASED WEEKLY QUESTS (all personas)
   //  These auto-track progress and complete when the target is reached.
   // ═══════════════════════════════════════
@@ -962,6 +2122,543 @@ const TEMPLATES: QuestTemplate[] = [
     keywords: ['terv', 'család', 'hét'],
     frequency: 'weekly',
   },
+
+  // ═══════════════════════════════════════════════════════════
+  //  PREFERENCE-BASED QUESTS — only shown if user selected
+  //  the matching interest during onboarding
+  // ═══════════════════════════════════════════════════════════
+
+  // ── HEALTH (Egészség & Fitnesz) ─────────────────────────
+  {
+    id: 'pref_h_workout_plan',
+    titles: ['Tervezett edzés végrehajtás', 'Edzésterv követés', 'Napi workout'],
+    descriptions: ['Végezd el a mai edzésterved — legyen az futás, erősítés vagy jóga.', 'Kövesd a mai edzéstervedet elejétől a végéig.'],
+    category: 'Egészség',
+    baseDifficulty: 'medium',
+    baseTime: 40,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['edzés', 'workout', 'terv'],
+    frequency: 'daily',
+    preferenceTag: 'health',
+  },
+  {
+    id: 'pref_h_macro_track',
+    titles: ['Makró nyomon követés', 'Táplálkozási napló', 'Kalória/makró check'],
+    descriptions: ['Jegyezd fel mit ettél ma és kövesd a makróidat (fehérje, szénhidrát, zsír).', 'Tartsd naprakészen a táplálkozási naplódat a mai étkezésekkel.'],
+    category: 'Egészség',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['makró', 'kalória', 'táplálkozás'],
+    frequency: 'daily',
+    preferenceTag: 'health',
+  },
+  {
+    id: 'pref_h_no_sugar',
+    titles: ['Cukor csökkentés', 'Egészséges nap', 'Tudatos étkezés'],
+    descriptions: ['Ma kerüld el a hozzáadott cukrot — válassz természetes alternatívákat.', 'Töltsd a napot tudatos étkezéssel, cukor és feldolgozott étel nélkül.'],
+    category: 'Egészség',
+    baseDifficulty: 'medium',
+    baseTime: 0,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['cukor', 'egészséges', 'étkezés'],
+    frequency: 'daily',
+    preferenceTag: 'health',
+  },
+  {
+    id: 'pref_h_sleep_quality',
+    titles: ['Alvásminőség javítás', 'Esti rutin betartás', 'Korai lefekvés'],
+    descriptions: ['Ma feküdj le időben és tartsd be az esti levezetési rutinodat.', 'Kapcsold ki a képernyőket 1 órával lefekvés előtt és készülj az alvásra.'],
+    category: 'Egészség',
+    baseDifficulty: 'easy',
+    baseTime: 15,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['alvás', 'este', 'rutin'],
+    frequency: 'daily',
+    preferenceTag: 'health',
+  },
+  {
+    id: 'pref_h_meal_prep',
+    titles: ['Egészséges meal prep', 'Előre főzés', 'Heti étel előkészítés'],
+    descriptions: ['Készíts elő egészséges ételeket a következő napokra.', 'Főzz előre 3-4 adag egészséges ételt a hét következő napjaira.'],
+    category: 'Egészség',
+    baseDifficulty: 'hard',
+    baseTime: 90,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['főzés', 'előkészítés', 'egészséges'],
+    frequency: 'weekly',
+    preferenceTag: 'health',
+  },
+  {
+    id: 'pref_h_new_activity',
+    titles: ['Új mozgásforma kipróbálás', 'Sportélmény', 'Aktív kaland'],
+    descriptions: ['Próbálj ki egy új sportot vagy mozgásformát amit még nem csináltál.', 'Légy nyitott és próbálj ki egy új edzéstípust vagy szabadtéri aktivitást.'],
+    category: 'Egészség',
+    baseDifficulty: 'medium',
+    baseTime: 60,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['új', 'sport', 'mozgás'],
+    frequency: 'weekly',
+    preferenceTag: 'health',
+  },
+
+  // ── FINANCE (Pénzügyek) ─────────────────────────────────
+  {
+    id: 'pref_f_no_impulse',
+    titles: ['Impulzusvásárlás elkerülés', 'Tudatos költés', 'Szükséges vs. kívánság'],
+    descriptions: ['Ma ne vegyél semmit ami nem szükséges — csak tervezett kiadások.', 'Mielőtt vásárolsz, kérdezd meg: tényleg szükségem van rá?'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 0,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['vásárlás', 'pénz', 'tudatos'],
+    frequency: 'daily',
+    preferenceTag: 'finance',
+  },
+  {
+    id: 'pref_f_micro_save',
+    titles: ['Napi micro-megtakarítás', 'Félretétel', 'Megtakarítási szokás'],
+    descriptions: ['Tegyél félre ma egy kis összeget — akár 100 Ft is számít.', 'Építsd a megtakarítási szokásodat egy napi kis összeggel.'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 5,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['megtakarítás', 'pénz', 'félretétel'],
+    frequency: 'daily',
+    preferenceTag: 'finance',
+  },
+  {
+    id: 'pref_f_receipt_log',
+    titles: ['Kiadás rögzítés', 'Blokk feldolgozás', 'Napi pénzügyi napló'],
+    descriptions: ['Jegyezd fel a mai kiadásaidat — minden tételt, még a kicsiket is.', 'Tartsd naprakészen a pénzügyi naplódat a mai kiadásokkal.'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['kiadás', 'blokk', 'napló'],
+    frequency: 'daily',
+    preferenceTag: 'finance',
+  },
+  {
+    id: 'pref_f_budget_plan',
+    titles: ['Heti költségvetés készítés', 'Büdzsé tervezés', 'Pénzügyi heti terv'],
+    descriptions: ['Készíts heti költségvetést: bevételek, fix kiadások, szabad keret.', 'Tervezd meg a heti költéseidet kategóriánként.'],
+    category: 'Szervezés',
+    baseDifficulty: 'medium',
+    baseTime: 25,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['költségvetés', 'büdzsé', 'terv'],
+    frequency: 'weekly',
+    preferenceTag: 'finance',
+  },
+  {
+    id: 'pref_f_invest_learn',
+    titles: ['Pénzügyi tudás bővítés', 'Befektetési tanulás', 'Pénzügyi cikk olvasás'],
+    descriptions: ['Olvass el egy cikket vagy nézz meg egy videót befektetésekről vagy pénzügyekről.', 'Bővítsd a pénzügyi tudásodat — tanulj a megtakarításról, befektetésekről.'],
+    category: 'Tanulás',
+    baseDifficulty: 'medium',
+    baseTime: 20,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['befektetés', 'tanulás', 'pénzügy'],
+    frequency: 'weekly',
+    preferenceTag: 'finance',
+  },
+
+  // ── SOCIAL (Társas kapcsolatok) ─────────────────────────
+  {
+    id: 'pref_s_meaningful_talk',
+    titles: ['Értelmes beszélgetés', 'Mély kapcsolódás', 'Minőségi párbeszéd'],
+    descriptions: ['Folytass egy valódi, értelmes beszélgetést valakivel — ne csak small talk.', 'Keress fel valakit és beszélgess vele mélyebben, őszintén.'],
+    category: 'Szociális',
+    baseDifficulty: 'easy',
+    baseTime: 20,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['beszélgetés', 'kapcsolat', 'mély'],
+    frequency: 'daily',
+    preferenceTag: 'social',
+  },
+  {
+    id: 'pref_s_compliment',
+    titles: ['Bók/elismerés adás', 'Pozitív visszajelzés', 'Öröm szerzés másnak'],
+    descriptions: ['Adj egy őszinte bókot vagy elismerést valakinek a környezetedben.', 'Emeld fel valaki napját egy kedves szóval vagy gesztussal.'],
+    category: 'Szociális',
+    baseDifficulty: 'easy',
+    baseTime: 5,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['bók', 'elismerés', 'pozitív'],
+    frequency: 'daily',
+    preferenceTag: 'social',
+  },
+  {
+    id: 'pref_s_active_listen',
+    titles: ['Aktív hallgatás', 'Figyelmes jelenlét', 'Hallgass meg valakit'],
+    descriptions: ['Ma gyakorold az aktív hallgatást — ne szakíts félbe, kérdezz vissza.', 'Légy teljesen jelen egy beszélgetésben: figyelj, értsd meg, reagálj.'],
+    category: 'Szociális',
+    baseDifficulty: 'easy',
+    baseTime: 15,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['hallgatás', 'figyelem', 'jelenlét'],
+    frequency: 'daily',
+    preferenceTag: 'social',
+  },
+  {
+    id: 'pref_s_quality_time',
+    titles: ['Minőségi idő szerettekkel', 'Közös program', 'Együtt töltött idő'],
+    descriptions: ['Tölts minőségi időt a számodra fontos emberekkel — telefonok nélkül.', 'Szervezz egy közös programot a családoddal vagy barátaiddal.'],
+    category: 'Szociális',
+    baseDifficulty: 'medium',
+    baseTime: 60,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['együtt', 'program', 'minőségi'],
+    frequency: 'weekly',
+    preferenceTag: 'social',
+  },
+  {
+    id: 'pref_s_reconnect',
+    titles: ['Régi kapcsolat felújítás', 'Ismerős keresés', 'Barátság ápolás'],
+    descriptions: ['Keress fel egy régi barátot vagy ismerőst akivel régóta nem beszéltél.', 'Írj vagy hívj fel valakit akivel elvesztéd a kapcsolatot.'],
+    category: 'Szociális',
+    baseDifficulty: 'medium',
+    baseTime: 15,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['barát', 'régi', 'kapcsolat'],
+    frequency: 'weekly',
+    preferenceTag: 'social',
+  },
+
+  // ── PRODUCTIVITY (Produktivitás) ────────────────────────
+  {
+    id: 'pref_p_time_block',
+    titles: ['Időblokkolás alkalmazás', 'Napi blokk tervezés', 'Strukturált nap'],
+    descriptions: ['Oszd be a napodat időblokkokra — minden blokknak legyen konkrét célja.', 'Használj időblokkolást: 25-50 perces fókuszolt munkablokkokat szünetekkel.'],
+    category: 'Produktivitás',
+    baseDifficulty: 'medium',
+    baseTime: 10,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['időblokk', 'tervezés', 'strukturált'],
+    frequency: 'daily',
+    preferenceTag: 'productivity',
+  },
+  {
+    id: 'pref_p_single_task',
+    titles: ['Egyszerre egy feladat', 'Multitasking stop', 'Fókusz kihívás'],
+    descriptions: ['Ma ne multitaskolj — mindig csak egy dologgal foglalkozz egyszerre.', 'Gyakorold az egytémás fókuszt: befejezni egy feladatot mielőtt a következőre lépsz.'],
+    category: 'Produktivitás',
+    baseDifficulty: 'easy',
+    baseTime: 0,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['fókusz', 'egy feladat', 'multitasking'],
+    frequency: 'daily',
+    preferenceTag: 'productivity',
+  },
+  {
+    id: 'pref_p_2min_rule',
+    titles: ['2 perces szabály', 'Azonnali elvégzés', 'Gyors teendők'],
+    descriptions: ['Ha valami 2 perc alatt megoldható, csináld meg azonnal — ne halaszd.', 'Alkalmazzad a 2 perces szabályt: amit gyorsan meg tudsz csinálni, tedd meg rögtön.'],
+    category: 'Produktivitás',
+    baseDifficulty: 'easy',
+    baseTime: 0,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['2 perc', 'azonnali', 'gyors'],
+    frequency: 'daily',
+    preferenceTag: 'productivity',
+  },
+  {
+    id: 'pref_p_review_goals',
+    titles: ['Napi célok áttekintés', 'Cél ellenőrzés', 'Prioritás felülvizsgálat'],
+    descriptions: ['Reggel tekintsd át a napi céljaidat és állítsd be a prioritásokat.', 'Vizsgáld felül a napi céljaidat: mi a legfontosabb, mit kell először megcsinálni?'],
+    category: 'Produktivitás',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['cél', 'áttekintés', 'prioritás'],
+    frequency: 'daily',
+    preferenceTag: 'productivity',
+  },
+  {
+    id: 'pref_p_system_review',
+    titles: ['Rendszer áttekintés', 'Produktivitási audit', 'Hatékonyság vizsgálat'],
+    descriptions: ['Vizsgáld felül a produktivitási rendszeredet: mi működik, min kell változtatni?', 'Tekintsd át az elmúlt hét hatékonyságát és optimalizáld a munkafolyamataidat.'],
+    category: 'Produktivitás',
+    baseDifficulty: 'medium',
+    baseTime: 30,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['rendszer', 'audit', 'hatékonyság'],
+    frequency: 'weekly',
+    preferenceTag: 'productivity',
+  },
+  {
+    id: 'pref_p_automate',
+    titles: ['Automatizálás keresés', 'Hatékonyság javítás', 'Ismétlődő feladat egyszerűsítés'],
+    descriptions: ['Keress egy ismétlődő feladatot amit automatizálhatsz vagy egyszerűsíthetsz.', 'Gondolkodj el: melyik heti rutint lehetne hatékonyabbá tenni vagy automatizálni?'],
+    category: 'Produktivitás',
+    baseDifficulty: 'medium',
+    baseTime: 20,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['automatizálás', 'egyszerűsítés'],
+    frequency: 'weekly',
+    preferenceTag: 'productivity',
+  },
+
+  // ── LEARNING (Tanulás & Fejlődés) ──────────────────────
+  {
+    id: 'pref_l_language',
+    titles: ['Nyelvtanulás 15 perc', 'Nyelvi gyakorlás', 'Napi nyelvi lecke'],
+    descriptions: ['Szánj 15 percet nyelvtanulásra — applikáció, könyv vagy podcast.', 'Gyakorold a nyelvet amit tanulsz: szókincs, hallás értés vagy beszéd.'],
+    category: 'Tanulás',
+    baseDifficulty: 'easy',
+    baseTime: 15,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['nyelv', 'tanulás', 'lecke'],
+    frequency: 'daily',
+    preferenceTag: 'learning',
+  },
+  {
+    id: 'pref_l_course_progress',
+    titles: ['Online kurzus haladás', 'Tanfolyam lecke', 'Képzési modul'],
+    descriptions: ['Végezz el egy leckét vagy modult az online kurzusodból.', 'Haladj előre a képzésedben — akár egy rövid lecke is számít.'],
+    category: 'Tanulás',
+    baseDifficulty: 'medium',
+    baseTime: 25,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['kurzus', 'lecke', 'online'],
+    frequency: 'daily',
+    preferenceTag: 'learning',
+  },
+  {
+    id: 'pref_l_teach_someone',
+    titles: ['Tanítsd meg valakinek', 'Tudás megosztás', 'Magyarázd el'],
+    descriptions: ['Tanítsd meg valakinek amit nemrég tanultál — a tanítás a legjobb tanulás.', 'Magyarázd el egy barátnak vagy kollégának amit legutóbb tanultál.'],
+    category: 'Tanulás',
+    baseDifficulty: 'easy',
+    baseTime: 15,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['tanít', 'megosztás', 'magyarázat'],
+    frequency: 'daily',
+    preferenceTag: 'learning',
+  },
+  {
+    id: 'pref_l_deep_study',
+    titles: ['Mély tanulási session', 'Koncentrált tanulás', 'Tudás elmélyítés'],
+    descriptions: ['Szánj 1-2 órát mély, megszakítatlan tanulásra egy választott témában.', 'Végezz egy hosszabb tanulási sessiont — telefonok kikapcsolva, teljes fókusz.'],
+    category: 'Tanulás',
+    baseDifficulty: 'hard',
+    baseTime: 90,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['mély', 'tanulás', 'fókusz'],
+    frequency: 'weekly',
+    preferenceTag: 'learning',
+  },
+  {
+    id: 'pref_l_apply_knowledge',
+    titles: ['Tanultak alkalmazása', 'Gyakorlati projekt', 'Tudás tesztelés'],
+    descriptions: ['Alkalmazd gyakorlatban amit nemrég tanultál — készíts egy mini projektet.', 'Teszteld a tudásodat: oldj meg egy valós problémát a tanult ismeretekkel.'],
+    category: 'Tanulás',
+    baseDifficulty: 'medium',
+    baseTime: 45,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['alkalmazás', 'gyakorlat', 'projekt'],
+    frequency: 'weekly',
+    preferenceTag: 'learning',
+  },
+
+  // ── CREATIVITY (Kreativitás) ────────────────────────────
+  {
+    id: 'pref_c_create_something',
+    titles: ['Alkoss valamit', 'Kreatív 15 perc', 'Napi alkotás'],
+    descriptions: ['Alkoss ma valamit: írj, rajzolj, fotózz, zenélj — bármi számít.', 'Szánj 15 percet szabad alkotásra — nincs szabály, csak kreativitás.'],
+    category: 'Kreativitás',
+    baseDifficulty: 'easy',
+    baseTime: 15,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['alkotás', 'kreativitás', 'szabad'],
+    frequency: 'daily',
+    preferenceTag: 'creativity',
+  },
+  {
+    id: 'pref_c_inspiration',
+    titles: ['Inspiráció gyűjtés', 'Moodboard frissítés', 'Kreatív input'],
+    descriptions: ['Gyűjts inspirációt: nézz galéri-ákat, olvasd más alkotókat, hallgass zenét.', 'Tölts 10 percet inspiráció kereséssel a kreativitásod feltöltéséhez.'],
+    category: 'Kreativitás',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['inspiráció', 'moodboard', 'gyűjtés'],
+    frequency: 'daily',
+    preferenceTag: 'creativity',
+  },
+  {
+    id: 'pref_c_freewrite',
+    titles: ['Szabad írás', 'Stream of consciousness', 'Gondolat kiírás'],
+    descriptions: ['Írj 10 percig szabadon — ne törődj a minőséggel, csak engedd folyni a gondolatokat.', 'Gyakorold a szabad írást: papír vagy billentyűzet, és írd le ami eszedbe jut.'],
+    category: 'Kreativitás',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['írás', 'szabad', 'gondolat'],
+    frequency: 'daily',
+    preferenceTag: 'creativity',
+  },
+  {
+    id: 'pref_c_project_progress',
+    titles: ['Kreatív projekt haladás', 'Alkotói munka', 'Projekt fejlesztés'],
+    descriptions: ['Dolgozz a kreatív projekteden — akár 30 perc is számít a haladásban.', 'Vidd előre a kreatív projektedet egy jelentős lépéssel.'],
+    category: 'Kreativitás',
+    baseDifficulty: 'medium',
+    baseTime: 45,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['projekt', 'alkotás', 'fejlesztés'],
+    frequency: 'weekly',
+    preferenceTag: 'creativity',
+  },
+  {
+    id: 'pref_c_share_work',
+    titles: ['Alkotás megosztás', 'Kreáció publikálás', 'Visszajelzés kérés'],
+    descriptions: ['Oszd meg egy alkotásodat valakivel — kérd a véleményét és tanulj belőle.', 'Publikálj vagy mutass meg valamit amit alkottál és kérj visszajelzést.'],
+    category: 'Kreativitás',
+    baseDifficulty: 'medium',
+    baseTime: 20,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['megosztás', 'publikálás', 'visszajelzés'],
+    frequency: 'weekly',
+    preferenceTag: 'creativity',
+  },
+
+  // ── HOME (Otthoni rend) ─────────────────────────────────
+  {
+    id: 'pref_ho_zone_clean',
+    titles: ['Egy zóna takarítás', 'Szoba rendrakás', 'Fókuszált takarítás'],
+    descriptions: ['Válassz egy zónát (konyha, fürdő, szoba) és takarítsd ki alaposan.', 'Fókuszálj egy területre és hozd rendbe — ne az egész lakást, csak egy részt.'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 20,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['takarítás', 'zóna', 'rend'],
+    frequency: 'daily',
+    preferenceTag: 'home',
+  },
+  {
+    id: 'pref_ho_declutter_5',
+    titles: ['5 tárgy selejtezés', 'Mini kipakolás', 'Felesleg csökkentés'],
+    descriptions: ['Keress 5 tárgyat amit kidobhatsz, eladomanózhatsz vagy eladhatsz.', 'Szabadulj meg 5 felesleges dologtól — könnyebb lesz a környezeted.'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 15,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['selejtezés', 'kipakolás', 'felesleg'],
+    frequency: 'daily',
+    preferenceTag: 'home',
+  },
+  {
+    id: 'pref_ho_home_reset',
+    titles: ['Esti lakás reset', 'Gyors rendrakás', 'Napi zárás otthon'],
+    descriptions: ['Este 10 percben hozd rendbe a lakást: mosogatás, pakolás, takarítás.', 'Végezz egy gyors reset-et lefekvés előtt hogy reggel tiszta lakásba ébredj.'],
+    category: 'Szervezés',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['reset', 'este', 'rendrakás'],
+    frequency: 'daily',
+    preferenceTag: 'home',
+  },
+  {
+    id: 'pref_ho_deep_organize',
+    titles: ['Mély rendszerezés', 'Szekrény rendezés', 'Tárolás optimalizálás'],
+    descriptions: ['Válassz egy szekrényt, fiókot vagy területet és rendezd alaposan.', 'Végezz mély rendezést egy területen: válogatás, címkézés, optimalizálás.'],
+    category: 'Szervezés',
+    baseDifficulty: 'hard',
+    baseTime: 60,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['rendezés', 'szekrény', 'optimalizálás'],
+    frequency: 'weekly',
+    preferenceTag: 'home',
+  },
+  {
+    id: 'pref_ho_maintenance',
+    titles: ['Háztartási karbantartás', 'Javítás és gondozás', 'Otthoni fejlesztés'],
+    descriptions: ['Végezz el egy háztartási karbantartási feladatot amit már halogatsz.', 'Javíts meg vagy karbantarts valamit az otthonodban ami régóta vár.'],
+    category: 'Szervezés',
+    baseDifficulty: 'medium',
+    baseTime: 30,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['karbantartás', 'javítás', 'otthon'],
+    frequency: 'weekly',
+    preferenceTag: 'home',
+  },
+
+  // ── MENTAL (Mentális jólét) ─────────────────────────────
+  {
+    id: 'pref_m_breathing',
+    titles: ['Légzőgyakorlat', 'Tudatos lélegzés', 'Box breathing'],
+    descriptions: ['Végezz 5 perces légzőgyakorlatot: 4 mp belégzés, 4 mp tartás, 4 mp kilégzés.', 'Gyakorold a tudatos légzést — segít a stressz csökkentésében és a fókuszban.'],
+    category: 'Egészség',
+    baseDifficulty: 'easy',
+    baseTime: 5,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['légzés', 'tudatos', 'relaxáció'],
+    frequency: 'daily',
+    preferenceTag: 'mental',
+  },
+  {
+    id: 'pref_m_body_scan',
+    titles: ['Test szkennelés', 'Testi tudatosság', 'Body scan meditáció'],
+    descriptions: ['Végezz egy 10 perces body scan meditációt — figyelj a tested jelzéseire.', 'Szkeneld végig a testedet tetőtől talpig és figyelj hol tartasz feszültséget.'],
+    category: 'Egészség',
+    baseDifficulty: 'easy',
+    baseTime: 10,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['test', 'szkennelés', 'meditáció'],
+    frequency: 'daily',
+    preferenceTag: 'mental',
+  },
+  {
+    id: 'pref_m_joy_moment',
+    titles: ['Öröm pillanat keresés', 'Pozitív fókusz', 'Hálalista'],
+    descriptions: ['Keress 3 dolgot a mai napban ami örömöt okozott — írd le őket.', 'Gyakorold a pozitív fókuszt: találd meg a szépet a hétköznapokban.'],
+    category: 'Fejlődés',
+    baseDifficulty: 'easy',
+    baseTime: 5,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['öröm', 'hála', 'pozitív'],
+    frequency: 'daily',
+    preferenceTag: 'mental',
+  },
+  {
+    id: 'pref_m_digital_detox',
+    titles: ['Digitális detox', 'Képernyőmentes idő', 'Offline óra'],
+    descriptions: ['Tölts 1 órát képernyő nélkül — olvasd, sétálj, vagy egyszerűen légy jelen.', 'Kapcsold ki az összes készüléket 1 órára és élvezd az offline létet.'],
+    category: 'Egészség',
+    baseDifficulty: 'medium',
+    baseTime: 60,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['detox', 'offline', 'képernyő'],
+    frequency: 'daily',
+    preferenceTag: 'mental',
+  },
+  {
+    id: 'pref_m_boundaries',
+    titles: ['Határok felállítás', 'Nemet mondás', 'Önvédelem gyakorlat'],
+    descriptions: ['Állíts fel egy határt ami fontos neked — mondj nemet valamire ami nem szolgál.', 'Gyakorold a határok kommunikálását — védd a saját idődet és energiádat.'],
+    category: 'Fejlődés',
+    baseDifficulty: 'medium',
+    baseTime: 10,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['határ', 'nem', 'önvédelem'],
+    frequency: 'weekly',
+    preferenceTag: 'mental',
+  },
+  {
+    id: 'pref_m_emotional_review',
+    titles: ['Érzelmi heti áttekintés', 'Hangulat napló', 'Önreflexió'],
+    descriptions: ['Tekintsd át a heti érzelmeidet: mi okozott örömöt, stresszt, szomorúságot?', 'Végezz heti érzelmi összefoglalót és keress mintákat a hangulatodban.'],
+    category: 'Fejlődés',
+    baseDifficulty: 'medium',
+    baseTime: 20,
+    personas: ['student', 'worker', 'selfdev', 'freelancer', 'organizer'],
+    keywords: ['érzelem', 'áttekintés', 'hangulat'],
+    frequency: 'weekly',
+    preferenceTag: 'mental',
+  },
 ];
 
 // ============ HELPER FUNCTIONS ============
@@ -1061,19 +2758,20 @@ export interface GenerateOptions {
   lists: TodoList[];
   uid: string;
   date: string;
+  interests?: string[];
+  questFrequency?: 'low' | 'medium' | 'high';
 }
 
 export function generateDailyQuests(options: GenerateOptions): Omit<Quest, 'id'>[] {
-  const { persona, level, quests, lists, uid, date } = options;
+  const { persona, level, quests, lists, uid, date, interests = [] } = options;
   const rng = createRng(`daily-${uid}-${date}`);
   const dayOfWeek = new Date(date).getDay();
 
-  const questCount = level >= 11 ? 4 : 3;
-
-  // ONLY templates that explicitly include this persona AND are daily
-  const applicable = TEMPLATES.filter((t) => {
+  // ── Persona pool (templates WITHOUT preferenceTag) ──
+  const personaPool = TEMPLATES.filter((t) => {
     if (t.frequency !== 'daily') return false;
     if (!t.personas.includes(persona)) return false;
+    if (t.preferenceTag) return false;
     if (t.dayPreference && !t.dayPreference.includes(dayOfWeek)) return false;
     return true;
   });
@@ -1081,29 +2779,56 @@ export function generateDailyQuests(options: GenerateOptions): Omit<Quest, 'id'>
   const habitWeights = analyzeUserHabits(lists);
   const recentTitles = getRecentQuestTitles(quests, 7);
 
-  const scores = applicable.map((t) => {
+  // ── Select persona quests (always 3) ──
+  const personaScores = personaPool.map((t) => {
     let score = 1;
     score += (habitWeights[t.category] || 1) * 0.3;
-    const hasRecent = t.titles.some((title) => recentTitles.has(title.toLowerCase()));
-    if (hasRecent) score *= 0.15;
+    if (t.titles.some((title) => recentTitles.has(title.toLowerCase()))) score *= 0.15;
     score += rng() * 0.6;
     return score;
   });
+  const selectedPersona = weightedSelect(personaPool, personaScores, rng, 3);
 
-  const selected = weightedSelect(applicable, scores, rng, questCount);
-
-  // Ensure category variety
-  const categories = new Set(selected.map((t) => t.category));
-  if (categories.size < 2 && selected.length >= 2) {
-    const lastIdx = selected.length - 1;
-    const currentCat = selected[lastIdx].category;
-    const alt = applicable.find(
-      (t) => t.category !== currentCat && !selected.includes(t) && !t.titles.some((title) => recentTitles.has(title.toLowerCase()))
-    );
-    if (alt) selected[lastIdx] = alt;
+  // Ensure category variety within persona group
+  if (selectedPersona.length >= 2) {
+    const cats = new Set(selectedPersona.map((t) => t.category));
+    if (cats.size < 2) {
+      const lastIdx = selectedPersona.length - 1;
+      const alt = personaPool.find(
+        (t) => t.category !== selectedPersona[lastIdx].category && !selectedPersona.includes(t) && !t.titles.some((ti) => recentTitles.has(ti.toLowerCase()))
+      );
+      if (alt) selectedPersona[lastIdx] = alt;
+    }
   }
 
-  return selected.map((template) => {
+  // ── Select preference quests: 1 per interest group ──
+  // Each selected interest gets exactly 1 daily quest so the user progresses in all areas
+  const selectedPrefWithGroup: { template: QuestTemplate; group: string }[] = [];
+  for (const interest of interests) {
+    const groupPool = TEMPLATES.filter((t) => {
+      if (t.frequency !== 'daily') return false;
+      if (!t.personas.includes(persona)) return false;
+      if (t.preferenceTag !== interest) return false;
+      if (t.dayPreference && !t.dayPreference.includes(dayOfWeek)) return false;
+      return true;
+    });
+    if (groupPool.length === 0) continue;
+
+    const scores = groupPool.map((t) => {
+      let score = 1;
+      score += (habitWeights[t.category] || 1) * 0.3;
+      if (t.titles.some((title) => recentTitles.has(title.toLowerCase()))) score *= 0.15;
+      score += rng() * 0.6;
+      return score;
+    });
+    const picked = weightedSelect(groupPool, scores, rng, 1);
+    if (picked.length > 0) {
+      selectedPrefWithGroup.push({ template: picked[0], group: interest });
+    }
+  }
+
+  // ── Map templates to quest objects ──
+  const personaQuests: Omit<Quest, 'id'>[] = selectedPersona.map((template) => {
     const titleIdx = Math.floor(rng() * template.titles.length);
     const descIdx = Math.floor(rng() * template.descriptions.length);
     const difficulty = scaleDifficulty(template.baseDifficulty, level);
@@ -1123,71 +2848,103 @@ export function generateDailyQuests(options: GenerateOptions): Omit<Quest, 'id'>
       persona,
       generated: true,
       questType: 'daily' as const,
+      questSource: 'persona' as const,
     };
   });
-}
 
-export function generateWeeklyQuests(options: GenerateOptions): Omit<Quest, 'id'>[] {
-  const { persona, level, quests, lists, uid, date } = options;
-  const rng = createRng(`weekly-${uid}-${date}`);
-
-  // ONLY templates that explicitly include this persona AND are weekly
-  const applicable = TEMPLATES.filter((t) => {
-    if (t.frequency !== 'weekly') return false;
-    if (!t.personas.includes(persona)) return false;
-    return true;
-  });
-
-  // Separate progress-based and regular templates
-  const progressTemplates = applicable.filter((t) => t.trackingType);
-  const regularTemplates = applicable.filter((t) => !t.trackingType);
-
-  const habitWeights = analyzeUserHabits(lists);
-  const recentTitles = getRecentQuestTitles(quests, 14);
-
-  // Select 1 progress-based quest (if available)
-  let selectedProgress: QuestTemplate[] = [];
-  if (progressTemplates.length > 0) {
-    const progScores = progressTemplates.map((t) => {
-      let score = 1;
-      score += (habitWeights[t.category] || 1) * 0.3;
-      const hasRecent = t.titles.some((title) => recentTitles.has(title.toLowerCase()));
-      if (hasRecent) score *= 0.15;
-      score += rng() * 0.6;
-      return score;
-    });
-    selectedProgress = weightedSelect(progressTemplates, progScores, rng, 1);
-  }
-
-  // Select 2 regular quests (or more if no progress templates)
-  const regularCount = selectedProgress.length > 0 ? 2 : 3;
-  const regScores = regularTemplates.map((t) => {
-    let score = 1;
-    score += (habitWeights[t.category] || 1) * 0.3;
-    const hasRecent = t.titles.some((title) => recentTitles.has(title.toLowerCase()));
-    if (hasRecent) score *= 0.15;
-    score += rng() * 0.6;
-    return score;
-  });
-  const selectedRegular = weightedSelect(regularTemplates, regScores, rng, regularCount);
-
-  const selected = [...selectedProgress, ...selectedRegular];
-
-  // Weekly due date = Sunday of the current week (local time)
-  const weeklyDueDate = getLocalSundayOfWeek(date);
-
-  return selected.map((template) => {
+  const prefQuests: Omit<Quest, 'id'>[] = selectedPrefWithGroup.map(({ template, group }) => {
     const titleIdx = Math.floor(rng() * template.titles.length);
     const descIdx = Math.floor(rng() * template.descriptions.length);
     const difficulty = scaleDifficulty(template.baseDifficulty, level);
     const rewards = calculateRewards(difficulty, level);
 
-    // Calculate target count for progress-based quests (scales with level)
+    return {
+      title: template.titles[titleIdx],
+      description: template.descriptions[descIdx],
+      category: template.category,
+      difficulty,
+      estimatedTime: template.baseTime,
+      xpReward: rewards.xp,
+      essenceReward: rewards.essence,
+      completed: false,
+      dueDate: date,
+      tags: [template.id, 'generated', 'daily'],
+      persona,
+      generated: true,
+      questType: 'daily' as const,
+      questSource: 'preference' as const,
+      preferenceGroup: group,
+    };
+  });
+
+  return [...personaQuests, ...prefQuests];
+}
+
+export function generateWeeklyQuests(options: GenerateOptions): Omit<Quest, 'id'>[] {
+  const { persona, level, quests, lists, uid, date, interests = [] } = options;
+  const rng = createRng(`weekly-${uid}-${date}`);
+  const weeklyDueDate = getLocalSundayOfWeek(date);
+
+  // ── Persona pool (no preferenceTag) ──
+  const personaAll = TEMPLATES.filter((t) => {
+    if (t.frequency !== 'weekly') return false;
+    if (!t.personas.includes(persona)) return false;
+    if (t.preferenceTag) return false;
+    return true;
+  });
+  const personaProgress = personaAll.filter((t) => t.trackingType);
+  const personaRegular = personaAll.filter((t) => !t.trackingType);
+
+  const habitWeights = analyzeUserHabits(lists);
+  const recentTitles = getRecentQuestTitles(quests, 14);
+
+  const scoreTemplates = (templates: QuestTemplate[]) =>
+    templates.map((t) => {
+      let score = 1;
+      score += (habitWeights[t.category] || 1) * 0.3;
+      if (t.titles.some((title) => recentTitles.has(title.toLowerCase()))) score *= 0.15;
+      score += rng() * 0.6;
+      return score;
+    });
+
+  // ── Persona weekly (1 progress + 2 regular = 3) ──
+  let selPersonaProgress: QuestTemplate[] = [];
+  if (personaProgress.length > 0) {
+    selPersonaProgress = weightedSelect(personaProgress, scoreTemplates(personaProgress), rng, 1);
+  }
+  const regCount = selPersonaProgress.length > 0 ? 2 : 3;
+  const selPersonaRegular = weightedSelect(personaRegular, scoreTemplates(personaRegular), rng, regCount);
+  const selPersona = [...selPersonaProgress, ...selPersonaRegular];
+
+  // ── Preference weekly: 1 per interest group ──
+  const selectedPrefWithGroup: { template: QuestTemplate; group: string }[] = [];
+  for (const interest of interests) {
+    const groupPool = TEMPLATES.filter((t) => {
+      if (t.frequency !== 'weekly') return false;
+      if (!t.personas.includes(persona)) return false;
+      if (t.preferenceTag !== interest) return false;
+      return true;
+    });
+    if (groupPool.length === 0) continue;
+
+    const scores = scoreTemplates(groupPool);
+    const picked = weightedSelect(groupPool, scores, rng, 1);
+    if (picked.length > 0) {
+      selectedPrefWithGroup.push({ template: picked[0], group: interest });
+    }
+  }
+
+  // ── Map persona templates to quest objects ──
+  const personaQuests: Omit<Quest, 'id'>[] = selPersona.map((template) => {
+    const titleIdx = Math.floor(rng() * template.titles.length);
+    const descIdx = Math.floor(rng() * template.descriptions.length);
+    const difficulty = scaleDifficulty(template.baseDifficulty, level);
+    const rewards = calculateRewards(difficulty, level);
+
     const targetCount = template.baseTargetCount
       ? Math.floor(template.baseTargetCount + Math.floor(level / 5) * 2)
       : undefined;
 
-    // For progress-based quests, update description with target count
     let description = template.descriptions[descIdx];
     if (targetCount) {
       description = description.replace('megadott számú', `${targetCount}`);
@@ -1207,9 +2964,9 @@ export function generateWeeklyQuests(options: GenerateOptions): Omit<Quest, 'id'
       persona,
       generated: true,
       questType: 'weekly' as const,
+      questSource: 'persona' as const,
     };
 
-    // Add progress tracking fields if applicable
     if (template.trackingType && targetCount) {
       quest.trackingType = template.trackingType;
       quest.targetCount = targetCount;
@@ -1218,4 +2975,49 @@ export function generateWeeklyQuests(options: GenerateOptions): Omit<Quest, 'id'
 
     return quest;
   });
+
+  // ── Map preference templates to quest objects (1 per interest) ──
+  const prefQuests: Omit<Quest, 'id'>[] = selectedPrefWithGroup.map(({ template, group }) => {
+    const titleIdx = Math.floor(rng() * template.titles.length);
+    const descIdx = Math.floor(rng() * template.descriptions.length);
+    const difficulty = scaleDifficulty(template.baseDifficulty, level);
+    const rewards = calculateRewards(difficulty, level);
+
+    const targetCount = template.baseTargetCount
+      ? Math.floor(template.baseTargetCount + Math.floor(level / 5) * 2)
+      : undefined;
+
+    let description = template.descriptions[descIdx];
+    if (targetCount) {
+      description = description.replace('megadott számú', `${targetCount}`);
+    }
+
+    const quest: Omit<Quest, 'id'> = {
+      title: template.titles[titleIdx],
+      description,
+      category: template.category,
+      difficulty,
+      estimatedTime: template.baseTime,
+      xpReward: Math.floor(rewards.xp * 1.5),
+      essenceReward: Math.floor(rewards.essence * 1.5),
+      completed: false,
+      dueDate: weeklyDueDate,
+      tags: [template.id, 'generated', 'weekly'],
+      persona,
+      generated: true,
+      questType: 'weekly' as const,
+      questSource: 'preference' as const,
+      preferenceGroup: group,
+    };
+
+    if (template.trackingType && targetCount) {
+      quest.trackingType = template.trackingType;
+      quest.targetCount = targetCount;
+      quest.currentProgress = 0;
+    }
+
+    return quest;
+  });
+
+  return [...personaQuests, ...prefQuests];
 }

@@ -8,6 +8,8 @@ export interface Persona {
   description: string;
   icon: string;
   color: string;
+  colorHSL: string; // raw HSL values for CSS variable (e.g. "213 100% 65%")
+  colorGlowHSL: string; // lighter glow variant
   colorClass: string;
   heroTitle: string;
   heroSubtitle: string;
@@ -23,6 +25,8 @@ export const personas: Persona[] = [
     description: 'Tanulás, vizsgák és projektek szervezése',
     icon: 'GraduationCap',
     color: 'hsl(213 100% 65%)',
+    colorHSL: '213 100% 65%',
+    colorGlowHSL: '213 100% 75%',
     colorClass: 'persona-student',
     heroTitle: 'Tanulási célok elérése játékosan',
     heroSubtitle: 'Szervezd meg tanulásod, kövesd nyomon haladásod, érj el új szinteket.',
@@ -36,6 +40,8 @@ export const personas: Persona[] = [
     description: 'Munkák, meetingek és karrier célok',
     icon: 'Briefcase',
     color: 'hsl(167 85% 48%)',
+    colorHSL: '167 85% 48%',
+    colorGlowHSL: '167 85% 60%',
     colorClass: 'persona-worker',
     heroTitle: 'Hatékony munkanap, egyensúlyban',
     heroSubtitle: 'Fókuszálj a lényegre, tartsd szem előtt céljaidat, épülj fel minden nap.',
@@ -49,6 +55,8 @@ export const personas: Persona[] = [
     description: 'Szokások, olvasás és személyes növekedés',
     icon: 'Target',
     color: 'hsl(260 85% 65%)',
+    colorHSL: '260 85% 65%',
+    colorGlowHSL: '260 85% 75%',
     colorClass: 'persona-selfdev',
     heroTitle: 'Fejlődés minden nap egy lépéssel',
     heroSubtitle: 'Építs új szokásokat, olvasd magad, reflektálj és növekedj.',
@@ -62,6 +70,8 @@ export const personas: Persona[] = [
     description: 'Projektek, ügyfelek és bevételek',
     icon: 'Zap',
     color: 'hsl(142 71% 49%)',
+    colorHSL: '142 71% 49%',
+    colorGlowHSL: '142 71% 59%',
     colorClass: 'persona-freelancer',
     heroTitle: 'Szabadúszó sikerek nyomon követése',
     heroSubtitle: 'Menedzseld ügyfeleidet, projektjeidet és növeld bevételeidet.',
@@ -75,6 +85,8 @@ export const personas: Persona[] = [
     description: 'Háztartás, pénzügyek és családi teendők',
     icon: 'Home',
     color: 'hsl(280 65% 60%)',
+    colorHSL: '280 65% 60%',
+    colorGlowHSL: '280 65% 70%',
     colorClass: 'persona-organizer',
     heroTitle: 'Otthoni harmónia és rend',
     heroSubtitle: 'Szervezd meg családod életét, háztartásod és pénzügyeidet.',
@@ -88,11 +100,32 @@ interface PersonaState {
   setPersona: (persona: Persona) => void;
 }
 
+/**
+ * Applies the persona's color as the global --primary CSS variable
+ * so the entire UI theme adapts to the selected persona.
+ * Falls back to the canonical persona definition if colorHSL is missing
+ * (e.g. data loaded from localStorage before the field existed).
+ */
+export function applyPersonaTheme(persona: Persona) {
+  // Look up canonical persona to ensure we have colorHSL values
+  const canonical = personas.find((p) => p.id === persona.id) || personas[0];
+  const hsl = persona.colorHSL || canonical.colorHSL;
+  const glowHSL = persona.colorGlowHSL || canonical.colorGlowHSL;
+
+  const root = document.documentElement;
+  root.style.setProperty('--primary', hsl);
+  root.style.setProperty('--primary-glow', glowHSL);
+  root.style.setProperty('--ring', hsl);
+}
+
 export const usePersonaStore = create<PersonaState>()(
   persist(
     (set) => ({
       currentPersona: personas[0], // Default to student
-      setPersona: (persona) => set({ currentPersona: persona }),
+      setPersona: (persona) => {
+        applyPersonaTheme(persona);
+        set({ currentPersona: persona });
+      },
     }),
     {
       name: 'donezy-persona',

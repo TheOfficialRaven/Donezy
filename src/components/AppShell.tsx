@@ -1,4 +1,5 @@
-import { Outlet } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Header from './layout/Header';
 import Sidebar from './layout/Sidebar';
@@ -6,13 +7,31 @@ import BottomNav from './layout/BottomNav';
 import AlarmPopup from './AlarmPopup';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAlarmSystem } from '@/hooks/useAlarmSystem';
+import { usePersonaStore, applyPersonaTheme } from '@/stores/usePersonaStore';
+import { useAppStore } from '@/stores/useAppStore';
 
 export default function AppShell() {
   const isMobile = useIsMobile();
   const { activeAlarms, dismissAlarm, dismissAll, snoozeAlarm } = useAlarmSystem();
+  const currentPersona = usePersonaStore((s) => s.currentPersona);
+  const dataLoaded = useAppStore((s) => s.dataLoaded);
+  const onboardingCompleted = useAppStore((s) => s.userPreferences.onboardingCompleted);
+  const navigate = useNavigate();
+
+  // Apply persona theme colors on mount and when persona changes
+  useEffect(() => {
+    applyPersonaTheme(currentPersona);
+  }, [currentPersona]);
+
+  // Redirect to onboarding if not completed
+  useEffect(() => {
+    if (dataLoaded && onboardingCompleted === false) {
+      navigate('/onboarding', { replace: true });
+    }
+  }, [dataLoaded, onboardingCompleted, navigate]);
 
   return (
-    <div className="min-h-screen bg-surface-0 flex overflow-x-hidden max-w-[100vw]">
+    <div className="min-h-screen bg-surface-0 flex overflow-x-hidden w-full">
       {/* Desktop Sidebar */}
       {!isMobile && <Sidebar />}
       

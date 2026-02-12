@@ -7,6 +7,7 @@ import {
   signOut as authSignOut,
   resetPassword as authResetPassword,
   resendVerificationEmail as authResendVerification,
+  deleteAccount as authDeleteAccount,
   onAuthChanged,
 } from '@/services/authService';
 
@@ -22,6 +23,7 @@ interface AuthState {
   signIn: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   signInWithGoogle: (rememberMe?: boolean) => Promise<void>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   resendVerificationEmail: (email: string, password: string) => Promise<void>;
   clearError: () => void;
@@ -78,6 +80,17 @@ export const useAuthStore = create<AuthState>()((set) => ({
     try {
       await authSignOut();
       set({ loading: false });
+    } catch (err: any) {
+      set({ loading: false, error: getFirebaseErrorMessage(err.code) });
+      throw err;
+    }
+  },
+
+  deleteAccount: async () => {
+    set({ loading: true, error: null });
+    try {
+      await authDeleteAccount();
+      set({ loading: false, user: null });
     } catch (err: any) {
       set({ loading: false, error: getFirebaseErrorMessage(err.code) });
       throw err;

@@ -236,6 +236,20 @@ export async function seedAchievements(uid: string, definitions: Array<{
   await set(achievementsRef, data);
 }
 
+// ============ USER PREFERENCES ============
+
+export function subscribeToPreferences(uid: string, callback: (prefs: Record<string, any> | null) => void): Unsubscribe {
+  const prefsRef = ref(db, userPath(uid, 'preferences'));
+  return onValue(prefsRef, (snapshot) => {
+    callback(snapshot.val());
+  });
+}
+
+export async function updatePreferences(uid: string, prefs: Record<string, any>) {
+  const prefsRef = ref(db, userPath(uid, 'preferences'));
+  await update(prefsRef, prefs);
+}
+
 // ============ PERSONA ============
 
 export async function savePersona(uid: string, personaId: string) {
@@ -247,4 +261,11 @@ export async function getPersona(uid: string): Promise<string | null> {
   const profileRef = ref(db, userPath(uid, 'profile/persona'));
   const snapshot = await get(profileRef);
   return snapshot.val();
+}
+
+// ============ DELETE ALL USER DATA ============
+
+export async function deleteAllUserData(uid: string) {
+  const userRef = ref(db, `users/${uid}`);
+  await remove(userRef);
 }

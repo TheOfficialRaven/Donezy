@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import PersonaSwitcher from '@/components/PersonaSwitcher';
+import PersonaBadge from '@/components/PersonaBadge';
 import UserStats from '@/components/UserStats';
 import QuickAddDialog from '@/components/dialogs/QuickAddDialog';
 
@@ -12,7 +12,7 @@ export default function Header() {
     <header className="glass border-b border-white/10 px-2 sm:px-4 md:px-6 py-2 sm:py-3 min-w-0">
       <div className="flex items-center justify-between gap-1 sm:gap-2 min-w-0">
         <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-shrink">
-          <PersonaSwitcher />
+          <PersonaBadge />
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0">

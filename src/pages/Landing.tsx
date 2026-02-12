@@ -78,7 +78,7 @@ export default function Landing() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Button
                 size="lg"
-                onClick={() => navigate('/auth')}
+                onClick={() => navigate('/auth?tab=register')}
                 className="bg-primary hover:bg-primary/90 text-surface-0 px-8 py-4 text-lg glow-primary"
               >
                 <User className="mr-3 h-6 w-6" />
@@ -88,7 +88,7 @@ export default function Landing() {
               <Button
                 variant="outline"
                 size="lg"
-                onClick={() => navigate('/auth')}
+                onClick={() => navigate('/auth?tab=login')}
                 className="border-white/20 text-text-primary hover:bg-white/5 px-8 py-4 text-lg"
               >
                 <LogIn className="mr-3 h-6 w-6" />
@@ -300,7 +300,7 @@ export default function Landing() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 size="lg"
-                onClick={() => navigate('/auth')}
+                onClick={() => navigate('/auth?tab=register')}
                 className="bg-primary hover:bg-primary/90 text-surface-0 px-8 py-4 text-lg glow-primary"
               >
                 <User className="mr-3 h-6 w-6" />
@@ -310,7 +310,7 @@ export default function Landing() {
               <Button
                 variant="outline"
                 size="lg"
-                onClick={() => navigate('/auth')}
+                onClick={() => navigate('/auth?tab=login')}
                 className="border-white/20 text-text-primary hover:bg-white/5 px-8 py-4 text-lg"
               >
                 Belépés

@@ -10,17 +10,21 @@ import {
   setPersistence,
   browserLocalPersistence,
   browserSessionPersistence,
+  deleteUser,
   type User,
 } from 'firebase/auth';
 import { ref, set, get } from 'firebase/database';
 import { auth, googleProvider, db } from '@/lib/firebase';
+import { deleteAllUserData } from './databaseService';
 
 export async function signUp(email: string, password: string, displayName: string) {
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  await updateProfile(userCredential.user, { displayName });
 
-  // Send email verification
+  // Send email verification IMMEDIATELY after creation (before any other operations)
+  // to ensure the request is fully processed before signOut
   await sendEmailVerification(userCredential.user);
+
+  await updateProfile(userCredential.user, { displayName });
 
   // Create user profile in Realtime Database
   await set(ref(db, `users/${userCredential.user.uid}/profile`), {
@@ -42,7 +46,20 @@ export async function signUp(email: string, password: string, displayName: strin
     lastActiveDate: '',
   });
 
-  // Sign out immediately so user must verify email first
+  // Initialize empty preferences (onboarding not yet completed)
+  await set(ref(db, `users/${userCredential.user.uid}/preferences`), {
+    onboardingCompleted: false,
+    interests: [],
+    challenge: '',
+    questFrequency: 'medium',
+    activeTime: 'morning',
+    livingWith: [],
+  });
+
+  // Brief delay to ensure Firebase fully processes the verification email request
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  // Sign out so user must verify email first
   await firebaseSignOut(auth);
 
   return userCredential.user;
@@ -98,6 +115,16 @@ export async function signInWithGoogle(rememberMe: boolean = false) {
       totalQuestsCompleted: 0,
       lastActiveDate: '',
     });
+
+    // Initialize empty preferences for Google signup
+    await set(ref(db, `users/${user.uid}/preferences`), {
+      onboardingCompleted: false,
+      interests: [],
+      challenge: '',
+      questFrequency: 'medium',
+      activeTime: 'morning',
+      livingWith: [],
+    });
   }
 
   return user;
@@ -109,6 +136,17 @@ export async function signOut() {
 
 export async function resetPassword(email: string) {
   await sendPasswordResetEmail(auth, email);
+}
+
+export async function deleteAccount() {
+  const user = auth.currentUser;
+  if (!user) throw new Error('No authenticated user');
+
+  // Delete all user data from Realtime Database first
+  await deleteAllUserData(user.uid);
+
+  // Delete the Firebase Auth account
+  await deleteUser(user);
 }
 
 export function onAuthChanged(callback: (user: User | null) => void) {

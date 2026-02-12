@@ -41,6 +41,10 @@ export interface Quest {
   persona?: string;
   generated?: boolean;
   questType?: 'daily' | 'weekly';
+  // Identifies which pool generated this quest
+  questSource?: 'persona' | 'preference';
+  // Which interest group this preference quest belongs to (e.g. 'health', 'finance')
+  preferenceGroup?: string;
   // Progress-based quest fields (for weekly quests like "Complete X tasks this week")
   targetCount?: number;
   currentProgress?: number;
@@ -95,6 +99,15 @@ export interface UserStats {
   lastWeeklyGenDate?: string;
 }
 
+export interface UserPreferences {
+  onboardingCompleted: boolean;
+  interests: string[];
+  challenge: string;
+  questFrequency: 'low' | 'medium' | 'high';
+  activeTime: 'morning' | 'afternoon' | 'evening';
+  livingWith: string[];
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -117,6 +130,7 @@ export interface TodoList {
 interface AppState {
   uid: string | null;
   userStats: UserStats;
+  userPreferences: UserPreferences;
   quests: Quest[];
   notes: Note[];
   events: CalendarEvent[];
@@ -156,6 +170,9 @@ interface AppState {
 
   // Stats actions
   updateStats: (updates: Partial<UserStats>) => Promise<void>;
+
+  // Persona actions
+  triggerQuestGeneration: (forceRegenerate?: boolean) => Promise<void>;
 }
 
 const defaultStats: UserStats = {
@@ -171,6 +188,15 @@ const defaultStats: UserStats = {
   lastActiveDate: '',
 };
 
+const defaultPreferences: UserPreferences = {
+  onboardingCompleted: true, // Default true so existing users without prefs aren't redirected
+  interests: [],
+  challenge: '',
+  questFrequency: 'medium',
+  activeTime: 'morning',
+  livingWith: [],
+};
+
 export const useAppStore = create<AppState>()((set, get) => {
   // ============ INTERNAL HELPERS ============
 
@@ -178,6 +204,21 @@ export const useAppStore = create<AppState>()((set, get) => {
   let _achievementsSeeded = false;
   let _questGenerationInProgress = false;
   let _dailyActivityDate = ''; // Tracks if daily activity was already recorded this session
+  let _prefsLoaded = false; // Tracks whether the preferences subscription has delivered data
+
+  /**
+   * Reads the current persona ID from localStorage (zustand persist).
+   */
+  const getCurrentPersonaId = (): string => {
+    try {
+      const stored = localStorage.getItem('donezy-persona');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return parsed?.state?.currentPersona?.id || 'student';
+      }
+    } catch { /* ignore */ }
+    return 'student';
+  };
 
   /**
    * Core XP processing: awards XP, handles level-ups (with essence bonus),
@@ -332,9 +373,11 @@ export const useAppStore = create<AppState>()((set, get) => {
     const { uid, quests, userStats } = get();
     if (!uid) return;
 
+    const persona = getCurrentPersonaId();
     const activeProgressQuests = quests.filter(
       (q) => q.generated && q.questType === 'weekly' && !q.completed &&
-        q.trackingType === trackingType && q.targetCount
+        q.trackingType === trackingType && q.targetCount &&
+        (!q.persona || q.persona === persona)
     );
 
     for (const quest of activeProgressQuests) {
@@ -368,9 +411,10 @@ export const useAppStore = create<AppState>()((set, get) => {
   };
 
   /**
-   * Generates daily and/or weekly quests if not already generated today/this week.
-   * Cleans up old uncompleted generated daily quests.
-   * Uses a lock + double-check (stats flag + existing quests) to prevent duplicate generation.
+   * Generates daily and/or weekly quests if not already generated for the
+   * current persona + day/week. Quests are cached per persona — switching
+   * persona preserves previously generated quests so users cannot exploit
+   * repeated switching to get fresh quests.
    */
   const generateQuestsIfNeeded = async (stats: UserStats) => {
     // Prevent concurrent generation calls
@@ -382,120 +426,61 @@ export const useAppStore = create<AppState>()((set, get) => {
       if (!uid) return;
 
       const today = getLocalDateString();
-      const persona = (() => {
-        try {
-          const stored = localStorage.getItem('donezy-persona');
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            return parsed?.state?.currentPersona?.id || 'worker';
-          }
-        } catch { /* ignore */ }
-        return 'worker';
-      })();
+      const persona = getCurrentPersonaId();
+      const interests = get().userPreferences.interests || [];
+      const prefFrequency = get().userPreferences.questFrequency || 'medium';
 
       // Re-read quests from store (they may have loaded since the timeout was scheduled)
       const quests = get().quests;
-      const genOptions = { persona, level: stats.level, quests, lists, uid, date: today };
+      const genOptions = { persona, level: stats.level, quests, lists, uid, date: today, interests, questFrequency: prefFrequency };
 
-      // --- Clean up old completed quests (from previous days) ---
+      // --- Cleanup: old completed quests + old uncompleted dailies + old weeklies ---
+      const mondayOfWeek = getLocalMondayOfWeek(today);
+      const sundayOfWeek = getLocalSundayOfWeek(today);
+
       const oldCompletedQuests = quests.filter(
         (q) => q.completed && q.completedAt && !q.completedAt.startsWith(today)
       );
-      for (const q of oldCompletedQuests) {
-        await dbService.deleteQuest(uid, q.id);
-      }
-      // Also remove old uncompleted generated daily quests from previous days
       const oldUncompletedDaily = quests.filter(
         (q) => q.generated && q.questType === 'daily' && q.dueDate && q.dueDate !== today && !q.completed
       );
-      for (const q of oldUncompletedDaily) {
+      const oldUncompletedWeekly = quests.filter(
+        (q) => q.generated && q.questType === 'weekly' && q.dueDate && q.dueDate < mondayOfWeek && !q.completed
+      );
+
+      for (const q of [...oldCompletedQuests, ...oldUncompletedDaily, ...oldUncompletedWeekly]) {
         await dbService.deleteQuest(uid, q.id);
       }
 
-      // --- Daily Quests ---
-      // Check BOTH the stats flag AND existing quests to decide if generation is needed.
-      // This double-check prevents regeneration even if one check has a race condition.
-      const allDailyForToday = quests.filter(
-        (q) => q.generated && q.questType === 'daily' && q.dueDate === today
+      // --- Daily Quests (per persona) ---
+      // Only check quests for the CURRENT persona — other personas' quests are preserved
+      const dailyForTodayThisPersona = quests.filter(
+        (q) => q.generated && q.questType === 'daily' && q.dueDate === today && q.persona === persona
       );
-      const hasCompletedDailyToday = allDailyForToday.some((q) => q.completed);
 
-      // Persona mismatch: only allow swap if NO quests have been completed today
-      const dailyPersonaMismatch = !hasCompletedDailyToday &&
-        allDailyForToday.length > 0 &&
-        allDailyForToday.every((q) => q.persona && q.persona !== persona);
-
-      // Generate daily quests only if:
-      // 1. Stats say we haven't generated today AND no daily quests exist for today, OR
-      // 2. All existing daily quests have wrong persona and none are completed
-      const needsDailyGen =
-        (stats.lastQuestGenDate !== today && allDailyForToday.length === 0) ||
-        dailyPersonaMismatch;
-
-      if (needsDailyGen) {
-        // Clean up mismatched daily quests (if persona swap)
-        if (dailyPersonaMismatch) {
-          for (const q of allDailyForToday) {
-            await dbService.deleteQuest(uid, q.id);
-          }
-        }
-
-        // Generate new daily quests
+      if (dailyForTodayThisPersona.length === 0) {
         const dailyQuests = generateDailyQuests(genOptions);
         for (const quest of dailyQuests) {
           await dbService.addQuest(uid, quest);
         }
-
-        await dbService.updateStats(uid, { lastQuestGenDate: today });
         toast.success(`${dailyQuests.length} új napi küldetés generálva!`, { duration: 3000 });
-      } else if (stats.lastQuestGenDate !== today && allDailyForToday.length > 0) {
-        // Quests exist but stats flag is outdated → fix the flag without regenerating
-        await dbService.updateStats(uid, { lastQuestGenDate: today });
       }
 
-      // --- Weekly Quests ---
-      const mondayOfWeek = getLocalMondayOfWeek(today);
-      const sundayOfWeek = getLocalSundayOfWeek(today);
-
-      // Find ALL weekly quests for the current week (completed or not)
-      const allWeeklyThisWeek = quests.filter(
+      // --- Weekly Quests (per persona) ---
+      const weeklyThisWeekThisPersona = quests.filter(
         (q) => q.generated && q.questType === 'weekly' &&
-          q.dueDate && q.dueDate >= mondayOfWeek && q.dueDate <= sundayOfWeek
+          q.dueDate && q.dueDate >= mondayOfWeek && q.dueDate <= sundayOfWeek &&
+          q.persona === persona
       );
-      const hasCompletedWeeklyThisWeek = allWeeklyThisWeek.some((q) => q.completed);
 
-      // Persona mismatch: only allow swap if NO weekly quests have been completed this week
-      const weeklyPersonaMismatch = !hasCompletedWeeklyThisWeek &&
-        allWeeklyThisWeek.length > 0 &&
-        allWeeklyThisWeek.every((q) => q.persona && q.persona !== persona);
-
-      // Generate weekly quests only if:
-      // 1. Stats say we haven't generated this week AND no weekly quests exist for this week, OR
-      // 2. All existing weekly quests have wrong persona and none are completed
-      const needsWeeklyGen =
-        ((!stats.lastWeeklyGenDate || stats.lastWeeklyGenDate < mondayOfWeek) && allWeeklyThisWeek.length === 0) ||
-        weeklyPersonaMismatch;
-
-      if (needsWeeklyGen) {
-        // Clean up mismatched weekly quests
-        if (weeklyPersonaMismatch) {
-          for (const q of allWeeklyThisWeek) {
-            await dbService.deleteQuest(uid, q.id);
-          }
-        }
-
+      if (weeklyThisWeekThisPersona.length === 0) {
         const weeklyQuests = generateWeeklyQuests(genOptions);
         for (const quest of weeklyQuests) {
           await dbService.addQuest(uid, quest);
         }
-
-        await dbService.updateStats(uid, { lastWeeklyGenDate: today });
         if (weeklyQuests.length > 0) {
           toast.success(`${weeklyQuests.length} új heti küldetés generálva!`, { duration: 3000 });
         }
-      } else if ((!stats.lastWeeklyGenDate || stats.lastWeeklyGenDate < mondayOfWeek) && allWeeklyThisWeek.length > 0) {
-        // Weekly quests exist but stats flag is outdated → fix the flag without regenerating
-        await dbService.updateStats(uid, { lastWeeklyGenDate: today });
       }
     } finally {
       _questGenerationInProgress = false;
@@ -507,6 +492,7 @@ export const useAppStore = create<AppState>()((set, get) => {
   return {
     uid: null,
     userStats: defaultStats,
+    userPreferences: defaultPreferences,
     quests: [],
     notes: [],
     events: [],
@@ -541,6 +527,9 @@ export const useAppStore = create<AppState>()((set, get) => {
 
             // Schedule quest generation independently (wait for other data to load)
             setTimeout(() => {
+              // Don't auto-generate if preferences haven't loaded or onboarding isn't done.
+              // Onboarding will call triggerQuestGeneration() after completion.
+              if (!_prefsLoaded || !get().userPreferences.onboardingCompleted) return;
               const currentStats = get().userStats;
               generateQuestsIfNeeded(currentStats);
             }, 3000);
@@ -588,6 +577,19 @@ export const useAppStore = create<AppState>()((set, get) => {
         })
       );
 
+      // Subscribe to user preferences (onboarding, interests, etc.)
+      unsubscribers.push(
+        dbService.subscribeToPreferences(uid, (prefs) => {
+          _prefsLoaded = true;
+          if (prefs) {
+            set({ userPreferences: { ...defaultPreferences, ...prefs } as UserPreferences });
+          } else {
+            // No preferences saved yet — existing user, use defaults (onboardingCompleted: true)
+            set({ userPreferences: defaultPreferences });
+          }
+        })
+      );
+
       set({ uid, _unsubscribers: unsubscribers, dataLoaded: true });
     },
 
@@ -597,9 +599,11 @@ export const useAppStore = create<AppState>()((set, get) => {
       _achievementsSeeded = false;
       _questGenerationInProgress = false;
       _dailyActivityDate = '';
+      _prefsLoaded = false;
       set({
         uid: null,
         userStats: defaultStats,
+        userPreferences: defaultPreferences,
         quests: [],
         notes: [],
         events: [],
@@ -771,6 +775,43 @@ export const useAppStore = create<AppState>()((set, get) => {
       const { uid } = get();
       if (!uid) return;
       await dbService.updateStats(uid, updates);
+    },
+
+    // ============ PERSONA ACTIONS ============
+
+    triggerQuestGeneration: async (forceRegenerate?: boolean) => {
+      if (forceRegenerate) {
+        const { uid, quests } = get();
+        if (uid) {
+          const today = getLocalDateString();
+          const mondayOfWeek = getLocalMondayOfWeek(today);
+          const sundayOfWeek = getLocalSundayOfWeek(today);
+          const persona = getCurrentPersonaId();
+
+          // Delete all generated uncompleted quests for this persona
+          // (they were generated before preferences were saved)
+          const toDelete = quests.filter(
+            (q) =>
+              q.generated &&
+              q.persona === persona &&
+              !q.completed &&
+              ((q.questType === 'daily' && q.dueDate === today) ||
+                (q.questType === 'weekly' &&
+                  q.dueDate &&
+                  q.dueDate >= mondayOfWeek &&
+                  q.dueDate <= sundayOfWeek))
+          );
+          for (const q of toDelete) {
+            await dbService.deleteQuest(uid, q.id);
+          }
+
+          // Wait briefly for Firebase subscription to reflect deletions
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+      }
+
+      const currentStats = get().userStats;
+      await generateQuestsIfNeeded(currentStats);
     },
   };
 });

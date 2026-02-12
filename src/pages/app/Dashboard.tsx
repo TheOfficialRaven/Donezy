@@ -1,12 +1,14 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Clock, Target, BookOpen, Calendar as CalendarIcon, Zap, Check, Circle, ChevronRight } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { usePersonaStore } from '@/stores/usePersonaStore';
-import { useAppStore } from '@/stores/useAppStore';
+import { useAppStore, type Quest } from '@/stores/useAppStore';
+import { INTEREST_GROUPS } from '@/lib/questGenerator';
 import { cn } from '@/lib/utils';
 import { getLocalDateString } from '@/lib/dateUtils';
 
@@ -15,9 +17,28 @@ export default function Dashboard() {
   const { userStats, quests, lists, events, completeQuest, updateTask } = useAppStore();
   const navigate = useNavigate();
 
+  const PersonaIcon = LucideIcons[currentPersona.icon as keyof typeof LucideIcons] as React.ComponentType<{ className?: string }>;
   const today = getLocalDateString();
-  const todayQuests = quests.filter(q => !q.completed).slice(0, 3);
-  const completedToday = quests.filter(q => q.completed && q.completedAt?.startsWith(today)).length;
+  // Filter quests by current persona (non-generated quests are always shown)
+  const myQuests = quests.filter(q => !q.persona || q.persona === currentPersona.id);
+  const todayPersona = myQuests.filter(q => !q.completed && q.questSource !== 'preference').slice(0, 3);
+  const todayPreference = myQuests.filter(q => !q.completed && q.questSource === 'preference');
+  const todayQuests = [...todayPersona, ...todayPreference];
+  const completedToday = myQuests.filter(q => q.completed && q.completedAt?.startsWith(today)).length;
+
+  // Group preference quests by interest for dashboard display
+  const prefByGroup = new Map<string, Quest[]>();
+  for (const q of todayPreference) {
+    const g = q.preferenceGroup || 'other';
+    if (!prefByGroup.has(g)) prefByGroup.set(g, []);
+    prefByGroup.get(g)!.push(q);
+  }
+  const orderedPrefGroups: { group: string; meta: typeof INTEREST_GROUPS[string]; quests: Quest[] }[] = [];
+  for (const [key, meta] of Object.entries(INTEREST_GROUPS)) {
+    if (prefByGroup.has(key)) {
+      orderedPrefGroups.push({ group: key, meta, quests: prefByGroup.get(key)! });
+    }
+  }
 
   // Upcoming events (from now onwards, sorted by start time, max 4)
   const now = new Date();
@@ -60,28 +81,64 @@ export default function Dashboard() {
 
   const getPersonaModuleContent = (module: string) => {
     switch (module) {
+      // Student modules
       case 'schedule':
-        return { title: 'Mai órák', icon: Clock, content: 'Naptár megtekintése', action: 'Órarend megtekintése', link: '/app/calendar' };
+        return { title: 'Mai órarend', icon: Clock, content: 'Tekintsd meg a mai óráid beosztását és készülj fel rájuk.', action: 'Órarend megtekintése', link: '/app/calendar' };
       case 'exams':
-        return { title: 'Következő vizsgák', icon: Target, content: 'Küldetések megtekintése', action: 'Felkészülés tervezése', link: '/app/quests' };
+        return { title: 'Vizsga felkészülés', icon: Target, content: 'Tervezd meg a tanulási blokkjaidat a következő vizsgáidra.', action: 'Felkészülés tervezése', link: '/app/quests' };
+      case 'study-quests':
+        return { title: 'Tanulási küldetések', icon: Zap, content: 'Teljesítsd a napi tanulási kihívásaidat és szerezz XP-t.', action: 'Küldetések megtekintése', link: '/app/quests' };
+      case 'progress':
+        return { title: 'Tanulási haladás', icon: Target, content: 'Kövesd nyomon a fejlődésedet és az elért eredményeidet.', action: 'Eredmények megtekintése', link: '/app/achievements' };
+      // Worker modules
       case 'daily-focus':
-        return { title: 'Napi fókusz', icon: Target, content: 'Listák megtekintése', action: 'Fókusz beállítása', link: '/app/lists' };
+        return { title: 'Napi fókusz', icon: Target, content: 'A 3 legfontosabb feladatod ma – kezdd ezekkel.', action: 'Fókusz beállítása', link: '/app/lists' };
       case 'meetings':
-        return { title: 'Következő meeting', icon: CalendarIcon, content: 'Naptár megtekintése', action: 'Meeting előkészítése', link: '/app/calendar' };
+        return { title: 'Mai megbeszélések', icon: CalendarIcon, content: 'Készülj fel a mai meetingekre: agenda, célok, kérdések.', action: 'Meeting előkészítése', link: '/app/calendar' };
+      case 'pomodoro':
+        return { title: 'Pomodoro időzítő', icon: Clock, content: 'Dolgozz 25 perces fókusz blokkokban a maximális hatékonyságért.', action: 'Időzítő indítása', link: '/app/quests' };
+      case 'break-reminder':
+        return { title: 'Szünet emlékeztető', icon: Zap, content: 'Ne feledd a szüneteket – a pihenés növeli a produktivitást.', action: 'Szünetek tervezése', link: '/app/calendar' };
+      case 'goals':
+        return { title: 'Karrier célok', icon: Target, content: 'Kövesd nyomon a hosszú távú karrier céljaid felé haladásodat.', action: 'Célok áttekintése', link: '/app/achievements' };
+      // Selfdev modules
       case 'habits':
-        return { title: 'Szokás tracker', icon: Target, content: 'Küldetések megtekintése', action: 'Mai szokások', link: '/app/quests' };
+        return { title: 'Szokás tracker', icon: Target, content: 'Tartsd a napi szokásaid sorozatát – ne törd meg a láncot!', action: 'Mai szokások', link: '/app/quests' };
       case 'daily-challenge':
-        return { title: 'Napi kihívás', icon: Zap, content: 'Küldetések megtekintése', action: 'Kihívás teljesítése', link: '/app/quests' };
+        return { title: 'Napi kihívás', icon: Zap, content: 'Lépj ki a komfortzónádból egy napi mikro-kihívással.', action: 'Kihívás teljesítése', link: '/app/quests' };
+      case 'reading':
+        return { title: 'Olvasási napló', icon: BookOpen, content: 'Kövesd az olvasási célod – hány oldalt vagy fejezetet olvastál.', action: 'Olvasás naplózása', link: '/app/notes' };
+      case 'reflection':
+        return { title: 'Napi reflexió', icon: BookOpen, content: 'Írj pár sort a napodról: tanulságok, érzések, felismerések.', action: 'Napló megnyitása', link: '/app/notes' };
+      case 'growth':
+        return { title: 'Növekedési célok', icon: Target, content: 'Tekintsd meg a fejlődési céljaidat és az elért mérföldköveket.', action: 'Célok megtekintése', link: '/app/achievements' };
+      // Freelancer modules
       case 'clients':
-        return { title: 'Aktív ügyfelek', icon: Target, content: 'Listák megtekintése', action: 'Ügyfél portál', link: '/app/lists' };
+        return { title: 'Aktív projektek', icon: Target, content: 'Az ügyfeleid és projektjeid állapota egy helyen.', action: 'Projektek kezelése', link: '/app/lists' };
       case 'deadlines':
-        return { title: 'Közeli határidők', icon: Clock, content: 'Naptár megtekintése', action: 'Határidők rendezése', link: '/app/calendar' };
+        return { title: 'Közeli határidők', icon: Clock, content: 'A legközelebb lejáró projekt határidők és teendők.', action: 'Határidők rendezése', link: '/app/calendar' };
+      case 'invoicing':
+        return { title: 'Számlázás', icon: Target, content: 'Függő számlák és kintlévőségek áttekintése.', action: 'Számlák kezelése', link: '/app/lists' };
+      case 'pipeline':
+        return { title: 'Ügyfél pipeline', icon: Target, content: 'Potenciális ügyfelek és ajánlatok nyomon követése.', action: 'Pipeline kezelése', link: '/app/lists' };
+      case 'income':
+        return { title: 'Bevétel tracker', icon: Target, content: 'Havi bevételeid és kiadásaid áttekintése.', action: 'Pénzügyek megtekintése', link: '/app/notes' };
+      // Organizer modules
       case 'household':
-        return { title: 'Háztartási feladatok', icon: Target, content: 'Listák megtekintése', action: 'Feladatok megtekintése', link: '/app/lists' };
+        return { title: 'Háztartási rutin', icon: Target, content: 'A mai háztartási feladatok – tartsd rendben az otthonod.', action: 'Feladatok megtekintése', link: '/app/lists' };
       case 'finances':
-        return { title: 'Pénzügyi áttekintő', icon: Target, content: 'Listák megtekintése', action: 'Költségek megtekintése', link: '/app/lists' };
+        return { title: 'Családi pénzügyek', icon: Target, content: 'Költségvetés, számlák és megtakarítások egy helyen.', action: 'Pénzügyek áttekintése', link: '/app/lists' };
+      case 'shopping':
+        return { title: 'Bevásárlólista', icon: Target, content: 'Az aktuális bevásárlólista – soha ne felejtsd el amit kell.', action: 'Lista megtekintése', link: '/app/lists' };
+      case 'family':
+        return { title: 'Családi program', icon: CalendarIcon, content: 'A család heti programja és közös tevékenységek.', action: 'Családi naptár', link: '/app/calendar' };
+      case 'projects':
+        return { title: 'Otthoni projektek', icon: Target, content: 'Folyamatban lévő otthoni fejlesztések és javítások.', action: 'Projektek megtekintése', link: '/app/lists' };
+      // Shared modules
+      case 'notes':
+        return { title: 'Jegyzetek', icon: BookOpen, content: 'A legutóbbi jegyzeteid és gondolataid.', action: 'Jegyzetek megnyitása', link: '/app/notes' };
       default:
-        return { title: 'Gyors jegyzet', icon: BookOpen, content: 'Jegyzetek megtekintése', action: 'Jegyzet írása', link: '/app/notes' };
+        return { title: 'Gyors jegyzet', icon: BookOpen, content: 'Rögzítsd gondolataidat és ötleteidet azonnal.', action: 'Jegyzet írása', link: '/app/notes' };
     }
   };
 
@@ -145,39 +202,89 @@ export default function Dashboard() {
             </Button>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             {todayQuests.length > 0 ? (
-              todayQuests.map((quest, index) => (
-                <motion.div
-                  key={quest.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.6 + index * 0.1 }}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-surface-1/50 hover:bg-surface-1/70 transition-colors"
-                >
-                  <button
-                    onClick={() => completeQuest(quest.id)}
-                    className="w-2 h-2 rounded-full bg-primary hover:ring-2 hover:ring-primary/50 transition-all mt-2 flex-shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-text-primary text-sm sm:text-base">{quest.title}</h3>
-                    <p className="text-xs sm:text-sm text-text-muted line-clamp-2">{quest.description}</p>
-                    <div className="flex items-center gap-3 mt-1.5 sm:hidden">
-                      <div className="flex items-center gap-1 text-xs text-text-muted">
-                        <Clock className="h-3 w-3" />{quest.estimatedTime}p
+              <>
+                {/* Persona quests group */}
+                {todayPersona.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 pb-1">
+                      <div className="w-5 h-5 rounded-md bg-primary/20 flex items-center justify-center">
+                        <PersonaIcon className="h-3 w-3 text-primary" />
                       </div>
-                      <div className="text-xs text-primary font-medium">+{quest.xpReward} XP</div>
+                      <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">{currentPersona.label}</span>
                     </div>
+                    {todayPersona.map((quest, index) => (
+                      <motion.div
+                        key={quest.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.6 + index * 0.1 }}
+                        className="flex items-start gap-3 p-3 rounded-lg bg-surface-1/50 hover:bg-surface-1/70 transition-colors"
+                      >
+                        <button
+                          onClick={() => completeQuest(quest.id)}
+                          className="w-2 h-2 rounded-full bg-primary hover:ring-2 hover:ring-primary/50 transition-all mt-2 flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-text-primary text-sm sm:text-base">{quest.title}</h3>
+                          <p className="text-xs sm:text-sm text-text-muted line-clamp-2">{quest.description}</p>
+                          <div className="flex items-center gap-3 mt-1.5 sm:hidden">
+                            <div className="flex items-center gap-1 text-xs text-text-muted"><Clock className="h-3 w-3" />{quest.estimatedTime}p</div>
+                            <div className="text-xs text-primary font-medium">+{quest.xpReward} XP</div>
+                          </div>
+                        </div>
+                        <div className="hidden sm:flex items-center gap-2 text-sm text-text-muted flex-shrink-0"><Clock className="h-4 w-4" />{quest.estimatedTime}p</div>
+                        <div className="hidden sm:block text-sm text-primary font-medium flex-shrink-0">+{quest.xpReward} XP</div>
+                      </motion.div>
+                    ))}
                   </div>
-                  <div className="hidden sm:flex items-center gap-2 text-sm text-text-muted flex-shrink-0">
-                    <Clock className="h-4 w-4" />
-                    {quest.estimatedTime}p
-                  </div>
-                  <div className="hidden sm:block text-sm text-primary font-medium flex-shrink-0">
-                    +{quest.xpReward} XP
-                  </div>
-                </motion.div>
-              ))
+                )}
+
+                {/* Preference quests grouped by interest */}
+                {orderedPrefGroups.map(({ group, meta, quests: groupQuests }) => {
+                  const GIcon = LucideIcons[meta.icon as keyof typeof LucideIcons] as React.ComponentType<{ className?: string }>;
+                  return (
+                    <div key={group} className="space-y-2">
+                      <div className="flex items-center gap-2 pb-1">
+                        <div
+                          className="w-5 h-5 rounded-md flex items-center justify-center"
+                          style={{ background: meta.color.replace(')', ' / 0.2)'), color: meta.color }}
+                        >
+                          {GIcon && <GIcon className="h-3 w-3" />}
+                        </div>
+                        <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">{meta.label}</span>
+                      </div>
+                      {groupQuests.map((quest, index) => (
+                        <motion.div
+                          key={quest.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.8 + index * 0.1 }}
+                          className="flex items-start gap-3 p-3 rounded-lg bg-surface-1/50 hover:bg-surface-1/70 transition-colors border-l-2"
+                          style={{ borderColor: meta.color.replace(')', ' / 0.4)') }}
+                        >
+                          <button
+                            onClick={() => completeQuest(quest.id)}
+                            className="w-2 h-2 rounded-full hover:ring-2 transition-all mt-2 flex-shrink-0"
+                            style={{ background: meta.color, boxShadow: `0 0 0 0px ${meta.color}` }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium text-text-primary text-sm sm:text-base">{quest.title}</h3>
+                            <p className="text-xs sm:text-sm text-text-muted line-clamp-2">{quest.description}</p>
+                            <div className="flex items-center gap-3 mt-1.5 sm:hidden">
+                              <div className="flex items-center gap-1 text-xs text-text-muted"><Clock className="h-3 w-3" />{quest.estimatedTime}p</div>
+                              <div className="text-xs font-medium" style={{ color: meta.color }}>+{quest.xpReward} XP</div>
+                            </div>
+                          </div>
+                          <div className="hidden sm:flex items-center gap-2 text-sm text-text-muted flex-shrink-0"><Clock className="h-4 w-4" />{quest.estimatedTime}p</div>
+                          <div className="hidden sm:block text-sm font-medium flex-shrink-0" style={{ color: meta.color }}>+{quest.xpReward} XP</div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </>
             ) : (
               <div className="text-center py-8 text-text-muted">
                 <Zap className="h-12 w-12 mx-auto mb-3 text-text-disabled" />

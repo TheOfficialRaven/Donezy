@@ -18,6 +18,7 @@ import Calendar from "./pages/app/Calendar";
 import Achievements from "./pages/app/Achievements";
 import Shop from "./pages/app/Shop";
 import Settings from "./pages/Settings";
+import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
 
@@ -84,6 +85,14 @@ const App = () => (
               <Route path="achievements" element={<Achievements />} />
               <Route path="shop" element={<Shop />} />
             </Route>
+            <Route
+              path="/onboarding"
+              element={
+                <ProtectedRoute>
+                  <Onboarding />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/settings"
               element={

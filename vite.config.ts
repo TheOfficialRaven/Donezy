@@ -7,9 +7,15 @@ export default defineConfig({
   server: {
     host: "::",
     port: 8080,
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+    },
   },
   preview: {
     port: 8080,
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+    },
   },
   appType: 'spa', // Explicit SPA mode — serves index.html for all routes
   plugins: [react()],
