@@ -466,9 +466,9 @@ export default function Auth() {
                   {!isLogin && (
                     <p className="text-xs text-text-muted text-center">
                       A regisztrációval elfogadod az{' '}
-                      <a href="#" className="text-primary hover:text-primary/80">Általános Szerződési Feltételeket</a>
+                      <a href="/terms" className="text-primary hover:text-primary/80">Általános Szerződési Feltételeket</a>
                       {' '}és az{' '}
-                      <a href="#" className="text-primary hover:text-primary/80">Adatkezelési Tájékoztatót</a>.
+                      <a href="/privacy" className="text-primary hover:text-primary/80">Adatkezelési Tájékoztatót</a>.
                     </p>
                   )}
                 </form>

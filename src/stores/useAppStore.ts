@@ -452,34 +452,62 @@ export const useAppStore = create<AppState>()((set, get) => {
         await dbService.deleteQuest(uid, q.id);
       }
 
-      // --- Daily Quests (per persona) ---
-      // Only check quests for the CURRENT persona — other personas' quests are preserved
-      const dailyForTodayThisPersona = quests.filter(
+      // --- Daily Quests ---
+      // Check persona and preference quests independently so missing ones get generated
+      const dailyForToday = quests.filter(
         (q) => q.generated && q.questType === 'daily' && q.dueDate === today && q.persona === persona
       );
+      const hasPersonaDaily = dailyForToday.some((q) => q.questSource !== 'preference');
+      const existingDailyPrefGroups = new Set(
+        dailyForToday.filter((q) => q.questSource === 'preference').map((q) => q.preferenceGroup)
+      );
+      const missingDailyInterests = interests.filter((i) => !existingDailyPrefGroups.has(i));
 
-      if (dailyForTodayThisPersona.length === 0) {
-        const dailyQuests = generateDailyQuests(genOptions);
-        for (const quest of dailyQuests) {
+      if (!hasPersonaDaily || missingDailyInterests.length > 0) {
+        // Generate quests only for what's missing (persona if needed, preference for missing interests)
+        const dailyQuests = generateDailyQuests({
+          ...genOptions,
+          interests: missingDailyInterests,
+        });
+        // Filter: keep persona quests only if persona daily didn't exist yet
+        const questsToSave = dailyQuests.filter((q) => {
+          if (q.questSource !== 'preference') return !hasPersonaDaily;
+          return true; // all preference quests for missingDailyInterests are needed
+        });
+        for (const quest of questsToSave) {
           await dbService.addQuest(uid, quest);
         }
-        toast.success(`${dailyQuests.length} új napi küldetés generálva!`, { duration: 3000 });
+        if (questsToSave.length > 0) {
+          toast.success(`${questsToSave.length} új napi küldetés generálva!`, { duration: 3000 });
+        }
       }
 
-      // --- Weekly Quests (per persona) ---
-      const weeklyThisWeekThisPersona = quests.filter(
+      // --- Weekly Quests ---
+      const weeklyThisWeek = quests.filter(
         (q) => q.generated && q.questType === 'weekly' &&
           q.dueDate && q.dueDate >= mondayOfWeek && q.dueDate <= sundayOfWeek &&
           q.persona === persona
       );
+      const hasPersonaWeekly = weeklyThisWeek.some((q) => q.questSource !== 'preference');
+      const existingWeeklyPrefGroups = new Set(
+        weeklyThisWeek.filter((q) => q.questSource === 'preference').map((q) => q.preferenceGroup)
+      );
+      const missingWeeklyInterests = interests.filter((i) => !existingWeeklyPrefGroups.has(i));
 
-      if (weeklyThisWeekThisPersona.length === 0) {
-        const weeklyQuests = generateWeeklyQuests(genOptions);
-        for (const quest of weeklyQuests) {
+      if (!hasPersonaWeekly || missingWeeklyInterests.length > 0) {
+        const weeklyQuests = generateWeeklyQuests({
+          ...genOptions,
+          interests: missingWeeklyInterests,
+        });
+        const weeklyToSave = weeklyQuests.filter((q) => {
+          if (q.questSource !== 'preference') return !hasPersonaWeekly;
+          return true;
+        });
+        for (const quest of weeklyToSave) {
           await dbService.addQuest(uid, quest);
         }
-        if (weeklyQuests.length > 0) {
-          toast.success(`${weeklyQuests.length} új heti küldetés generálva!`, { duration: 3000 });
+        if (weeklyToSave.length > 0) {
+          toast.success(`${weeklyToSave.length} új heti küldetés generálva!`, { duration: 3000 });
         }
       }
     } finally {

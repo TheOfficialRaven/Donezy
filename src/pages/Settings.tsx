@@ -311,6 +311,13 @@ export default function Settings() {
                             variant="ghost"
                             size="sm"
                             className="text-text-secondary hover:text-text-primary"
+                            onClick={
+                              item.label === 'Adatvédelmi irányelvek'
+                                ? () => navigate('/privacy')
+                                : item.label === 'Felhasználási feltételek'
+                                ? () => navigate('/terms')
+                                : undefined
+                            }
                           >
                             {item.value}
                             <ChevronRight className="h-4 w-4 ml-2" />
