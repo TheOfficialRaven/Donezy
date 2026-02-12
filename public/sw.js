@@ -1,4 +1,4 @@
-const CACHE_NAME = 'donezy-v2';
+const CACHE_NAME = 'donezy-v3';
 const PRECACHE_URLS = [
   '/',
   '/donezy-logo.svg',
@@ -35,15 +35,15 @@ self.addEventListener('fetch', (event) => {
   // Navigation requests (page loads/refreshes) → always serve index.html
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request)
+      // Always fetch the root index.html from the network for navigation
+      fetch('/')
         .then((response) => {
-          // If server returns OK, cache and return it
           if (response.ok) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put('/', clone));
             return response;
           }
-          // If server returns 404 (SPA route like /app/dashboard), serve cached index.html
+          // Server error: fall back to cached index.html
           return caches.match('/').then((cached) => cached || response);
         })
         .catch(() => {
