@@ -19,50 +19,59 @@ import { deleteAllUserData } from './databaseService';
 
 export async function signUp(email: string, password: string, displayName: string) {
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  const user = userCredential.user;
 
-  // Send email verification IMMEDIATELY after creation (before any other operations)
-  // to ensure the request is fully processed before signOut
-  await sendEmailVerification(userCredential.user);
+  // Send verification email with retry (up to 3 attempts) to ensure delivery
+  let emailSent = false;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await sendEmailVerification(user);
+      emailSent = true;
+      break;
+    } catch {
+      if (attempt < 3) {
+        await new Promise(resolve => setTimeout(resolve, 800 * attempt));
+      }
+    }
+  }
 
-  await updateProfile(userCredential.user, { displayName });
-
-  // Create user profile in Realtime Database
-  await set(ref(db, `users/${userCredential.user.uid}/profile`), {
-    displayName,
-    email,
-    persona: 'student',
-    createdAt: new Date().toISOString(),
-  });
-
-  // Initialize default stats (lastActiveDate empty so first handleDailyLogin sets streak to 1)
-  await set(ref(db, `users/${userCredential.user.uid}/stats`), {
-    level: 1,
-    xp: 0,
-    xpToNextLevel: 100,
-    essence: 50,
-    streak: 0,
-    questsCompleted: 0,
-    totalQuestsCompleted: 0,
-    lastActiveDate: '',
-  });
-
-  // Initialize empty preferences (onboarding not yet completed)
-  await set(ref(db, `users/${userCredential.user.uid}/preferences`), {
-    onboardingCompleted: false,
-    interests: [],
-    challenge: '',
-    questFrequency: 'medium',
-    activeTime: 'morning',
-    livingWith: [],
-  });
-
-  // Brief delay to ensure Firebase fully processes the verification email request
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  // Set up profile, stats, and preferences in parallel for speed
+  await Promise.all([
+    updateProfile(user, { displayName }),
+    set(ref(db, `users/${user.uid}/profile`), {
+      displayName,
+      email,
+      persona: 'student',
+      createdAt: new Date().toISOString(),
+    }),
+    set(ref(db, `users/${user.uid}/stats`), {
+      level: 1,
+      xp: 0,
+      xpToNextLevel: 100,
+      essence: 50,
+      streak: 0,
+      questsCompleted: 0,
+      totalQuestsCompleted: 0,
+      lastActiveDate: '',
+    }),
+    set(ref(db, `users/${user.uid}/preferences`), {
+      onboardingCompleted: false,
+      interests: [],
+      challenge: '',
+      questFrequency: 'medium',
+      activeTime: 'morning',
+      livingWith: [],
+    }),
+  ]);
 
   // Sign out so user must verify email first
   await firebaseSignOut(auth);
 
-  return userCredential.user;
+  if (!emailSent) {
+    throw { code: 'auth/verification-email-failed' };
+  }
+
+  return user;
 }
 
 export async function signIn(email: string, password: string, rememberMe: boolean = false) {
@@ -82,8 +91,11 @@ export async function signIn(email: string, password: string, rememberMe: boolea
 
 export async function resendVerificationEmail(email: string, password: string) {
   const userCredential = await signInWithEmailAndPassword(auth, email, password);
-  await sendEmailVerification(userCredential.user);
-  await firebaseSignOut(auth);
+  try {
+    await sendEmailVerification(userCredential.user);
+  } finally {
+    await firebaseSignOut(auth);
+  }
 }
 
 export async function signInWithGoogle(rememberMe: boolean = false) {

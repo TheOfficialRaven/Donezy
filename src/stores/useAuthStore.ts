@@ -44,6 +44,11 @@ export const useAuthStore = create<AuthState>()((set) => ({
       await authSignUp(email, password, displayName);
       set({ loading: false, needsEmailVerification: true });
     } catch (err: any) {
+      if (err?.code === 'auth/verification-email-failed') {
+        // Account created but email failed — still show verification screen with resend option
+        set({ loading: false, needsEmailVerification: true, error: 'A megerősítő email küldése sikertelen volt. Kattints az újraküldés gombra.' });
+        return;
+      }
       set({ loading: false, error: getFirebaseErrorMessage(err.code) });
       throw err;
     }
