@@ -24,6 +24,7 @@ import { Switch } from '@/components/ui/switch';
 import { personas, usePersonaStore, type Persona } from '@/stores/usePersonaStore';
 import { useAppStore } from '@/stores/useAppStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useThemeStore } from '@/stores/useThemeStore';
 import ConfirmDialog from '@/components/dialogs/ConfirmDialog';
 import * as dbService from '@/services/databaseService';
 import { toast } from 'sonner';
@@ -34,6 +35,7 @@ export default function Settings() {
   const { userStats } = useAppStore();
   const triggerQuestGeneration = useAppStore((s) => s.triggerQuestGeneration);
   const { user, signOut, deleteAccount } = useAuthStore();
+  const isLight = useThemeStore((s) => s.theme) === 'light';
   const cleanup = useAppStore((s) => s.cleanup);
   const navigate = useNavigate();
 
@@ -234,14 +236,16 @@ export default function Settings() {
                       'w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left',
                       isSelected
                         ? 'border-primary/50 bg-primary/10'
-                        : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/20'
+                        : 'border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20'
                     )}
                   >
                     <div
                       className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
                       style={{
-                        background: `linear-gradient(135deg, ${persona.color}, ${persona.color}88)`,
-                        boxShadow: isSelected ? `0 0 20px ${persona.color}50` : 'none',
+                        background: `linear-gradient(135deg, ${persona.color}, ${isLight ? persona.color : persona.color + '88'})`,
+                        boxShadow: isSelected
+                          ? (isLight ? `0 2px 12px ${persona.color}50, 0 0 0 1px ${persona.color}30` : `0 0 20px ${persona.color}50`)
+                          : (isLight ? `0 1px 4px ${persona.color}30` : 'none'),
                       }}
                     >
                       <PersonaIcon className="h-5 w-5 text-white" />

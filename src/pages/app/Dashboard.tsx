@@ -1,7 +1,10 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Target, BookOpen, Calendar as CalendarIcon, Zap, Check, Circle, ChevronRight, Activity, Flame } from 'lucide-react';
+import {
+  Clock, Target, BookOpen, Calendar as CalendarIcon, Zap, Check, Circle, ChevronRight,
+  Activity, Flame, PenLine, Shield, Smile, Frown, Meh, CloudRain, Sun,
+} from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -111,7 +114,7 @@ export default function Dashboard() {
       case 'reading':
         return { title: 'Olvasási napló', icon: BookOpen, content: 'Kövesd az olvasási célod – hány oldalt vagy fejezetet olvastál.', action: 'Olvasás naplózása', link: '/app/reading' };
       case 'reflection':
-        return { title: 'Napi reflexió', icon: BookOpen, content: 'Írj pár sort a napodról: tanulságok, érzések, felismerések.', action: 'Napló megnyitása', link: '/app/notes' };
+        return { title: 'Napi reflexió', icon: PenLine, content: 'Írj pár sort a napodról: tanulságok, érzések, felismerések.', action: 'Napló megnyitása', link: '/app/reflection' };
       case 'growth':
         return { title: 'Növekedési célok', icon: Target, content: 'Tekintsd meg a fejlődési céljaidat és az elért mérföldköveket.', action: 'Célok megtekintése', link: '/app/achievements' };
       // Freelancer modules
@@ -484,6 +487,9 @@ export default function Dashboard() {
           if (module === 'reading') {
             return <ReadingSummaryWidget key={module} index={index} />;
           }
+          if (module === 'reflection') {
+            return <ReflectionSummaryWidget key={module} index={index} />;
+          }
 
           const moduleContent = getPersonaModuleContent(module);
 
@@ -668,6 +674,90 @@ function ReadingSummaryWidget({ index }: { index: number }) {
           onClick={(e) => { e.stopPropagation(); navigate('/app/reading'); }}
         >
           Olvasási napló megnyitása
+        </Button>
+      </Card>
+    </motion.div>
+  );
+}
+
+const MOOD_ICONS: Record<number, { icon: typeof Smile; color: string }> = {
+  1: { icon: Frown, color: 'text-red-400' },
+  2: { icon: CloudRain, color: 'text-orange-400' },
+  3: { icon: Meh, color: 'text-yellow-400' },
+  4: { icon: Smile, color: 'text-emerald-400' },
+  5: { icon: Sun, color: 'text-amber-300' },
+};
+
+function ReflectionSummaryWidget({ index }: { index: number }) {
+  const navigate = useNavigate();
+  const { journalEntries } = useAppStore();
+  const today = getLocalDateString();
+  const todaysEntry = journalEntries.find((e) => e.date === today);
+
+  const streak = useMemo(() => {
+    const dates = new Set(journalEntries.map((e) => e.date));
+    let s = 0;
+    const d = new Date();
+    while (dates.has(d.toISOString().slice(0, 10))) {
+      s++;
+      d.setDate(d.getDate() - 1);
+    }
+    return s;
+  }, [journalEntries]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.7 + index * 0.1 }}
+    >
+      <Card className="glass p-4 hover-lift cursor-pointer" onClick={() => navigate('/app/reflection')}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
+              <PenLine className="h-4 w-4 text-purple-400" />
+            </div>
+            <h3 className="font-medium text-text-primary">Napi reflexió</h3>
+          </div>
+          {streak > 0 && (
+            <Badge className="text-xs bg-purple-500/20 text-purple-400 border-purple-500/30">
+              <Flame className="h-3 w-3 mr-1" />
+              {streak} nap
+            </Badge>
+          )}
+        </div>
+
+        {todaysEntry ? (
+          <div className="mb-3">
+            <div className="flex items-center gap-2 mb-1">
+              {(() => {
+                const m = MOOD_ICONS[todaysEntry.mood];
+                return m ? <m.icon className={cn('h-4 w-4', m.color)} /> : null;
+              })()}
+              <span className="text-xs text-text-muted">Mai hangulat rögzítve</span>
+            </div>
+            {(todaysEntry.gratitude || todaysEntry.freeWrite) && (
+              <p className="text-sm text-text-secondary italic line-clamp-2">
+                "{todaysEntry.gratitude || todaysEntry.freeWrite}"
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="mb-3 flex items-start gap-2">
+            <Shield className="h-4 w-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+            <p className="text-text-secondary text-sm">
+              Szánj pár percet a mai reflexióra — gondold át napod tanulságait.
+            </p>
+          </div>
+        )}
+
+        <Button
+          size="sm"
+          variant="ghost"
+          className="w-full text-primary hover:bg-primary/10"
+          onClick={(e) => { e.stopPropagation(); navigate('/app/reflection'); }}
+        >
+          {todaysEntry ? 'Reflexió megtekintése' : 'Napló megnyitása'}
         </Button>
       </Card>
     </motion.div>

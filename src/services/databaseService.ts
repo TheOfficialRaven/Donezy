@@ -370,6 +370,63 @@ export async function addHabitEntry(uid: string, entry: HabitEntryData) {
   return newRef.key!;
 }
 
+// ============ JOURNAL ENTRIES (Daily Reflection) ============
+
+export interface JournalEntryData {
+  date: string; // YYYY-MM-DD
+  mood: number; // 1-5
+  gratitude?: string;
+  lessons?: string;
+  feelings?: string;
+  growth?: string;
+  freeWrite?: string;
+  tags?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function subscribeToJournalEntries(uid: string, callback: (entries: Array<JournalEntryData & { id: string }>) => void): Unsubscribe {
+  const journalRef = ref(db, userPath(uid, 'journalEntries'));
+  return onValue(journalRef, (snapshot) => {
+    const data = snapshot.val();
+    if (!data) { callback([]); return; }
+    const entries = Object.entries(data).map(([id, entry]) => ({
+      ...(entry as JournalEntryData),
+      id,
+    }));
+    callback(entries);
+  });
+}
+
+export async function addJournalEntry(uid: string, entry: JournalEntryData) {
+  const journalRef = ref(db, userPath(uid, 'journalEntries'));
+  const newRef = push(journalRef);
+  const clean: Record<string, any> = { date: entry.date, mood: entry.mood, createdAt: entry.createdAt, updatedAt: entry.updatedAt };
+  if (entry.gratitude) clean.gratitude = entry.gratitude;
+  if (entry.lessons) clean.lessons = entry.lessons;
+  if (entry.feelings) clean.feelings = entry.feelings;
+  if (entry.growth) clean.growth = entry.growth;
+  if (entry.freeWrite) clean.freeWrite = entry.freeWrite;
+  if (entry.tags && entry.tags.length > 0) clean.tags = entry.tags;
+  await set(newRef, clean);
+  return newRef.key!;
+}
+
+export async function updateJournalEntry(uid: string, entryId: string, updates: Partial<JournalEntryData>) {
+  const entryRef = ref(db, userPath(uid, `journalEntries/${entryId}`));
+  const clean: Record<string, any> = { updatedAt: new Date().toISOString() };
+  for (const [key, value] of Object.entries(updates)) {
+    if (key === 'updatedAt') continue;
+    if (value !== undefined && value !== null) clean[key] = value;
+  }
+  await update(entryRef, clean);
+}
+
+export async function deleteJournalEntry(uid: string, entryId: string) {
+  const entryRef = ref(db, userPath(uid, `journalEntries/${entryId}`));
+  await remove(entryRef);
+}
+
 // ============ DELETE ALL USER DATA ============
 
 export async function deleteAllUserData(uid: string) {

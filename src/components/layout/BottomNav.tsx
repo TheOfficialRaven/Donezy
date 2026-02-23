@@ -7,6 +7,7 @@ import {
   Calendar,
   Activity,
   BookOpen,
+  PenLine,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ const navigation: NavItem[] = [
   { name: 'Listák', href: '/app/lists', icon: CheckSquare },
   { name: 'Szokások', href: '/app/habits', icon: Activity, persona: 'selfdev' },
   { name: 'Olvasás', href: '/app/reading', icon: BookOpen, persona: 'selfdev' },
+  { name: 'Reflexió', href: '/app/reflection', icon: PenLine, persona: 'selfdev' },
   { name: 'Jegyzetek', href: '/app/notes', icon: FileText },
   { name: 'Naptár', href: '/app/calendar', icon: Calendar },
 ];

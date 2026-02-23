@@ -10,11 +10,15 @@ import {
   Settings,
   Activity,
   BookOpen,
+  PenLine,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import DonezyLogo from '@/components/DonezyLogo';
 import { usePersonaStore } from '@/stores/usePersonaStore';
+import { useThemeStore } from '@/stores/useThemeStore';
 import type { LucideIcon } from 'lucide-react';
 
 interface NavItem {
@@ -30,6 +34,7 @@ const navigation: NavItem[] = [
   { name: 'Listák', href: '/app/lists', icon: CheckSquare },
   { name: 'Szokás Tracker', href: '/app/habits', icon: Activity, persona: 'selfdev' },
   { name: 'Olvasási napló', href: '/app/reading', icon: BookOpen, persona: 'selfdev' },
+  { name: 'Napi reflexió', href: '/app/reflection', icon: PenLine, persona: 'selfdev' },
   { name: 'Jegyzetek', href: '/app/notes', icon: FileText },
   { name: 'Naptár', href: '/app/calendar', icon: Calendar },
   { name: 'Eredmények', href: '/app/achievements', icon: Trophy },
@@ -39,6 +44,7 @@ const navigation: NavItem[] = [
 export default function Sidebar() {
   const location = useLocation();
   const { currentPersona } = usePersonaStore();
+  const { theme, setTheme } = useThemeStore();
 
   const visibleNav = navigation.filter(
     (item) => !item.persona || item.persona === currentPersona.id
@@ -91,8 +97,27 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Settings */}
-      <div className="p-4 border-t border-white/10">
+      {/* Theme + Settings */}
+      <div className="p-4 border-t border-white/10 space-y-1">
+        <button
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-all duration-200 w-full",
+            "hover:bg-white/5 text-text-secondary hover:text-text-primary"
+          )}
+        >
+          {theme === 'dark' ? (
+            <>
+              <Sun className="h-5 w-5" />
+              Világos mód
+            </>
+          ) : (
+            <>
+              <Moon className="h-5 w-5" />
+              Sötét mód
+            </>
+          )}
+        </button>
         <NavLink
           to="/settings"
           className={cn(

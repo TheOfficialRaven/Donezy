@@ -4,6 +4,7 @@ import { User, LogIn, Zap, Target, Calendar, Trophy, Star, Shield } from 'lucide
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { personas } from '@/stores/usePersonaStore';
+import { useThemeStore } from '@/stores/useThemeStore';
 import * as LucideIcons from 'lucide-react';
 import DonezyLogo from '@/components/DonezyLogo';
 
@@ -49,6 +50,7 @@ const stats = [
 
 export default function Landing() {
   const navigate = useNavigate();
+  const isLight = useThemeStore((s) => s.theme) === 'light';
 
   return (
     <div className="min-h-screen bg-surface-0">
@@ -168,8 +170,8 @@ export default function Landing() {
                       <div
                         className="w-12 h-12 rounded-xl flex items-center justify-center group-hover:animate-glow-pulse"
                         style={{
-                          background: `linear-gradient(135deg, ${persona.color}, ${persona.color}88)`,
-                          boxShadow: `0 0 20px ${persona.color}40`
+                          background: `linear-gradient(135deg, ${persona.color}, ${isLight ? persona.color : persona.color + '88'})`,
+                          boxShadow: isLight ? `0 2px 8px ${persona.color}40` : `0 0 20px ${persona.color}40`
                         }}
                       >
                         <IconComponent className="h-6 w-6 text-surface-0" />

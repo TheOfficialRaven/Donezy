@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/useAppStore';
 import { analyzeHabits, type GroupedHabit } from '@/lib/habitAnalyzer';
+import { useThemeStore } from '@/stores/useThemeStore';
 import {
   BarChart,
   Bar,
@@ -29,6 +30,8 @@ const TIME_LABELS: Record<TimeRange, string> = {
 
 export default function HabitTracker() {
   const { habitEntries } = useAppStore();
+  const { theme } = useThemeStore();
+  const isLight = theme === 'light';
   const [timeRange, setTimeRange] = useState<TimeRange>(30);
   const [selectedHabit, setSelectedHabit] = useState<string | null>(null);
 
@@ -156,7 +159,7 @@ export default function HabitTracker() {
                         <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.06)'} />
                     <XAxis
                       dataKey="label"
                       tick={{ fill: 'hsl(var(--text-muted))', fontSize: 11 }}
@@ -173,7 +176,7 @@ export default function HabitTracker() {
                     <Tooltip
                       contentStyle={{
                         background: 'hsl(var(--surface-1))',
-                        border: '1px solid rgba(255,255,255,0.1)',
+                        border: isLight ? '1px solid hsl(220 16% 85%)' : '1px solid rgba(255,255,255,0.1)',
                         borderRadius: 8,
                         color: 'hsl(var(--text-primary))',
                         fontSize: 13,
@@ -253,6 +256,8 @@ export default function HabitTracker() {
 }
 
 function HabitDetail({ habit, timeRange }: { habit: GroupedHabit; timeRange: TimeRange }) {
+  const { theme } = useThemeStore();
+  const isLight = theme === 'light';
   return (
     <Card className="glass p-6 space-y-6">
       {/* Header */}
@@ -292,7 +297,7 @@ function HabitDetail({ habit, timeRange }: { habit: GroupedHabit; timeRange: Tim
         <div className="h-44">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={habit.dailyCounts} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+              <CartesianGrid strokeDasharray="3 3" stroke={isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.06)'} />
               <XAxis
                 dataKey="date"
                 tickFormatter={(d) => formatDateShort(d)}
@@ -310,7 +315,7 @@ function HabitDetail({ habit, timeRange }: { habit: GroupedHabit; timeRange: Tim
               <Tooltip
                 contentStyle={{
                   background: 'hsl(var(--surface-1))',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  border: isLight ? '1px solid hsl(220 16% 85%)' : '1px solid rgba(255,255,255,0.1)',
                   borderRadius: 8,
                   color: 'hsl(var(--text-primary))',
                   fontSize: 13,

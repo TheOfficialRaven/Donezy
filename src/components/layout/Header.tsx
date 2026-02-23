@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PersonaBadge from '@/components/PersonaBadge';
 import UserStats from '@/components/UserStats';
 import QuickAddDialog from '@/components/dialogs/QuickAddDialog';
+import { useThemeStore } from '@/stores/useThemeStore';
 
 export default function Header() {
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const { theme, setTheme } = useThemeStore();
 
   return (
     <header className="glass border-b border-white/10 px-2 sm:px-4 md:px-6 py-2 sm:py-3 min-w-0">
@@ -15,8 +17,19 @@ export default function Header() {
           <PersonaBadge />
         </div>
 
-        <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0">
+        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
           <UserStats />
+
+          {/* Theme Toggle */}
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-9 w-9 text-text-secondary hover:text-text-primary hover:bg-white/5"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            title={theme === 'dark' ? 'Világos mód' : 'Sötét mód'}
+          >
+            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
 
           {/* Quick Add */}
           <Button

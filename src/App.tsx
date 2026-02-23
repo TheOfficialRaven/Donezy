@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useAppStore } from "@/stores/useAppStore";
+import { useThemeStore } from "@/stores/useThemeStore";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
@@ -19,6 +20,7 @@ import Achievements from "./pages/app/Achievements";
 import Shop from "./pages/app/Shop";
 import HabitTracker from "./pages/app/HabitTracker";
 import ReadingJournal from "./pages/app/ReadingJournal";
+import DailyReflection from "./pages/app/DailyReflection";
 import Settings from "./pages/Settings";
 import Onboarding from "./pages/Onboarding";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -51,12 +53,14 @@ function AuthInitializer({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
+function AppInner() {
+  const theme = useThemeStore((s) => s.theme);
+
+  return (
+    <>
       <Toaster />
       <Sonner
-        theme="dark"
+        theme={theme}
         position="bottom-right"
         toastOptions={{
           style: {
@@ -88,6 +92,7 @@ const App = () => (
               <Route path="calendar" element={<Calendar />} />
               <Route path="habits" element={<HabitTracker />} />
               <Route path="reading" element={<ReadingJournal />} />
+              <Route path="reflection" element={<DailyReflection />} />
               <Route path="achievements" element={<Achievements />} />
               <Route path="shop" element={<Shop />} />
             </Route>
@@ -113,6 +118,14 @@ const App = () => (
           </Routes>
         </AuthInitializer>
       </BrowserRouter>
+    </>
+  );
+}
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <AppInner />
     </TooltipProvider>
   </QueryClientProvider>
 );

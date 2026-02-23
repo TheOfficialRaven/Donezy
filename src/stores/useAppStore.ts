@@ -116,6 +116,7 @@ export interface Task {
   priority: 'low' | 'medium' | 'high';
   dueDate?: string;
   xpAwarded?: boolean;
+  completedAt?: string;
   subtasks?: Task[];
 }
 
@@ -151,6 +152,20 @@ export interface ReadingLog {
   note?: string;
 }
 
+export interface JournalEntry {
+  id: string;
+  date: string;
+  mood: number;
+  gratitude?: string;
+  lessons?: string;
+  feelings?: string;
+  growth?: string;
+  freeWrite?: string;
+  tags?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ============ STORE ============
 
 interface AppState {
@@ -165,6 +180,7 @@ interface AppState {
   habitEntries: HabitEntry[];
   books: Book[];
   readingLogs: ReadingLog[];
+  journalEntries: JournalEntry[];
   dataLoaded: boolean;
   _unsubscribers: (() => void)[];
 
@@ -206,6 +222,11 @@ interface AppState {
   deleteBook: (bookId: string) => Promise<void>;
   logReading: (bookId: string, pagesRead: number, note?: string) => Promise<void>;
 
+  // Journal actions
+  addJournalEntry: (entry: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateJournalEntry: (entryId: string, updates: Partial<JournalEntry>) => Promise<void>;
+  deleteJournalEntry: (entryId: string) => Promise<void>;
+
   // Persona actions
   triggerQuestGeneration: (forceRegenerate?: boolean) => Promise<void>;
 }
@@ -238,8 +259,26 @@ export const useAppStore = create<AppState>()((set, get) => {
   let _dailyChecked = false;
   let _achievementsSeeded = false;
   let _questGenerationInProgress = false;
-  let _dailyActivityDate = ''; // Tracks if daily activity was already recorded this session
-  let _prefsLoaded = false; // Tracks whether the preferences subscription has delivered data
+  let _dailyActivityDate = '';
+  let _prefsLoaded = false;
+  let _completedTasksCleanedUp = false;
+
+  /**
+   * Removes completed tasks from all lists if they were completed before today.
+   * Runs once per session on initialization after lists data arrives.
+   */
+  const cleanupCompletedTasks = async (uid: string, lists: import('@/stores/useAppStore').TodoList[]) => {
+    const today = getLocalDateString();
+
+    for (const list of lists) {
+      const tasksToDelete = list.tasks.filter(
+        (t) => t.completed && t.completedAt && t.completedAt < today
+      );
+      for (const task of tasksToDelete) {
+        await dbService.deleteTask(uid, list.id, task.id);
+      }
+    }
+  };
 
   /**
    * Reads the current persona ID from localStorage (zustand persist).
@@ -564,6 +603,7 @@ export const useAppStore = create<AppState>()((set, get) => {
     habitEntries: [],
     books: [],
     readingLogs: [],
+    journalEntries: [],
     dataLoaded: false,
     _unsubscribers: [],
 
@@ -576,6 +616,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       _achievementsSeeded = false;
       _questGenerationInProgress = false;
       _dailyActivityDate = '';
+      _completedTasksCleanedUp = false;
 
       const unsubscribers: (() => void)[] = [];
 
@@ -610,10 +651,14 @@ export const useAppStore = create<AppState>()((set, get) => {
         })
       );
 
-      // Subscribe to lists
+      // Subscribe to lists (with daily cleanup of completed tasks)
       unsubscribers.push(
         dbService.subscribeToLists(uid, (lists) => {
           set({ lists });
+          if (!_completedTasksCleanedUp) {
+            _completedTasksCleanedUp = true;
+            cleanupCompletedTasks(uid, lists);
+          }
         })
       );
 
@@ -664,6 +709,13 @@ export const useAppStore = create<AppState>()((set, get) => {
         })
       );
 
+      // Subscribe to journal entries (daily reflection)
+      unsubscribers.push(
+        dbService.subscribeToJournalEntries(uid, (entries) => {
+          set({ journalEntries: entries });
+        })
+      );
+
       // Subscribe to user preferences (onboarding, interests, etc.)
       unsubscribers.push(
         dbService.subscribeToPreferences(uid, (prefs) => {
@@ -687,6 +739,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       _questGenerationInProgress = false;
       _dailyActivityDate = '';
       _prefsLoaded = false;
+      _completedTasksCleanedUp = false;
       set({
         uid: null,
         userStats: defaultStats,
@@ -699,6 +752,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         habitEntries: [],
         books: [],
         readingLogs: [],
+        journalEntries: [],
         dataLoaded: false,
         _unsubscribers: [],
       });
@@ -786,6 +840,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           await dbService.updateTask(uid, listId, taskId, {
             ...updates,
             xpAwarded: true,
+            completedAt: getLocalDateString(),
           });
 
           const xp = TASK_XP[task.priority] || 10;
@@ -931,6 +986,31 @@ export const useAppStore = create<AppState>()((set, get) => {
       if (isFinished) {
         toast.success(`"${book.title}" elolvasva! 🎉`, { duration: 4000 });
       }
+    },
+
+    // ============ JOURNAL ACTIONS ============
+
+    addJournalEntry: async (entry) => {
+      const { uid } = get();
+      if (!uid) return;
+      const now = new Date().toISOString();
+      await dbService.addJournalEntry(uid, {
+        ...entry,
+        createdAt: now,
+        updatedAt: now,
+      });
+    },
+
+    updateJournalEntry: async (entryId, updates) => {
+      const { uid } = get();
+      if (!uid) return;
+      await dbService.updateJournalEntry(uid, entryId, updates);
+    },
+
+    deleteJournalEntry: async (entryId) => {
+      const { uid } = get();
+      if (!uid) return;
+      await dbService.deleteJournalEntry(uid, entryId);
     },
 
     // ============ PERSONA ACTIONS ============
