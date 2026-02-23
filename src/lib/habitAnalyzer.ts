@@ -2,12 +2,16 @@
 // activities using word-set similarity so "Futás 30 perc" and "futás a parkban"
 // are recognized as the same habit.
 
+export type HabitSource = 'task' | 'quest' | 'event' | 'reading';
+
 export interface HabitEntry {
   id: string;
   title: string;
   normalizedTitle: string;
-  source: 'task' | 'quest';
+  source: HabitSource;
   completedAt: string; // YYYY-MM-DD
+  /** Extra metadata depending on source (e.g. book genre, event category) */
+  category?: string;
 }
 
 export interface GroupedHabit {
@@ -25,6 +29,10 @@ export interface GroupedHabit {
   weeklyAvg: number;
   firstSeen: string;
   lastSeen: string;
+  /** Breakdown by source type */
+  sourceBreakdown: Record<HabitSource, number>;
+  /** Category (genre, event type) if applicable */
+  categories: string[];
 }
 
 // ---- Hungarian accent / diacritic map ----
@@ -219,15 +227,24 @@ export function analyzeHabits(entries: HabitEntry[], days = 30): GroupedHabit[] 
   const habits: GroupedHabit[] = [];
 
   for (const [key, groupEntries] of groups) {
-    // Only show as a habit if it occurred at least twice
     if (groupEntries.length < 2) continue;
 
     const stats = computeStats(groupEntries, days);
+
+    const sourceBreakdown: Record<HabitSource, number> = { task: 0, quest: 0, event: 0, reading: 0 };
+    const catSet = new Set<string>();
+    for (const e of groupEntries) {
+      sourceBreakdown[e.source] = (sourceBreakdown[e.source] || 0) + 1;
+      if (e.category) catSet.add(e.category);
+    }
+
     habits.push({
       key,
       displayName: mostCommonTitle(groupEntries),
       entries: groupEntries,
       totalCount: groupEntries.length,
+      sourceBreakdown,
+      categories: [...catSet],
       ...stats,
     });
   }

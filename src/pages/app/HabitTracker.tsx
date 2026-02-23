@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, Flame, TrendingUp, BarChart3, Calendar, Repeat } from 'lucide-react';
+import { Activity, Flame, TrendingUp, BarChart3, Calendar, Repeat, CheckSquare, Zap, BookOpen, CalendarDays, Tag } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/useAppStore';
-import { analyzeHabits, type GroupedHabit } from '@/lib/habitAnalyzer';
+import { analyzeHabits, type GroupedHabit, type HabitSource } from '@/lib/habitAnalyzer';
 import { useThemeStore } from '@/stores/useThemeStore';
 import {
   BarChart,
@@ -28,21 +28,33 @@ const TIME_LABELS: Record<TimeRange, string> = {
   90: '90 nap',
 };
 
+const SOURCE_META: Record<HabitSource, { label: string; icon: typeof CheckSquare; color: string }> = {
+  task: { label: 'Lista feladat', icon: CheckSquare, color: 'text-blue-400' },
+  quest: { label: 'Küldetés', icon: Zap, color: 'text-primary' },
+  event: { label: 'Naptár esemény', icon: CalendarDays, color: 'text-purple-400' },
+  reading: { label: 'Olvasás', icon: BookOpen, color: 'text-amber-400' },
+};
+
 export default function HabitTracker() {
   const { habitEntries } = useAppStore();
   const { theme } = useThemeStore();
   const isLight = theme === 'light';
   const [timeRange, setTimeRange] = useState<TimeRange>(30);
   const [selectedHabit, setSelectedHabit] = useState<string | null>(null);
+  const [sourceFilter, setSourceFilter] = useState<HabitSource | 'all'>('all');
+
+  const filteredEntries = useMemo(
+    () => sourceFilter === 'all' ? habitEntries : habitEntries.filter((e) => e.source === sourceFilter),
+    [habitEntries, sourceFilter]
+  );
 
   const habits = useMemo(
-    () => analyzeHabits(habitEntries, timeRange),
-    [habitEntries, timeRange]
+    () => analyzeHabits(filteredEntries, timeRange),
+    [filteredEntries, timeRange]
   );
 
   const activeHabit = habits.find((h) => h.key === selectedHabit) || habits[0] || null;
 
-  // Aggregate chart: completions per day across all habits
   const aggregateDaily = useMemo(() => {
     const map = new Map<string, number>();
     const today = new Date();
@@ -51,7 +63,7 @@ export default function HabitTracker() {
       d.setDate(d.getDate() - i);
       map.set(d.toISOString().slice(0, 10), 0);
     }
-    for (const entry of habitEntries) {
+    for (const entry of filteredEntries) {
       if (map.has(entry.completedAt)) {
         map.set(entry.completedAt, map.get(entry.completedAt)! + 1);
       }
@@ -61,12 +73,18 @@ export default function HabitTracker() {
       label: formatDateShort(date),
       count,
     }));
-  }, [habitEntries, timeRange]);
+  }, [filteredEntries, timeRange]);
 
-  // Stats
+  // Global source counts (unfiltered)
+  const sourceCounts = useMemo(() => {
+    const counts: Record<HabitSource, number> = { task: 0, quest: 0, event: 0, reading: 0 };
+    for (const e of habitEntries) counts[e.source] = (counts[e.source] || 0) + 1;
+    return counts;
+  }, [habitEntries]);
+
   const totalHabits = habits.length;
   const longestStreak = habits.reduce((max, h) => Math.max(max, h.currentStreak), 0);
-  const totalCompletions = habitEntries.length;
+  const totalCompletions = filteredEntries.length;
   const activeStreaks = habits.filter((h) => h.currentStreak > 0).length;
 
   return (
@@ -79,7 +97,7 @@ export default function HabitTracker() {
             Szokás Tracker
           </h1>
           <p className="text-text-secondary mt-1">
-            Automatikusan nyomon követi a rendszeres tevékenységeidet
+            Listáid, naptárad, olvasásaid és küldetéseid alapján követi szokásaidat
           </p>
         </div>
         {/* Time range selector */}
@@ -125,6 +143,43 @@ export default function HabitTracker() {
         ))}
       </div>
 
+      {/* Source filter */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold text-text-muted uppercase tracking-wide mr-1">Forrás:</span>
+        <button
+          onClick={() => setSourceFilter('all')}
+          className={cn(
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border',
+            sourceFilter === 'all'
+              ? 'bg-primary/20 text-primary border-primary/30'
+              : 'bg-white/5 text-text-secondary border-transparent hover:bg-white/10'
+          )}
+        >
+          <Activity className="h-3.5 w-3.5" />
+          Mind ({habitEntries.length})
+        </button>
+        {(Object.entries(SOURCE_META) as [HabitSource, typeof SOURCE_META['task']][]).map(([src, meta]) => {
+          const count = sourceCounts[src];
+          if (count === 0) return null;
+          const Icon = meta.icon;
+          return (
+            <button
+              key={src}
+              onClick={() => setSourceFilter(src)}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border',
+                sourceFilter === src
+                  ? 'bg-primary/20 text-primary border-primary/30'
+                  : 'bg-white/5 text-text-secondary border-transparent hover:bg-white/10'
+              )}
+            >
+              <Icon className={cn('h-3.5 w-3.5', meta.color)} />
+              {meta.label} ({count})
+            </button>
+          );
+        })}
+      </div>
+
       {habits.length === 0 ? (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="glass p-12 text-center">
@@ -133,11 +188,11 @@ export default function HabitTracker() {
               Még nincsenek felismert szokásaid
             </h3>
             <p className="text-text-muted mb-2 max-w-md mx-auto">
-              Teljesíts feladatokat és küldetéseket — a rendszer automatikusan felismeri
-              az ismétlődő tevékenységeket és nyomon követi azokat.
+              A rendszer automatikusan felismeri az ismétlődő tevékenységeket a listáidból,
+              naptárad eseményeiből, olvasási naplódból és küldetéseidből.
             </p>
             <p className="text-xs text-text-muted">
-              Legalább 2 hasonló elvégzett feladat szükséges egy szokás felismeréséhez.
+              Legalább 2 hasonló tevékenység szükséges egy szokás felismeréséhez.
             </p>
           </Card>
         </motion.div>
@@ -205,36 +260,47 @@ export default function HabitTracker() {
                 <h3 className="text-sm font-semibold text-text-muted uppercase tracking-wide px-2 mb-2">
                   Szokásaid ({habits.length})
                 </h3>
-                {habits.map((habit) => (
-                  <button
-                    key={habit.key}
-                    onClick={() => setSelectedHabit(habit.key)}
-                    className={cn(
-                      'w-full text-left p-3 rounded-lg transition-all',
-                      activeHabit?.key === habit.key
-                        ? 'bg-primary/20 border border-primary/30'
-                        : 'hover:bg-white/5 border border-transparent'
-                    )}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-text-primary truncate pr-2">
-                        {habit.displayName}
-                      </span>
-                      <Badge className="text-xs bg-primary/20 text-primary border-primary/30 flex-shrink-0">
-                        {habit.totalCount}×
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-text-muted">
-                      {habit.currentStreak > 0 && (
-                        <span className="flex items-center gap-1 text-orange-400">
-                          <Flame className="h-3 w-3" />
-                          {habit.currentStreak} nap
-                        </span>
+                {habits.map((habit) => {
+                  const sources = (Object.entries(habit.sourceBreakdown) as [HabitSource, number][])
+                    .filter(([, count]) => count > 0);
+                  return (
+                    <button
+                      key={habit.key}
+                      onClick={() => setSelectedHabit(habit.key)}
+                      className={cn(
+                        'w-full text-left p-3 rounded-lg transition-all',
+                        activeHabit?.key === habit.key
+                          ? 'bg-primary/20 border border-primary/30'
+                          : 'hover:bg-white/5 border border-transparent'
                       )}
-                      <span>{habit.weeklyAvg}/hét</span>
-                    </div>
-                  </button>
-                ))}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-text-primary truncate pr-2">
+                          {habit.displayName}
+                        </span>
+                        <Badge className="text-xs bg-primary/20 text-primary border-primary/30 flex-shrink-0">
+                          {habit.totalCount}×
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-text-muted flex-wrap">
+                        {habit.currentStreak > 0 && (
+                          <span className="flex items-center gap-1 text-orange-400">
+                            <Flame className="h-3 w-3" />
+                            {habit.currentStreak} nap
+                          </span>
+                        )}
+                        <span>{habit.weeklyAvg}/hét</span>
+                        <span className="flex items-center gap-1 ml-auto">
+                          {sources.map(([src]) => {
+                            const meta = SOURCE_META[src];
+                            const Icon = meta.icon;
+                            return <Icon key={src} className={cn('h-3 w-3', meta.color)} title={meta.label} />;
+                          })}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </Card>
             </motion.div>
 
@@ -258,6 +324,10 @@ export default function HabitTracker() {
 function HabitDetail({ habit, timeRange }: { habit: GroupedHabit; timeRange: TimeRange }) {
   const { theme } = useThemeStore();
   const isLight = theme === 'light';
+  const sources = (Object.entries(habit.sourceBreakdown) as [HabitSource, number][])
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1]);
+
   return (
     <Card className="glass p-6 space-y-6">
       {/* Header */}
@@ -287,6 +357,27 @@ function HabitDetail({ habit, timeRange }: { habit: GroupedHabit; timeRange: Tim
             </span>
           )}
         </div>
+      </div>
+
+      {/* Source breakdown + categories */}
+      <div className="flex flex-wrap gap-2">
+        {sources.map(([src, count]) => {
+          const meta = SOURCE_META[src];
+          const Icon = meta.icon;
+          return (
+            <div key={src} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-2/50 text-xs font-medium">
+              <Icon className={cn('h-3.5 w-3.5', meta.color)} />
+              <span className="text-text-secondary">{meta.label}</span>
+              <span className="text-text-primary font-bold">{count}×</span>
+            </div>
+          );
+        })}
+        {habit.categories.map((cat) => (
+          <div key={cat} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 text-xs font-medium border border-amber-500/20">
+            <Tag className="h-3 w-3 text-amber-400" />
+            <span className="text-text-secondary">{cat}</span>
+          </div>
+        ))}
       </div>
 
       {/* Frequency Chart */}

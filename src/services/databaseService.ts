@@ -343,8 +343,9 @@ export async function addReadingLog(uid: string, log: ReadingLogData) {
 export interface HabitEntryData {
   title: string;
   normalizedTitle: string;
-  source: 'task' | 'quest';
+  source: 'task' | 'quest' | 'event' | 'reading';
   completedAt: string; // YYYY-MM-DD
+  category?: string;
 }
 
 export function subscribeToHabitEntries(uid: string, callback: (entries: Array<HabitEntryData & { id: string }>) => void): Unsubscribe {
@@ -366,7 +367,14 @@ export function subscribeToHabitEntries(uid: string, callback: (entries: Array<H
 export async function addHabitEntry(uid: string, entry: HabitEntryData) {
   const habitsRef = ref(db, userPath(uid, 'habitEntries'));
   const newRef = push(habitsRef);
-  await set(newRef, entry);
+  const data: Record<string, unknown> = {
+    title: entry.title,
+    normalizedTitle: entry.normalizedTitle,
+    source: entry.source,
+    completedAt: entry.completedAt,
+  };
+  if (entry.category) data.category = entry.category;
+  await set(newRef, data);
   return newRef.key!;
 }
 

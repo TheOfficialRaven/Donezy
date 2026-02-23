@@ -911,6 +911,20 @@ export const useAppStore = create<AppState>()((set, get) => {
       const { uid } = get();
       if (!uid) return;
       await dbService.addEvent(uid, event);
+
+      const normalized = normalizeTitle(event.title);
+      if (normalized) {
+        const eventDate = event.startTime
+          ? new Date(event.startTime).toISOString().slice(0, 10)
+          : getLocalDateString();
+        dbService.addHabitEntry(uid, {
+          title: event.title,
+          normalizedTitle: normalized,
+          source: 'event',
+          completedAt: eventDate,
+          category: event.category || undefined,
+        }).catch(() => {});
+      }
     },
 
     updateEvent: async (eventId, updates) => {
@@ -982,6 +996,19 @@ export const useAppStore = create<AppState>()((set, get) => {
         startedAt: book.startedAt || today,
         ...(isFinished ? { completedAt: today } : {}),
       });
+
+      // Track reading as habit
+      const readingTitle = `Olvasás: ${book.title}`;
+      const normalized = normalizeTitle(readingTitle);
+      if (normalized) {
+        dbService.addHabitEntry(uid, {
+          title: readingTitle,
+          normalizedTitle: normalized,
+          source: 'reading',
+          completedAt: today,
+          category: book.genre || undefined,
+        }).catch(() => {});
+      }
 
       if (isFinished) {
         toast.success(`"${book.title}" elolvasva! 🎉`, { duration: 4000 });
