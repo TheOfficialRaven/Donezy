@@ -250,8 +250,8 @@ export default function DailyReflection() {
               backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 31px, hsl(var(--text-primary)) 31px, hsl(var(--text-primary)) 32px)`,
               backgroundPositionY: '8px',
             }} />
-            <div className="absolute left-12 top-0 bottom-0 w-px bg-rose-400/10" />
-            <div className="relative p-6 pl-16">
+            <div className="absolute left-12 top-0 bottom-0 w-px bg-rose-400/10 hidden sm:block" />
+            <div className="relative p-4 pl-6 sm:p-6 sm:pl-16">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   {(() => { const mc = MOOD_CONFIG.find((m) => m.value === todaysEntry.mood); return mc ? <mc.icon className={cn('h-5 w-5', mc.color)} /> : null; })()}
@@ -290,7 +290,7 @@ export default function DailyReflection() {
             onClick={openNewEntry}
           >
             <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-pink-500/5 group-hover:from-purple-500/10 group-hover:to-pink-500/10 transition-all" />
-            <div className="relative p-8 text-center">
+            <div className="relative p-5 sm:p-8 text-center">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center mx-auto mb-4 ring-1 ring-purple-500/20 group-hover:ring-purple-500/40 transition-all">
                 <PenLine className="h-7 w-7 text-purple-400" />
               </div>
@@ -328,8 +328,8 @@ export default function DailyReflection() {
               </Button>
             </div>
             <div className="grid grid-cols-7 gap-1 text-center mb-1">
-              {['H', 'K', 'Sz', 'Cs', 'P', 'Sz', 'V'].map((d) => (
-                <span key={d} className="text-[10px] font-medium text-text-muted">{d}</span>
+              {['H', 'K', 'Sz', 'Cs', 'P', 'Sz', 'V'].map((d, i) => (
+                <span key={i} className="text-[10px] font-medium text-text-muted">{d}</span>
               ))}
             </div>
             <div className="grid grid-cols-7 gap-1">
@@ -428,7 +428,7 @@ export default function DailyReflection() {
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-text-muted hover:text-primary"
+                              className="h-7 w-7 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity text-text-muted hover:text-primary"
                               onClick={(e) => { e.stopPropagation(); openEditEntry(entry); }}
                             >
                               <PenLine className="h-3.5 w-3.5" />
@@ -436,7 +436,7 @@ export default function DailyReflection() {
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-text-muted hover:text-danger"
+                              className="h-7 w-7 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity text-text-muted hover:text-danger"
                               onClick={(e) => { e.stopPropagation(); setEntryToDelete(entry.id); setDeleteConfirmOpen(true); }}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -565,16 +565,16 @@ function EntryDetailView({
         backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 31px, hsl(var(--text-primary)) 31px, hsl(var(--text-primary)) 32px)`,
         backgroundPositionY: '8px',
       }} />
-      <div className="absolute left-14 top-0 bottom-0 w-px bg-rose-400/8" />
+      <div className="absolute left-14 top-0 bottom-0 w-px bg-rose-400/8 hidden sm:block" />
 
-      <div className="relative p-6 pl-[4.5rem]">
+      <div className="relative p-4 sm:p-6 sm:pl-[4.5rem]">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
-            <h3 className="text-lg font-heading font-semibold text-text-primary">
+            <h3 className="text-base sm:text-lg font-heading font-semibold text-text-primary">
               {formatHungarianDate(entry.date)}
             </h3>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex flex-wrap items-center gap-1.5 mt-1">
               {mc && (
                 <Badge className={cn('text-xs', mc.bg, mc.color, 'border', mc.ring)}>
                   <mc.icon className="h-3 w-3 mr-1" />
@@ -591,9 +591,9 @@ function EntryDetailView({
               })}
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-shrink-0">
             <Button size="sm" variant="ghost" className="text-primary" onClick={onEdit}>
-              <PenLine className="h-4 w-4 mr-1" /> Szerkesztés
+              <PenLine className="h-4 w-4 mr-1" /> <span className="hidden sm:inline">Szerkesztés</span><span className="sm:hidden">Szerk.</span>
             </Button>
             <Button size="icon" variant="ghost" className="h-8 w-8 text-text-muted hover:text-danger" onClick={onDelete}>
               <Trash2 className="h-4 w-4" />
@@ -614,7 +614,7 @@ function EntryDetailView({
                   <prompt.icon className={cn('h-4 w-4', prompt.color)} />
                   <span className="text-sm font-medium text-text-primary">{prompt.label}</span>
                 </div>
-                <div className={cn('rounded-lg p-4', prompt.bg)}>
+                <div className={cn('rounded-lg p-3 sm:p-4', prompt.bg)}>
                   <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">{value}</p>
                 </div>
               </div>
@@ -730,35 +730,35 @@ function JournalEditor({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto glass border-purple-500/20">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-text-primary">
-            <PenLine className="h-5 w-5 text-purple-400" />
-            {editingEntry ? 'Bejegyzés szerkesztése' : 'Új naplóbejegyzés'}
+      <DialogContent className="w-full h-full max-w-none max-h-none sm:w-[calc(100%-2rem)] sm:max-w-2xl sm:max-h-[85vh] sm:h-auto rounded-none sm:rounded-xl overflow-y-auto scrollbar-custom glass border-purple-500/20 p-4 sm:p-6 top-0 left-0 translate-x-0 translate-y-0 sm:top-[50%] sm:left-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%]">
+        <DialogHeader className="pr-8">
+          <DialogTitle className="flex items-center gap-2 text-text-primary text-base sm:text-lg">
+            <PenLine className="h-5 w-5 text-purple-400 flex-shrink-0" />
+            <span className="truncate">{editingEntry ? 'Bejegyzés szerkesztése' : 'Új naplóbejegyzés'}</span>
           </DialogTitle>
-          <DialogDescription className="text-text-secondary">
-            {formatHungarianDate(date)} — Nem kell mindent kitölteni. Írd azt, amit érzed.
+          <DialogDescription className="text-text-secondary text-xs sm:text-sm">
+            {formatHungarianDate(date)}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-2">
+        <div className="space-y-4 sm:space-y-6 py-1 sm:py-2">
           {/* Mood selector */}
           <div>
-            <label className="text-sm font-medium text-text-primary mb-3 block">Hogyan érzed magad?</label>
-            <div className="flex items-center justify-center gap-2">
+            <label className="text-xs sm:text-sm font-medium text-text-primary mb-2 sm:mb-3 block">Hogyan érzed magad?</label>
+            <div className="grid grid-cols-5 gap-1 sm:flex sm:items-center sm:justify-center sm:gap-2">
               {MOOD_CONFIG.map((m) => (
                 <button
                   key={m.value}
                   onClick={() => setMood(m.value)}
                   className={cn(
-                    'flex flex-col items-center gap-1 p-3 rounded-xl transition-all duration-200',
+                    'flex flex-col items-center gap-0.5 sm:gap-1 py-2 px-1 sm:p-3 rounded-xl transition-all duration-200',
                     mood === m.value
-                      ? cn(m.bg, 'ring-2', m.ring, 'scale-110')
+                      ? cn(m.bg, 'ring-2', m.ring, 'sm:scale-110')
                       : 'hover:bg-white/5 opacity-50 hover:opacity-80'
                   )}
                 >
-                  <m.icon className={cn('h-7 w-7', m.color)} />
-                  <span className={cn('text-[10px] font-medium', mood === m.value ? m.color : 'text-text-muted')}>
+                  <m.icon className={cn('h-6 w-6 sm:h-7 sm:w-7', m.color)} />
+                  <span className={cn('text-[9px] sm:text-[10px] font-medium leading-tight text-center', mood === m.value ? m.color : 'text-text-muted')}>
                     {m.label}
                   </span>
                 </button>
@@ -767,9 +767,9 @@ function JournalEditor({
           </div>
 
           {/* Journal sections */}
-          <div className="space-y-3">
-            <p className="text-xs text-text-muted">
-              Kattints egy kategóriára az íráshoz. Nem kötelező mindet kitölteni — írd azt, ami természetes.
+          <div className="space-y-1.5 sm:space-y-3">
+            <p className="text-[11px] sm:text-xs text-text-muted">
+              Kattints egy kategóriára az íráshoz. Írd azt, ami természetes.
             </p>
             {JOURNAL_PROMPTS.map((prompt) => {
               const value = prompt.key === 'gratitude' ? gratitude :
@@ -787,17 +787,12 @@ function JournalEditor({
                   <button
                     onClick={() => setActiveSection(isOpen && !value ? null : prompt.key)}
                     className={cn(
-                      'w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left',
+                      'w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl transition-all text-left',
                       isOpen ? cn(prompt.bg, 'ring-1 ring-white/5') : 'hover:bg-white/5'
                     )}
                   >
-                    <prompt.icon className={cn('h-5 w-5 flex-shrink-0', prompt.color)} />
-                    <div className="flex-1 min-w-0">
-                      <span className="text-sm font-medium text-text-primary">{prompt.label}</span>
-                      {!isOpen && (
-                        <span className="text-xs text-text-muted block mt-0.5 truncate">{prompt.hint}</span>
-                      )}
-                    </div>
+                    <prompt.icon className={cn('h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0', prompt.color)} />
+                    <span className="flex-1 min-w-0 text-xs sm:text-sm font-medium text-text-primary truncate">{prompt.label}</span>
                     {value && (
                       <span className="text-[10px] text-emerald-400 flex-shrink-0">Kitöltve</span>
                     )}
@@ -810,8 +805,8 @@ function JournalEditor({
                         exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden"
                       >
-                        <div className="pt-2 px-1">
-                          <p className="text-xs text-text-muted mb-2 italic">{prompt.hint}</p>
+                        <div className="pt-1.5 sm:pt-2 px-1">
+                          <p className="text-[11px] sm:text-xs text-text-muted mb-1.5 sm:mb-2 italic leading-relaxed">{prompt.hint}</p>
                           <JournalTextarea
                             value={value}
                             onChange={(v) => setValue(v)}
@@ -828,43 +823,44 @@ function JournalEditor({
 
           {/* Tags */}
           <div>
-            <label className="text-sm font-medium text-text-primary mb-2 block">Milyen nap volt?</label>
-            <div className="flex flex-wrap gap-2">
+            <label className="text-xs sm:text-sm font-medium text-text-primary mb-1.5 sm:mb-2 block">Milyen nap volt?</label>
+            <div className="grid grid-cols-3 gap-1.5 sm:flex sm:flex-wrap sm:gap-2">
               {ENTRY_TAGS.map((tag) => (
                 <button
                   key={tag.id}
                   onClick={() => toggleTag(tag.id)}
                   className={cn(
-                    'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border',
+                    'flex items-center justify-center sm:justify-start gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all border',
                     tags.includes(tag.id)
                       ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
                       : 'bg-transparent text-text-muted border-white/10 hover:border-white/20 hover:text-text-secondary'
                   )}
                 >
-                  <tag.icon className="h-3 w-3" />
-                  {tag.label}
+                  <tag.icon className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">{tag.label}</span>
                 </button>
               ))}
             </div>
           </div>
 
           {/* Privacy note */}
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
-            <Shield className="h-4 w-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-emerald-300/70">
-              Ez a bejegyzés privát — csak te láthatod. Írd bátran, ami a szívedben van.
+          <div className="flex items-center gap-2 p-2 sm:p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
+            <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-400 flex-shrink-0" />
+            <p className="text-[10px] sm:text-xs text-emerald-300/70">
+              Privát bejegyzés — csak te láthatod.
             </p>
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
+        <div className="flex justify-end gap-2 pt-2 sticky bottom-0 bg-inherit pb-1">
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving} size="sm">
             Mégse
           </Button>
           <Button
             onClick={handleSave}
             disabled={saving}
             className="bg-purple-600 hover:bg-purple-700 text-white"
+            size="sm"
           >
             {saving ? 'Mentés...' : editingEntry ? 'Frissítés' : 'Mentés'}
           </Button>

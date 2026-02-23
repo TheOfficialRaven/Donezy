@@ -114,20 +114,20 @@ export default function ReadingJournal() {
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-surface-2/50 rounded-lg p-1 gap-1">
+      <div className="flex bg-surface-2/50 rounded-lg p-1 gap-1 overflow-x-auto scrollbar-none">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={cn(
-              'flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all',
+              'flex-1 px-1.5 sm:px-3 py-2 rounded-md text-[11px] sm:text-sm font-medium transition-all',
               activeTab === tab.key
                 ? 'bg-primary text-surface-0 shadow-lg'
                 : 'text-text-secondary hover:text-text-primary'
             )}
           >
             {tab.label}
-            <span className="ml-1 opacity-70">({tab.count})</span>
+            <span className="ml-0.5 sm:ml-1 opacity-70">({tab.count})</span>
           </button>
         ))}
       </div>
@@ -305,7 +305,7 @@ function BookSpine({ book, index, onSelect, onLogReading }: {
       {book.status === 'reading' && (
         <button
           onClick={(e) => { e.stopPropagation(); onLogReading(book); }}
-          className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow opacity-0 group-hover:opacity-100 transition-opacity z-10"
+          className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-10"
           title="Olvasás naplózása"
         >
           <Plus className="h-3 w-3 text-surface-0" />
@@ -365,7 +365,7 @@ function BookDetail({ book, readingLogs: logs, onClose, onEdit, onDelete, onLogR
       exit={{ opacity: 0, x: 40 }}
       className="fixed inset-y-0 right-0 w-full sm:w-[420px] glass-intense border-l border-white/10 z-50 overflow-y-auto"
     >
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-5 sm:space-y-6 pb-20 sm:pb-6">
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="flex gap-4">
@@ -604,7 +604,7 @@ function BookDialog({ open, onOpenChange, book, onSaved }: {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="bg-surface-1 border border-white/10 text-text-primary max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-surface-1 border border-white/10 text-text-primary max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-heading text-xl">{book ? 'Könyv szerkesztése' : 'Új könyv'}</DialogTitle>
           <DialogDescription className="text-text-secondary">{book ? 'Módosítsd a könyv adatait.' : 'Add hozzá a könyvet a polcodhoz.'}</DialogDescription>
@@ -618,7 +618,7 @@ function BookDialog({ open, onOpenChange, book, onSaved }: {
             <Label>Szerző</Label>
             <Input value={form.author} onChange={(e) => setForm((f) => ({ ...f, author: e.target.value }))} placeholder="Pl. James Clear" className="bg-surface-0/50 border-white/10" required />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Összes oldal</Label>
               <Input type="number" value={form.totalPages} onChange={(e) => setForm((f) => ({ ...f, totalPages: e.target.value }))} placeholder="320" className="bg-surface-0/50 border-white/10" required min={1} />
@@ -628,7 +628,7 @@ function BookDialog({ open, onOpenChange, book, onSaved }: {
               <Input type="number" value={form.currentPage} onChange={(e) => setForm((f) => ({ ...f, currentPage: e.target.value }))} className="bg-surface-0/50 border-white/10" min={0} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Műfaj</Label>
               <Select value={form.genre} onValueChange={(v) => setForm((f) => ({ ...f, genre: v }))}>

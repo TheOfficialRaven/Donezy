@@ -287,19 +287,48 @@
   }
   
   .scrollbar-custom::-webkit-scrollbar-track {
-    @apply bg-surface-1 rounded-full;
+    @apply bg-transparent rounded-full;
+    margin: 4px 0;
   }
   
   .scrollbar-custom::-webkit-scrollbar-thumb {
-    @apply bg-surface-2 rounded-full hover:bg-primary/50;
+    @apply rounded-full;
+    background: hsl(var(--surface-2));
+    border: 1px solid transparent;
+    transition: background 0.2s;
+  }
+
+  .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.5);
+  }
+
+  .scrollbar-custom {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--surface-2)) transparent;
   }
 
   .light .scrollbar-custom::-webkit-scrollbar-track {
-    background: hsl(220 16% 94%);
+    background: transparent;
   }
   
   .light .scrollbar-custom::-webkit-scrollbar-thumb {
-    background: hsl(220 12% 80%);
+    background: hsl(220 12% 82%);
+  }
+
+  .light .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.45);
+  }
+
+  .light .scrollbar-custom {
+    scrollbar-color: hsl(220 12% 82%) transparent;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
   }
 }
 
