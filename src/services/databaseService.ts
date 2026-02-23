@@ -263,6 +263,113 @@ export async function getPersona(uid: string): Promise<string | null> {
   return snapshot.val();
 }
 
+// ============ BOOKS (Reading Journal) ============
+
+export interface BookData {
+  title: string;
+  author: string;
+  totalPages: number;
+  currentPage: number;
+  status: 'reading' | 'completed' | 'want-to-read';
+  coverColor: string;
+  genre: string;
+  startedAt?: string;
+  completedAt?: string;
+  summary?: string;
+  rating?: number;
+  favoriteQuotes?: string[];
+  keyLessons?: string[];
+}
+
+export interface ReadingLogData {
+  bookId: string;
+  date: string; // YYYY-MM-DD
+  pagesRead: number;
+  note?: string;
+}
+
+export function subscribeToBooks(uid: string, callback: (books: Array<BookData & { id: string }>) => void): Unsubscribe {
+  const booksRef = ref(db, userPath(uid, 'books'));
+  return onValue(booksRef, (snapshot) => {
+    const data = snapshot.val();
+    if (!data) { callback([]); return; }
+    const books = Object.entries(data).map(([id, book]) => ({
+      ...(book as BookData),
+      id,
+    }));
+    callback(books);
+  });
+}
+
+export async function addBook(uid: string, book: BookData) {
+  const booksRef = ref(db, userPath(uid, 'books'));
+  const newRef = push(booksRef);
+  await set(newRef, book);
+  return newRef.key!;
+}
+
+export async function updateBook(uid: string, bookId: string, updates: Partial<BookData>) {
+  const bookRef = ref(db, userPath(uid, `books/${bookId}`));
+  await update(bookRef, updates);
+}
+
+export async function deleteBook(uid: string, bookId: string) {
+  const bookRef = ref(db, userPath(uid, `books/${bookId}`));
+  await remove(bookRef);
+}
+
+export function subscribeToReadingLogs(uid: string, callback: (logs: Array<ReadingLogData & { id: string }>) => void): Unsubscribe {
+  const logsRef = ref(db, userPath(uid, 'readingLogs'));
+  return onValue(logsRef, (snapshot) => {
+    const data = snapshot.val();
+    if (!data) { callback([]); return; }
+    const logs = Object.entries(data).map(([id, log]) => ({
+      ...(log as ReadingLogData),
+      id,
+    }));
+    callback(logs);
+  });
+}
+
+export async function addReadingLog(uid: string, log: ReadingLogData) {
+  const logsRef = ref(db, userPath(uid, 'readingLogs'));
+  const newRef = push(logsRef);
+  await set(newRef, log);
+  return newRef.key!;
+}
+
+// ============ HABIT ENTRIES ============
+
+export interface HabitEntryData {
+  title: string;
+  normalizedTitle: string;
+  source: 'task' | 'quest';
+  completedAt: string; // YYYY-MM-DD
+}
+
+export function subscribeToHabitEntries(uid: string, callback: (entries: Array<HabitEntryData & { id: string }>) => void): Unsubscribe {
+  const habitsRef = ref(db, userPath(uid, 'habitEntries'));
+  return onValue(habitsRef, (snapshot) => {
+    const data = snapshot.val();
+    if (!data) {
+      callback([]);
+      return;
+    }
+    const entries = Object.entries(data).map(([id, entry]) => ({
+      ...(entry as HabitEntryData),
+      id,
+    }));
+    callback(entries);
+  });
+}
+
+export async function addHabitEntry(uid: string, entry: HabitEntryData) {
+  const habitsRef = ref(db, userPath(uid, 'habitEntries'));
+  const newRef = push(habitsRef);
+  await set(newRef, entry);
+  return newRef.key!;
+}
+
 // ============ DELETE ALL USER DATA ============
 
 export async function deleteAllUserData(uid: string) {

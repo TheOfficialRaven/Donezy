@@ -99,44 +99,47 @@ export async function resendVerificationEmail(email: string, password: string) {
 }
 
 export async function signInWithGoogle(rememberMe: boolean = false) {
-  // Set persistence based on "remember me" choice
   await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
 
   const userCredential = await signInWithPopup(auth, googleProvider);
   const user = userCredential.user;
 
-  // Check if user profile exists; if not, create one
-  const profileRef = ref(db, `users/${user.uid}/profile`);
-  const snapshot = await get(profileRef);
+  // Database setup for new Google users — wrapped separately so a DB failure
+  // doesn't reject the sign-in (the user is already authenticated at this point).
+  try {
+    const profileRef = ref(db, `users/${user.uid}/profile`);
+    const snapshot = await get(profileRef);
 
-  if (!snapshot.exists()) {
-    await set(profileRef, {
-      displayName: user.displayName || 'Felhasználó',
-      email: user.email,
-      persona: 'student',
-      createdAt: new Date().toISOString(),
-    });
-
-    await set(ref(db, `users/${user.uid}/stats`), {
-      level: 1,
-      xp: 0,
-      xpToNextLevel: 100,
-      essence: 50,
-      streak: 0,
-      questsCompleted: 0,
-      totalQuestsCompleted: 0,
-      lastActiveDate: '',
-    });
-
-    // Initialize empty preferences for Google signup
-    await set(ref(db, `users/${user.uid}/preferences`), {
-      onboardingCompleted: false,
-      interests: [],
-      challenge: '',
-      questFrequency: 'medium',
-      activeTime: 'morning',
-      livingWith: [],
-    });
+    if (!snapshot.exists()) {
+      await Promise.all([
+        set(profileRef, {
+          displayName: user.displayName || 'Felhasználó',
+          email: user.email,
+          persona: 'student',
+          createdAt: new Date().toISOString(),
+        }),
+        set(ref(db, `users/${user.uid}/stats`), {
+          level: 1,
+          xp: 0,
+          xpToNextLevel: 100,
+          essence: 50,
+          streak: 0,
+          questsCompleted: 0,
+          totalQuestsCompleted: 0,
+          lastActiveDate: '',
+        }),
+        set(ref(db, `users/${user.uid}/preferences`), {
+          onboardingCompleted: false,
+          interests: [],
+          challenge: '',
+          questFrequency: 'medium',
+          activeTime: 'morning',
+          livingWith: [],
+        }),
+      ]);
+    }
+  } catch (dbError) {
+    console.error('Google sign-in DB setup failed (user is still authenticated):', dbError);
   }
 
   return user;

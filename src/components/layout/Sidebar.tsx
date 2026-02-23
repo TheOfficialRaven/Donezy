@@ -7,16 +7,29 @@ import {
   Calendar, 
   Trophy, 
   ShoppingBag,
-  Settings
+  Settings,
+  Activity,
+  BookOpen,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import DonezyLogo from '@/components/DonezyLogo';
+import { usePersonaStore } from '@/stores/usePersonaStore';
+import type { LucideIcon } from 'lucide-react';
 
-const navigation = [
+interface NavItem {
+  name: string;
+  href: string;
+  icon: LucideIcon;
+  persona?: string; // only show for this persona
+}
+
+const navigation: NavItem[] = [
   { name: 'Dashboard', href: '/app/dashboard', icon: LayoutDashboard },
   { name: 'Küldetések', href: '/app/quests', icon: Zap },
   { name: 'Listák', href: '/app/lists', icon: CheckSquare },
+  { name: 'Szokás Tracker', href: '/app/habits', icon: Activity, persona: 'selfdev' },
+  { name: 'Olvasási napló', href: '/app/reading', icon: BookOpen, persona: 'selfdev' },
   { name: 'Jegyzetek', href: '/app/notes', icon: FileText },
   { name: 'Naptár', href: '/app/calendar', icon: Calendar },
   { name: 'Eredmények', href: '/app/achievements', icon: Trophy },
@@ -25,6 +38,11 @@ const navigation = [
 
 export default function Sidebar() {
   const location = useLocation();
+  const { currentPersona } = usePersonaStore();
+
+  const visibleNav = navigation.filter(
+    (item) => !item.persona || item.persona === currentPersona.id
+  );
 
   return (
     <aside className="glass-intense w-64 border-r border-white/10 flex flex-col">
@@ -44,7 +62,7 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-2">
-        {navigation.map((item, index) => {
+        {visibleNav.map((item, index) => {
           const isActive = location.pathname === item.href || 
             (item.href === '/app/dashboard' && location.pathname === '/app');
           

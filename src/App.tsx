@@ -17,6 +17,8 @@ import Notes from "./pages/app/Notes";
 import Calendar from "./pages/app/Calendar";
 import Achievements from "./pages/app/Achievements";
 import Shop from "./pages/app/Shop";
+import HabitTracker from "./pages/app/HabitTracker";
+import ReadingJournal from "./pages/app/ReadingJournal";
 import Settings from "./pages/Settings";
 import Onboarding from "./pages/Onboarding";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -84,6 +86,8 @@ const App = () => (
               <Route path="lists" element={<Lists />} />
               <Route path="notes" element={<Notes />} />
               <Route path="calendar" element={<Calendar />} />
+              <Route path="habits" element={<HabitTracker />} />
+              <Route path="reading" element={<ReadingJournal />} />
               <Route path="achievements" element={<Achievements />} />
               <Route path="shop" element={<Shop />} />
             </Route>

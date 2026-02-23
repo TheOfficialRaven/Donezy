@@ -4,26 +4,44 @@ import {
   Zap, 
   CheckSquare, 
   FileText, 
-  Calendar
+  Calendar,
+  Activity,
+  BookOpen,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { usePersonaStore } from '@/stores/usePersonaStore';
+import type { LucideIcon } from 'lucide-react';
 
-const navigation = [
+interface NavItem {
+  name: string;
+  href: string;
+  icon: LucideIcon;
+  persona?: string;
+}
+
+const navigation: NavItem[] = [
   { name: 'Home', href: '/app/dashboard', icon: LayoutDashboard },
   { name: 'Küldetések', href: '/app/quests', icon: Zap },
   { name: 'Listák', href: '/app/lists', icon: CheckSquare },
+  { name: 'Szokások', href: '/app/habits', icon: Activity, persona: 'selfdev' },
+  { name: 'Olvasás', href: '/app/reading', icon: BookOpen, persona: 'selfdev' },
   { name: 'Jegyzetek', href: '/app/notes', icon: FileText },
   { name: 'Naptár', href: '/app/calendar', icon: Calendar },
 ];
 
 export default function BottomNav() {
   const location = useLocation();
+  const { currentPersona } = usePersonaStore();
+
+  const visibleNav = navigation.filter(
+    (item) => !item.persona || item.persona === currentPersona.id
+  );
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 glass-intense border-t border-white/10 px-2 py-2 safe-area-inset-bottom">
       <div className="flex items-center justify-around">
-        {navigation.map((item, index) => {
+        {visibleNav.map((item, index) => {
           const isActive = location.pathname === item.href || 
             (item.href === '/app/dashboard' && location.pathname === '/app');
           

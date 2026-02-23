@@ -1,5 +1,11 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import {
+  initializeAuth,
+  getAuth,
+  GoogleAuthProvider,
+  browserLocalPersistence,
+  browserSessionPersistence,
+} from 'firebase/auth';
 import { getDatabase } from 'firebase/database';
 
 const firebaseConfig = {
@@ -13,7 +19,21 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+
+// initializeAuth with explicit persistence ensures the auth state is stored
+// correctly. browserLocalPersistence (IndexedDB → localStorage fallback)
+// is tried first; browserSessionPersistence is the fallback.
+// getAuth() fallback handles HMR re-evaluation during development.
+let auth;
+try {
+  auth = initializeAuth(app, {
+    persistence: [browserLocalPersistence, browserSessionPersistence],
+  });
+} catch {
+  auth = getAuth(app);
+}
+
+export { auth };
 export const googleProvider = new GoogleAuthProvider();
 export const db = getDatabase(app);
 export default app;

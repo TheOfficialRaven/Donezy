@@ -1,6 +1,7 @@
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Target, BookOpen, Calendar as CalendarIcon, Zap, Check, Circle, ChevronRight } from 'lucide-react';
+import { Clock, Target, BookOpen, Calendar as CalendarIcon, Zap, Check, Circle, ChevronRight, Activity, Flame } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -11,6 +12,7 @@ import { useAppStore, type Quest } from '@/stores/useAppStore';
 import { INTEREST_GROUPS } from '@/lib/questGenerator';
 import { cn } from '@/lib/utils';
 import { getLocalDateString } from '@/lib/dateUtils';
+import { analyzeHabits } from '@/lib/habitAnalyzer';
 
 export default function Dashboard() {
   const { currentPersona } = usePersonaStore();
@@ -103,11 +105,11 @@ export default function Dashboard() {
         return { title: 'Karrier célok', icon: Target, content: 'Kövesd nyomon a hosszú távú karrier céljaid felé haladásodat.', action: 'Célok áttekintése', link: '/app/achievements' };
       // Selfdev modules
       case 'habits':
-        return { title: 'Szokás tracker', icon: Target, content: 'Tartsd a napi szokásaid sorozatát – ne törd meg a láncot!', action: 'Mai szokások', link: '/app/quests' };
+        return { title: 'Szokás Tracker', icon: Activity, content: 'Tartsd a napi szokásaid sorozatát – ne törd meg a láncot!', action: 'Szokások megtekintése', link: '/app/habits' };
       case 'daily-challenge':
         return { title: 'Napi kihívás', icon: Zap, content: 'Lépj ki a komfortzónádból egy napi mikro-kihívással.', action: 'Kihívás teljesítése', link: '/app/quests' };
       case 'reading':
-        return { title: 'Olvasási napló', icon: BookOpen, content: 'Kövesd az olvasási célod – hány oldalt vagy fejezetet olvastál.', action: 'Olvasás naplózása', link: '/app/notes' };
+        return { title: 'Olvasási napló', icon: BookOpen, content: 'Kövesd az olvasási célod – hány oldalt vagy fejezetet olvastál.', action: 'Olvasás naplózása', link: '/app/reading' };
       case 'reflection':
         return { title: 'Napi reflexió', icon: BookOpen, content: 'Írj pár sort a napodról: tanulságok, érzések, felismerések.', action: 'Napló megnyitása', link: '/app/notes' };
       case 'growth':
@@ -475,6 +477,14 @@ export default function Dashboard() {
       {/* Persona-specific modules */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {currentPersona.dashboardModules.slice(0, 6).map((module, index) => {
+          // Live widgets for selfdev persona
+          if (module === 'habits') {
+            return <HabitSummaryWidget key={module} index={index} />;
+          }
+          if (module === 'reading') {
+            return <ReadingSummaryWidget key={module} index={index} />;
+          }
+
           const moduleContent = getPersonaModuleContent(module);
 
           return (
@@ -535,5 +545,131 @@ export default function Dashboard() {
       </motion.div>
 
     </div>
+  );
+}
+
+function HabitSummaryWidget({ index }: { index: number }) {
+  const navigate = useNavigate();
+  const { habitEntries } = useAppStore();
+  const habits = useMemo(() => analyzeHabits(habitEntries, 14), [habitEntries]);
+  const topHabits = habits.slice(0, 3);
+  const activeStreaks = habits.filter((h) => h.currentStreak > 0).length;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.7 + index * 0.1 }}
+    >
+      <Card className="glass p-4 hover-lift cursor-pointer" onClick={() => navigate('/app/habits')}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+              <Activity className="h-4 w-4 text-primary" />
+            </div>
+            <h3 className="font-medium text-text-primary">Szokás Tracker</h3>
+          </div>
+          {activeStreaks > 0 && (
+            <Badge className="text-xs bg-orange-500/20 text-orange-400 border-orange-500/30">
+              <Flame className="h-3 w-3 mr-1" />
+              {activeStreaks} aktív
+            </Badge>
+          )}
+        </div>
+
+        {topHabits.length > 0 ? (
+          <div className="space-y-2 mb-3">
+            {topHabits.map((h) => (
+              <div key={h.key} className="flex items-center justify-between text-sm">
+                <span className="text-text-secondary truncate pr-2">{h.displayName}</span>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {h.currentStreak > 0 && (
+                    <span className="text-xs text-orange-400 flex items-center gap-0.5">
+                      <Flame className="h-3 w-3" />{h.currentStreak}
+                    </span>
+                  )}
+                  <span className="text-xs text-text-muted">{h.totalCount}×</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-text-secondary text-sm mb-3">
+            Teljesíts feladatokat, hogy a rendszer felismerje a szokásaid!
+          </p>
+        )}
+
+        <Button
+          size="sm"
+          variant="ghost"
+          className="w-full text-primary hover:bg-primary/10"
+          onClick={(e) => { e.stopPropagation(); navigate('/app/habits'); }}
+        >
+          Szokások megtekintése
+        </Button>
+      </Card>
+    </motion.div>
+  );
+}
+
+function ReadingSummaryWidget({ index }: { index: number }) {
+  const navigate = useNavigate();
+  const { books } = useAppStore();
+  const reading = books.filter((b) => b.status === 'reading');
+  const completed = books.filter((b) => b.status === 'completed');
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.7 + index * 0.1 }}
+    >
+      <Card className="glass p-4 hover-lift cursor-pointer" onClick={() => navigate('/app/reading')}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+              <BookOpen className="h-4 w-4 text-primary" />
+            </div>
+            <h3 className="font-medium text-text-primary">Olvasási napló</h3>
+          </div>
+          {completed.length > 0 && (
+            <Badge className="text-xs bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+              {completed.length} kész
+            </Badge>
+          )}
+        </div>
+
+        {reading.length > 0 ? (
+          <div className="space-y-2 mb-3">
+            {reading.slice(0, 2).map((b) => {
+              const pct = b.totalPages > 0 ? Math.round((b.currentPage / b.totalPages) * 100) : 0;
+              return (
+                <div key={b.id} className="flex items-center gap-2">
+                  <div className="w-3 h-5 rounded-sm flex-shrink-0" style={{ backgroundColor: b.coverColor }} />
+                  <span className="text-sm text-text-secondary truncate flex-1">{b.title}</span>
+                  <span className="text-xs text-text-muted flex-shrink-0">{pct}%</span>
+                </div>
+              );
+            })}
+            {reading.length > 2 && (
+              <p className="text-xs text-text-muted">+{reading.length - 2} további könyv</p>
+            )}
+          </div>
+        ) : (
+          <p className="text-text-secondary text-sm mb-3">
+            {books.length > 0 ? 'Nincs aktívan olvasott könyved.' : 'Adj hozzá könyveket a polcodhoz!'}
+          </p>
+        )}
+
+        <Button
+          size="sm"
+          variant="ghost"
+          className="w-full text-primary hover:bg-primary/10"
+          onClick={(e) => { e.stopPropagation(); navigate('/app/reading'); }}
+        >
+          Olvasási napló megnyitása
+        </Button>
+      </Card>
+    </motion.div>
   );
 }

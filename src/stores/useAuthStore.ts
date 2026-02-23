@@ -75,7 +75,16 @@ export const useAuthStore = create<AuthState>()((set) => ({
       await authSignInWithGoogle(rememberMe);
       set({ loading: false });
     } catch (err: any) {
-      set({ loading: false, error: getFirebaseErrorMessage(err.code) });
+      const errorCode = err?.code as string | undefined;
+
+      // User voluntarily closed the popup — not a real error
+      if (errorCode === 'auth/popup-closed-by-user' || errorCode === 'auth/cancelled-popup-request') {
+        set({ loading: false });
+        return;
+      }
+
+      console.error('Google sign-in failed:', err);
+      set({ loading: false, error: getFirebaseErrorMessage(errorCode) });
       throw err;
     }
   },
@@ -135,7 +144,9 @@ export const useAuthStore = create<AuthState>()((set) => ({
   },
 }));
 
-function getFirebaseErrorMessage(code: string): string {
+function getFirebaseErrorMessage(code: string | undefined): string {
+  if (!code) return 'Ismeretlen hiba történt. Próbáld újra.';
+
   switch (code) {
     case 'auth/email-already-in-use':
       return 'Ez az email cím már regisztrálva van.';
@@ -157,9 +168,22 @@ function getFirebaseErrorMessage(code: string): string {
       return 'Túl sok próbálkozás. Kérjük, próbáld újra később.';
     case 'auth/popup-closed-by-user':
       return 'A bejelentkezési ablak bezárult. Próbáld újra.';
+    case 'auth/cancelled-popup-request':
+      return 'A bejelentkezési kérés megszakadt. Próbáld újra.';
+    case 'auth/popup-blocked':
+      return 'A böngésző blokkolja a felugró ablakot. Engedélyezd a felugró ablakokat ehhez az oldalhoz.';
+    case 'auth/unauthorized-domain':
+      return 'Ez a domain nincs engedélyezve a bejelentkezéshez.';
+    case 'auth/account-exists-with-different-credential':
+      return 'Ezzel az email címmel már másik bejelentkezési móddal regisztráltak.';
+    case 'auth/internal-error':
+      return 'Belső hiba történt. Próbáld újra később.';
     case 'auth/network-request-failed':
       return 'Hálózati hiba. Ellenőrizd az internet kapcsolatot.';
+    case 'auth/credential-already-in-use':
+      return 'Ez a fiók már egy másik felhasználóhoz van kapcsolva.';
     default:
+      console.warn('Unhandled Firebase error code:', code);
       return 'Ismeretlen hiba történt. Próbáld újra.';
   }
 }

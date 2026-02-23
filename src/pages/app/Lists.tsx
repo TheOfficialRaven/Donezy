@@ -181,8 +181,37 @@ export default function Lists() {
                         onClick={() => handleEditTask(list.id, task)}
                       >
                         <p className={cn("text-sm text-text-primary", task.completed && "line-through")}>{task.title}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge className={cn('text-xs', priorityColors[task.priority])}>{priorityLabels[task.priority]}</Badge>
+                        <div className="flex items-center gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger className="focus:outline-none">
+                              <Badge className={cn('text-xs cursor-pointer hover:opacity-80 transition-opacity', priorityColors[task.priority])}>
+                                {priorityLabels[task.priority]}
+                              </Badge>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="bg-surface-1 border border-white/10 min-w-[140px]">
+                              <DropdownMenuItem
+                                onClick={() => updateTask(list.id, task.id, { priority: 'low' })}
+                                className="text-blue-400 hover:bg-white/5 cursor-pointer"
+                              >
+                                <div className="w-2 h-2 rounded-full bg-blue-400 mr-2" />
+                                Alacsony
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => updateTask(list.id, task.id, { priority: 'medium' })}
+                                className="text-warning hover:bg-white/5 cursor-pointer"
+                              >
+                                <div className="w-2 h-2 rounded-full bg-warning mr-2" />
+                                Közepes
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => updateTask(list.id, task.id, { priority: 'high' })}
+                                className="text-danger hover:bg-white/5 cursor-pointer"
+                              >
+                                <div className="w-2 h-2 rounded-full bg-danger mr-2" />
+                                Magas
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                           {task.dueDate && (
                             <Badge variant="outline" className="text-xs border-white/20">{new Date(task.dueDate).toLocaleDateString('hu-HU')}</Badge>
                           )}

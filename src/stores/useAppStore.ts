@@ -22,6 +22,7 @@ import {
   getLocalMondayOfWeek,
   getLocalSundayOfWeek,
 } from '@/lib/dateUtils';
+import { normalizeTitle, type HabitEntry } from '@/lib/habitAnalyzer';
 
 // ============ TYPES ============
 
@@ -125,6 +126,31 @@ export interface TodoList {
   tasks: Task[];
 }
 
+export interface Book {
+  id: string;
+  title: string;
+  author: string;
+  totalPages: number;
+  currentPage: number;
+  status: 'reading' | 'completed' | 'want-to-read';
+  coverColor: string;
+  genre: string;
+  startedAt?: string;
+  completedAt?: string;
+  summary?: string;
+  rating?: number;
+  favoriteQuotes?: string[];
+  keyLessons?: string[];
+}
+
+export interface ReadingLog {
+  id: string;
+  bookId: string;
+  date: string;
+  pagesRead: number;
+  note?: string;
+}
+
 // ============ STORE ============
 
 interface AppState {
@@ -136,6 +162,9 @@ interface AppState {
   events: CalendarEvent[];
   achievements: Achievement[];
   lists: TodoList[];
+  habitEntries: HabitEntry[];
+  books: Book[];
+  readingLogs: ReadingLog[];
   dataLoaded: boolean;
   _unsubscribers: (() => void)[];
 
@@ -170,6 +199,12 @@ interface AppState {
 
   // Stats actions
   updateStats: (updates: Partial<UserStats>) => Promise<void>;
+
+  // Book actions
+  addBook: (book: Omit<Book, 'id'>) => Promise<void>;
+  updateBook: (bookId: string, updates: Partial<Book>) => Promise<void>;
+  deleteBook: (bookId: string) => Promise<void>;
+  logReading: (bookId: string, pagesRead: number, note?: string) => Promise<void>;
 
   // Persona actions
   triggerQuestGeneration: (forceRegenerate?: boolean) => Promise<void>;
@@ -526,6 +561,9 @@ export const useAppStore = create<AppState>()((set, get) => {
     events: [],
     achievements: [],
     lists: [],
+    habitEntries: [],
+    books: [],
+    readingLogs: [],
     dataLoaded: false,
     _unsubscribers: [],
 
@@ -605,6 +643,27 @@ export const useAppStore = create<AppState>()((set, get) => {
         })
       );
 
+      // Subscribe to habit entries (automatic habit tracking)
+      unsubscribers.push(
+        dbService.subscribeToHabitEntries(uid, (entries) => {
+          set({ habitEntries: entries });
+        })
+      );
+
+      // Subscribe to books (reading journal)
+      unsubscribers.push(
+        dbService.subscribeToBooks(uid, (books) => {
+          set({ books });
+        })
+      );
+
+      // Subscribe to reading logs
+      unsubscribers.push(
+        dbService.subscribeToReadingLogs(uid, (logs) => {
+          set({ readingLogs: logs });
+        })
+      );
+
       // Subscribe to user preferences (onboarding, interests, etc.)
       unsubscribers.push(
         dbService.subscribeToPreferences(uid, (prefs) => {
@@ -637,6 +696,9 @@ export const useAppStore = create<AppState>()((set, get) => {
         events: [],
         achievements: [],
         lists: [],
+        habitEntries: [],
+        books: [],
+        readingLogs: [],
         dataLoaded: false,
         _unsubscribers: [],
       });
@@ -666,7 +728,17 @@ export const useAppStore = create<AppState>()((set, get) => {
         },
       });
 
-      // Update progress on weekly quests that track quest completions
+      // Record habit entry for automatic habit tracking
+      const normalized = normalizeTitle(quest.title);
+      if (normalized) {
+        dbService.addHabitEntry(uid, {
+          title: quest.title,
+          normalizedTitle: normalized,
+          source: 'quest',
+          completedAt: getLocalDateString(),
+        }).catch(() => {});
+      }
+
       await updateWeeklyQuestProgress('quests_completed');
     },
 
@@ -711,12 +783,11 @@ export const useAppStore = create<AppState>()((set, get) => {
         const list = lists.find((l) => l.id === listId);
         const task = list?.tasks.find((t) => t.id === taskId);
         if (task && !task.completed && !task.xpAwarded) {
-          // Mark task as completed AND flag that XP was awarded
           await dbService.updateTask(uid, listId, taskId, {
             ...updates,
             xpAwarded: true,
           });
-          // Award XP based on priority
+
           const xp = TASK_XP[task.priority] || 10;
           await processAction(xp, {
             statUpdates: {
@@ -724,7 +795,17 @@ export const useAppStore = create<AppState>()((set, get) => {
             },
           });
 
-          // Update progress on weekly quests that track task completions
+          // Record habit entry for automatic habit tracking
+          const normalized = normalizeTitle(task.title);
+          if (normalized) {
+            dbService.addHabitEntry(uid, {
+              title: task.title,
+              normalizedTitle: normalized,
+              source: 'task',
+              completedAt: getLocalDateString(),
+            }).catch(() => {});
+          }
+
           await updateWeeklyQuestProgress('tasks_completed');
           return;
         }
@@ -803,6 +884,53 @@ export const useAppStore = create<AppState>()((set, get) => {
       const { uid } = get();
       if (!uid) return;
       await dbService.updateStats(uid, updates);
+    },
+
+    // ============ BOOK ACTIONS ============
+
+    addBook: async (book) => {
+      const { uid } = get();
+      if (!uid) return;
+      await dbService.addBook(uid, book);
+    },
+
+    updateBook: async (bookId, updates) => {
+      const { uid } = get();
+      if (!uid) return;
+      await dbService.updateBook(uid, bookId, updates);
+    },
+
+    deleteBook: async (bookId) => {
+      const { uid } = get();
+      if (!uid) return;
+      await dbService.deleteBook(uid, bookId);
+    },
+
+    logReading: async (bookId, pagesRead, note) => {
+      const { uid, books } = get();
+      if (!uid) return;
+
+      const book = books.find((b) => b.id === bookId);
+      if (!book) return;
+
+      const today = getLocalDateString();
+      const logEntry: import('@/services/databaseService').ReadingLogData = { bookId, date: today, pagesRead };
+      if (note) logEntry.note = note;
+      await dbService.addReadingLog(uid, logEntry);
+
+      const newCurrentPage = Math.min(book.currentPage + pagesRead, book.totalPages);
+      const isFinished = newCurrentPage >= book.totalPages;
+
+      await dbService.updateBook(uid, bookId, {
+        currentPage: newCurrentPage,
+        status: isFinished ? 'completed' : 'reading',
+        startedAt: book.startedAt || today,
+        ...(isFinished ? { completedAt: today } : {}),
+      });
+
+      if (isFinished) {
+        toast.success(`"${book.title}" elolvasva! 🎉`, { duration: 4000 });
+      }
     },
 
     // ============ PERSONA ACTIONS ============
