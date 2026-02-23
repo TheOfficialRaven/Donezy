@@ -730,7 +730,7 @@ function JournalEditor({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full h-full max-w-none max-h-none sm:w-[calc(100%-2rem)] sm:max-w-2xl sm:max-h-[85vh] sm:h-auto rounded-none sm:rounded-xl overflow-y-auto scrollbar-custom glass border-purple-500/20 p-4 sm:p-6 top-0 left-0 translate-x-0 translate-y-0 sm:top-[50%] sm:left-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%]">
+      <DialogContent className="w-full h-full max-w-none max-h-none sm:w-[calc(100%-2rem)] sm:max-w-2xl sm:max-h-[85vh] sm:h-auto rounded-none sm:rounded-xl overflow-y-auto scrollbar-custom bg-surface-1 border border-purple-500/20 p-4 sm:p-6 top-0 left-0 translate-x-0 translate-y-0 sm:top-[50%] sm:left-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%]">
         <DialogHeader className="pr-8">
           <DialogTitle className="flex items-center gap-2 text-text-primary text-base sm:text-lg">
             <PenLine className="h-5 w-5 text-purple-400 flex-shrink-0" />
