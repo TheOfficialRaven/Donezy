@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen, Plus, Star, ChevronRight, Pencil, Trash2,
@@ -73,6 +73,20 @@ export default function ReadingJournal() {
       if (detailBook?.id === bookToDelete) setDetailBook(null);
     }
   };
+
+  // Keep the opened detail panel in sync with live store updates
+  // (e.g. rating update should reflect immediately without reopen).
+  useEffect(() => {
+    if (!detailBook) return;
+    const refreshed = books.find((book) => book.id === detailBook.id);
+    if (!refreshed) {
+      setDetailBook(null);
+      return;
+    }
+    if (refreshed !== detailBook) {
+      setDetailBook(refreshed);
+    }
+  }, [books, detailBook]);
 
   return (
     <div className="space-y-6">
@@ -333,6 +347,11 @@ function BookDetail({ book, readingLogs: logs, onClose, onEdit, onDelete, onLogR
   const [summaryText, setSummaryText] = useState(book.summary || '');
   const [newQuote, setNewQuote] = useState('');
   const [newLesson, setNewLesson] = useState('');
+  const [ratingValue, setRatingValue] = useState(book.rating || 0);
+
+  useEffect(() => {
+    setRatingValue(book.rating || 0);
+  }, [book.rating, book.id]);
 
   const saveSummary = async () => {
     await updateBook(book.id, { summary: summaryText });
@@ -355,7 +374,9 @@ function BookDetail({ book, readingLogs: logs, onClose, onEdit, onDelete, onLogR
   };
 
   const setRating = async (r: number) => {
+    setRatingValue(r);
     await updateBook(book.id, { rating: r });
+    toast.success('Értékelés frissítve.');
   };
 
   return (
@@ -424,12 +445,28 @@ function BookDetail({ book, readingLogs: logs, onClose, onEdit, onDelete, onLogR
         {/* Rating */}
         <div>
           <h3 className="text-sm font-semibold text-text-muted uppercase tracking-wide mb-2">Értékelés</h3>
-          <div className="flex gap-1">
+          <div className="flex items-center gap-2">
             {[1, 2, 3, 4, 5].map((s) => (
-              <button key={s} onClick={() => setRating(s)} className="transition-transform hover:scale-110">
-                <Star className={cn('h-6 w-6', (book.rating || 0) >= s ? 'text-yellow-400 fill-yellow-400' : 'text-text-muted')} />
+              <button
+                key={s}
+                onClick={() => setRating(s)}
+                className={cn(
+                  'rounded-md p-1.5 transition-all duration-200 hover:scale-105',
+                  ratingValue >= s ? 'bg-primary/15 ring-1 ring-primary/30' : 'bg-surface-2/40 hover:bg-surface-2/70'
+                )}
+                aria-label={`${s} csillag`}
+              >
+                <Star
+                  className={cn(
+                    'h-5 w-5',
+                    ratingValue >= s
+                      ? 'text-primary fill-primary'
+                      : 'text-text-muted/70'
+                  )}
+                />
               </button>
             ))}
+            <span className="text-xs text-text-muted ml-1">{ratingValue > 0 ? `${ratingValue}/5` : 'Nincs értékelés'}</span>
           </div>
         </div>
 
@@ -559,23 +596,32 @@ function BookDialog({ open, onOpenChange, book, onSaved }: {
     genre: 'Önfejlesztés', coverColor: COVER_COLORS[0], status: 'want-to-read' as Book['status'],
   });
 
-  // Reset form when dialog opens
-  const handleOpenChange = (o: boolean) => {
-    if (o && book) {
+  // Keep form in sync with current mode (edit vs new) whenever dialog opens
+  // or the selected book changes.
+  useEffect(() => {
+    if (!open) return;
+    if (book) {
       setForm({
-        title: book.title, author: book.author,
-        totalPages: String(book.totalPages), currentPage: String(book.currentPage),
-        genre: book.genre, coverColor: book.coverColor, status: book.status,
+        title: book.title,
+        author: book.author,
+        totalPages: String(book.totalPages),
+        currentPage: String(book.currentPage),
+        genre: book.genre,
+        coverColor: book.coverColor,
+        status: book.status,
       });
-    } else if (o && !book) {
-      setForm({
-        title: '', author: '', totalPages: '', currentPage: '0',
-        genre: 'Önfejlesztés', coverColor: COVER_COLORS[Math.floor(Math.random() * COVER_COLORS.length)],
-        status: 'want-to-read',
-      });
+      return;
     }
-    onOpenChange(o);
-  };
+    setForm({
+      title: '',
+      author: '',
+      totalPages: '',
+      currentPage: '0',
+      genre: 'Önfejlesztés',
+      coverColor: COVER_COLORS[Math.floor(Math.random() * COVER_COLORS.length)],
+      status: 'want-to-read',
+    });
+  }, [open, book]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -603,7 +649,7 @@ function BookDialog({ open, onOpenChange, book, onSaved }: {
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-surface-1 border border-white/10 text-text-primary max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-heading text-xl">{book ? 'Könyv szerkesztése' : 'Új könyv'}</DialogTitle>

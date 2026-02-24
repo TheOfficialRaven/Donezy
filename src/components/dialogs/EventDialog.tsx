@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { useAppStore, type CalendarEvent } from '@/stores/useAppStore';
 import { toast } from 'sonner';
+import { FOCUS_AREAS, FOCUS_AREA_LABELS, type FocusArea } from '@/lib/focusAreas';
 
 interface EventDialogProps {
   open: boolean;
@@ -57,6 +58,7 @@ export default function EventDialog({ open, onOpenChange, event, defaultCategory
     endTime: formatDatetimeLocal(defaultEnd),
     category: defaultCategory || 'Személyes',
     reminder: 15,
+    focusArea: 'munka_tanulas' as FocusArea,
   });
 
   useEffect(() => {
@@ -68,6 +70,7 @@ export default function EventDialog({ open, onOpenChange, event, defaultCategory
         endTime: formatDatetimeLocal(new Date(event.endTime)),
         category: event.category,
         reminder: event.reminder || 15,
+        focusArea: event.focusArea || 'munka_tanulas',
       });
     } else {
       const { start, end } = getDefaults();
@@ -78,6 +81,7 @@ export default function EventDialog({ open, onOpenChange, event, defaultCategory
         endTime: formatDatetimeLocal(end),
         category: defaultCategory || 'Személyes',
         reminder: 15,
+        focusArea: 'munka_tanulas',
       });
     }
   }, [event, open, defaultCategory, defaultStartTime]);
@@ -99,6 +103,8 @@ export default function EventDialog({ open, onOpenChange, event, defaultCategory
           category: formData.category,
           color,
           reminder: formData.reminder,
+          focusArea: formData.focusArea,
+          focusAreaSource: 'manual',
         });
         toast.success('Esemény frissítve!');
       } else {
@@ -110,6 +116,8 @@ export default function EventDialog({ open, onOpenChange, event, defaultCategory
           category: formData.category,
           color,
           reminder: formData.reminder,
+          focusArea: formData.focusArea,
+          focusAreaSource: 'manual',
         });
         toast.success('Új esemény létrehozva!');
       }
@@ -215,6 +223,25 @@ export default function EventDialog({ open, onOpenChange, event, defaultCategory
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Fókuszterület</Label>
+            <Select
+              value={formData.focusArea}
+              onValueChange={(v) => setFormData((f) => ({ ...f, focusArea: v as FocusArea }))}
+            >
+              <SelectTrigger className="bg-surface-0/50 border-white/10">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-surface-1 border-white/10">
+                {FOCUS_AREAS.map((area) => (
+                  <SelectItem key={area} value={area}>
+                    {FOCUS_AREA_LABELS[area]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex justify-end gap-3 pt-2">

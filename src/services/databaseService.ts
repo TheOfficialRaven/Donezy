@@ -288,6 +288,25 @@ export interface ReadingLogData {
   note?: string;
 }
 
+export interface GrowthMilestoneData {
+  id?: string;
+  title: string;
+  completed: boolean;
+  completedAt?: string;
+}
+
+export interface GrowthGoalData {
+  title: string;
+  description?: string;
+  area: 'mindset' | 'habit' | 'skill' | 'wellbeing';
+  targetDate?: string;
+  priority: 'low' | 'medium' | 'high';
+  milestones: GrowthMilestoneData[];
+  completed: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export function subscribeToBooks(uid: string, callback: (books: Array<BookData & { id: string }>) => void): Unsubscribe {
   const booksRef = ref(db, userPath(uid, 'books'));
   return onValue(booksRef, (snapshot) => {
@@ -338,6 +357,84 @@ export async function addReadingLog(uid: string, log: ReadingLogData) {
   return newRef.key!;
 }
 
+// ============ GROWTH GOALS ============
+
+export function subscribeToGrowthGoals(uid: string, callback: (goals: Array<GrowthGoalData & { id: string }>) => void): Unsubscribe {
+  const goalsRef = ref(db, userPath(uid, 'growthGoals'));
+  return onValue(goalsRef, (snapshot) => {
+    const data = snapshot.val();
+    if (!data) { callback([]); return; }
+    const goals = Object.entries(data).map(([id, goal]) => ({
+      ...(goal as GrowthGoalData),
+      id,
+    }));
+    callback(goals);
+  });
+}
+
+function sanitizeGrowthMilestones(milestones: GrowthMilestoneData[] | undefined): GrowthMilestoneData[] {
+  if (!milestones || milestones.length === 0) return [];
+  return milestones.map((milestone) => {
+    const clean: GrowthMilestoneData = {
+      id: milestone.id,
+      title: milestone.title,
+      completed: Boolean(milestone.completed),
+    };
+    if (milestone.completedAt) clean.completedAt = milestone.completedAt;
+    return clean;
+  });
+}
+
+function sanitizeGrowthGoalData(goal: GrowthGoalData): GrowthGoalData {
+  const clean: GrowthGoalData = {
+    title: goal.title,
+    area: goal.area,
+    priority: goal.priority,
+    milestones: sanitizeGrowthMilestones(goal.milestones),
+    completed: Boolean(goal.completed),
+    createdAt: goal.createdAt,
+    updatedAt: goal.updatedAt,
+  };
+  if (goal.description) clean.description = goal.description;
+  if (goal.targetDate) clean.targetDate = goal.targetDate;
+  return clean;
+}
+
+function sanitizeGrowthGoalUpdates(updates: Partial<GrowthGoalData>): Partial<GrowthGoalData> {
+  const clean: Partial<GrowthGoalData> = {};
+  if (updates.title !== undefined) clean.title = updates.title;
+  if (updates.description !== undefined) {
+    if (updates.description) clean.description = updates.description;
+  }
+  if (updates.area !== undefined) clean.area = updates.area;
+  if (updates.targetDate !== undefined) {
+    if (updates.targetDate) clean.targetDate = updates.targetDate;
+  }
+  if (updates.priority !== undefined) clean.priority = updates.priority;
+  if (updates.milestones !== undefined) clean.milestones = sanitizeGrowthMilestones(updates.milestones);
+  if (updates.completed !== undefined) clean.completed = Boolean(updates.completed);
+  if (updates.createdAt !== undefined) clean.createdAt = updates.createdAt;
+  if (updates.updatedAt !== undefined) clean.updatedAt = updates.updatedAt;
+  return clean;
+}
+
+export async function addGrowthGoal(uid: string, goal: GrowthGoalData) {
+  const goalsRef = ref(db, userPath(uid, 'growthGoals'));
+  const newRef = push(goalsRef);
+  await set(newRef, sanitizeGrowthGoalData(goal));
+  return newRef.key!;
+}
+
+export async function updateGrowthGoal(uid: string, goalId: string, updates: Partial<GrowthGoalData>) {
+  const goalRef = ref(db, userPath(uid, `growthGoals/${goalId}`));
+  await update(goalRef, { ...sanitizeGrowthGoalUpdates(updates), updatedAt: new Date().toISOString() });
+}
+
+export async function deleteGrowthGoal(uid: string, goalId: string) {
+  const goalRef = ref(db, userPath(uid, `growthGoals/${goalId}`));
+  await remove(goalRef);
+}
+
 // ============ HABIT ENTRIES ============
 
 export interface HabitEntryData {
@@ -346,6 +443,7 @@ export interface HabitEntryData {
   source: 'task' | 'quest' | 'event' | 'reading';
   completedAt: string; // YYYY-MM-DD
   category?: string;
+  focusArea?: import('@/lib/focusAreas').FocusArea;
 }
 
 export function subscribeToHabitEntries(uid: string, callback: (entries: Array<HabitEntryData & { id: string }>) => void): Unsubscribe {
@@ -374,6 +472,7 @@ export async function addHabitEntry(uid: string, entry: HabitEntryData) {
     completedAt: entry.completedAt,
   };
   if (entry.category) data.category = entry.category;
+  if (entry.focusArea) data.focusArea = entry.focusArea;
   await set(newRef, data);
   return newRef.key!;
 }
@@ -389,6 +488,8 @@ export interface JournalEntryData {
   growth?: string;
   freeWrite?: string;
   tags?: string[];
+  focusArea?: import('@/lib/focusAreas').FocusArea;
+  focusAreaSource?: import('@/lib/focusAreas').FocusAreaSource;
   createdAt: string;
   updatedAt: string;
 }
@@ -416,6 +517,8 @@ export async function addJournalEntry(uid: string, entry: JournalEntryData) {
   if (entry.growth) clean.growth = entry.growth;
   if (entry.freeWrite) clean.freeWrite = entry.freeWrite;
   if (entry.tags && entry.tags.length > 0) clean.tags = entry.tags;
+  if (entry.focusArea) clean.focusArea = entry.focusArea;
+  if (entry.focusAreaSource) clean.focusAreaSource = entry.focusAreaSource;
   await set(newRef, clean);
   return newRef.key!;
 }

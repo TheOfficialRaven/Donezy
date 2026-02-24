@@ -21,6 +21,7 @@ import Shop from "./pages/app/Shop";
 import HabitTracker from "./pages/app/HabitTracker";
 import ReadingJournal from "./pages/app/ReadingJournal";
 import DailyReflection from "./pages/app/DailyReflection";
+import GrowthGoals from "./pages/app/GrowthGoals";
 import Settings from "./pages/Settings";
 import Onboarding from "./pages/Onboarding";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -93,6 +94,7 @@ function AppInner() {
               <Route path="habits" element={<HabitTracker />} />
               <Route path="reading" element={<ReadingJournal />} />
               <Route path="reflection" element={<DailyReflection />} />
+              <Route path="growth" element={<GrowthGoals />} />
               <Route path="achievements" element={<Achievements />} />
               <Route path="shop" element={<Shop />} />
             </Route>

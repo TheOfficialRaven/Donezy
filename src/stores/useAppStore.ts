@@ -23,6 +23,7 @@ import {
   getLocalSundayOfWeek,
 } from '@/lib/dateUtils';
 import { normalizeTitle, type HabitEntry } from '@/lib/habitAnalyzer';
+import { coalesceFocusArea, inferFocusArea, type FocusArea, type FocusAreaSource } from '@/lib/focusAreas';
 
 // ============ TYPES ============
 
@@ -50,6 +51,13 @@ export interface Quest {
   targetCount?: number;
   currentProgress?: number;
   trackingType?: 'tasks_completed' | 'quests_completed' | 'notes_created';
+  focusArea?: FocusArea;
+  focusAreaSource?: FocusAreaSource;
+  manualPriority?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  lastInteractedAt?: string;
+  postponedCount?: number;
 }
 
 export interface Note {
@@ -72,6 +80,11 @@ export interface CalendarEvent {
   category: string;
   color: string;
   reminder?: number;
+  focusArea?: FocusArea;
+  focusAreaSource?: FocusAreaSource;
+  createdAt?: string;
+  updatedAt?: string;
+  lastInteractedAt?: string;
 }
 
 export interface Achievement {
@@ -107,6 +120,10 @@ export interface UserPreferences {
   questFrequency: 'low' | 'medium' | 'high';
   activeTime: 'morning' | 'afternoon' | 'evening';
   livingWith: string[];
+  focusAreasOrder: FocusArea[];
+  focusAreasEnabled: FocusArea[];
+  wellbeingMode: boolean;
+  maxActiveItems: number;
 }
 
 export interface Task {
@@ -118,6 +135,13 @@ export interface Task {
   xpAwarded?: boolean;
   completedAt?: string;
   subtasks?: Task[];
+  focusArea?: FocusArea;
+  focusAreaSource?: FocusAreaSource;
+  manualPriority?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  lastInteractedAt?: string;
+  postponedCount?: number;
 }
 
 export interface TodoList {
@@ -164,6 +188,28 @@ export interface JournalEntry {
   tags?: string[];
   createdAt: string;
   updatedAt: string;
+  focusArea?: FocusArea;
+  focusAreaSource?: FocusAreaSource;
+}
+
+export interface GrowthMilestone {
+  id: string;
+  title: string;
+  completed: boolean;
+  completedAt?: string;
+}
+
+export interface GrowthGoal {
+  id: string;
+  title: string;
+  description?: string;
+  area: 'mindset' | 'habit' | 'skill' | 'wellbeing';
+  targetDate?: string;
+  priority: 'low' | 'medium' | 'high';
+  milestones: GrowthMilestone[];
+  completed: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ============ STORE ============
@@ -181,6 +227,7 @@ interface AppState {
   books: Book[];
   readingLogs: ReadingLog[];
   journalEntries: JournalEntry[];
+  growthGoals: GrowthGoal[];
   dataLoaded: boolean;
   _unsubscribers: (() => void)[];
 
@@ -189,6 +236,8 @@ interface AppState {
   cleanup: () => void;
 
   // Quest actions
+  addQuest: (quest: Omit<Quest, 'id'>) => Promise<void>;
+  updateQuest: (questId: string, updates: Partial<Quest>) => Promise<void>;
   completeQuest: (questId: string) => Promise<void>;
   deleteQuest: (questId: string) => Promise<void>;
 
@@ -227,6 +276,12 @@ interface AppState {
   updateJournalEntry: (entryId: string, updates: Partial<JournalEntry>) => Promise<void>;
   deleteJournalEntry: (entryId: string) => Promise<void>;
 
+  // Growth goals actions
+  addGrowthGoal: (goal: Omit<GrowthGoal, 'id' | 'createdAt' | 'updatedAt' | 'completed'>) => Promise<void>;
+  updateGrowthGoal: (goalId: string, updates: Partial<GrowthGoal>) => Promise<void>;
+  deleteGrowthGoal: (goalId: string) => Promise<void>;
+  toggleGrowthMilestone: (goalId: string, milestoneId: string) => Promise<void>;
+
   // Persona actions
   triggerQuestGeneration: (forceRegenerate?: boolean) => Promise<void>;
 }
@@ -251,6 +306,10 @@ const defaultPreferences: UserPreferences = {
   questFrequency: 'medium',
   activeTime: 'morning',
   livingWith: [],
+  focusAreasOrder: ['tudat', 'test', 'munka_tanulas', 'otthon', 'kapcsolatok'],
+  focusAreasEnabled: ['tudat', 'test', 'munka_tanulas', 'otthon', 'kapcsolatok'],
+  wellbeingMode: true,
+  maxActiveItems: 5,
 };
 
 export const useAppStore = create<AppState>()((set, get) => {
@@ -549,7 +608,22 @@ export const useAppStore = create<AppState>()((set, get) => {
           return true; // all preference quests for missingDailyInterests are needed
         });
         for (const quest of questsToSave) {
-          await dbService.addQuest(uid, quest);
+          const now = new Date().toISOString();
+          await dbService.addQuest(uid, {
+            ...coalesceFocusArea(
+              quest,
+              inferFocusArea({
+                title: quest.title,
+                description: quest.description,
+                category: quest.category,
+                persona: quest.persona,
+              })
+            ),
+            createdAt: now,
+            updatedAt: now,
+            lastInteractedAt: now,
+            postponedCount: quest.postponedCount || 0,
+          });
         }
         if (questsToSave.length > 0) {
           toast.success(`${questsToSave.length} új napi küldetés generálva!`, { duration: 3000 });
@@ -578,7 +652,22 @@ export const useAppStore = create<AppState>()((set, get) => {
           return true;
         });
         for (const quest of weeklyToSave) {
-          await dbService.addQuest(uid, quest);
+          const now = new Date().toISOString();
+          await dbService.addQuest(uid, {
+            ...coalesceFocusArea(
+              quest,
+              inferFocusArea({
+                title: quest.title,
+                description: quest.description,
+                category: quest.category,
+                persona: quest.persona,
+              })
+            ),
+            createdAt: now,
+            updatedAt: now,
+            lastInteractedAt: now,
+            postponedCount: quest.postponedCount || 0,
+          });
         }
         if (weeklyToSave.length > 0) {
           toast.success(`${weeklyToSave.length} új heti küldetés generálva!`, { duration: 3000 });
@@ -604,6 +693,7 @@ export const useAppStore = create<AppState>()((set, get) => {
     books: [],
     readingLogs: [],
     journalEntries: [],
+    growthGoals: [],
     dataLoaded: false,
     _unsubscribers: [],
 
@@ -647,17 +737,40 @@ export const useAppStore = create<AppState>()((set, get) => {
       // Subscribe to quests
       unsubscribers.push(
         dbService.subscribeToQuests(uid, (quests) => {
-          set({ quests });
+          const patched = quests.map((quest) =>
+            coalesceFocusArea(
+              quest,
+              inferFocusArea({
+                title: quest.title,
+                description: quest.description,
+                category: quest.category,
+                persona: quest.persona,
+              })
+            )
+          );
+          set({ quests: patched });
         })
       );
 
       // Subscribe to lists (with daily cleanup of completed tasks)
       unsubscribers.push(
         dbService.subscribeToLists(uid, (lists) => {
-          set({ lists });
+          const patchedLists = lists.map((list) => ({
+            ...list,
+            tasks: list.tasks.map((task) =>
+              coalesceFocusArea(
+                task,
+                inferFocusArea({
+                  title: task.title,
+                  category: list.name,
+                })
+              )
+            ),
+          }));
+          set({ lists: patchedLists });
           if (!_completedTasksCleanedUp) {
             _completedTasksCleanedUp = true;
-            cleanupCompletedTasks(uid, lists);
+            cleanupCompletedTasks(uid, patchedLists);
           }
         })
       );
@@ -672,7 +785,17 @@ export const useAppStore = create<AppState>()((set, get) => {
       // Subscribe to events
       unsubscribers.push(
         dbService.subscribeToEvents(uid, (events) => {
-          set({ events });
+          const patched = events.map((event) =>
+            coalesceFocusArea(
+              event,
+              inferFocusArea({
+                title: event.title,
+                description: event.description,
+                category: event.category,
+              })
+            )
+          );
+          set({ events: patched });
         })
       );
 
@@ -712,7 +835,36 @@ export const useAppStore = create<AppState>()((set, get) => {
       // Subscribe to journal entries (daily reflection)
       unsubscribers.push(
         dbService.subscribeToJournalEntries(uid, (entries) => {
-          set({ journalEntries: entries });
+          const patched = entries.map((entry) =>
+            coalesceFocusArea(
+              entry,
+              inferFocusArea({
+                title: entry.gratitude || entry.freeWrite || entry.feelings,
+                category: 'reflexio',
+              })
+            )
+          );
+          set({ journalEntries: patched });
+        })
+      );
+
+      // Subscribe to growth goals (self-development milestones)
+      unsubscribers.push(
+        dbService.subscribeToGrowthGoals(uid, (goals) => {
+          const patched = goals.map((goal) => ({
+            ...goal,
+            milestones: (goal.milestones || []).map((milestone, index) => ({
+              id: milestone.id || `${goal.id}-m${index}`,
+              title: milestone.title,
+              completed: Boolean(milestone.completed),
+              completedAt: milestone.completedAt,
+            })),
+            completed:
+              goal.milestones && goal.milestones.length > 0
+                ? goal.milestones.every((milestone) => milestone.completed)
+                : goal.completed,
+          })) as GrowthGoal[];
+          set({ growthGoals: patched });
         })
       );
 
@@ -753,12 +905,55 @@ export const useAppStore = create<AppState>()((set, get) => {
         books: [],
         readingLogs: [],
         journalEntries: [],
+        growthGoals: [],
         dataLoaded: false,
         _unsubscribers: [],
       });
     },
 
     // ============ QUEST ACTIONS ============
+
+    addQuest: async (quest) => {
+      const { uid } = get();
+      if (!uid) return;
+      const now = new Date().toISOString();
+      await dbService.addQuest(uid, {
+        ...coalesceFocusArea(
+          quest,
+          inferFocusArea({
+            title: quest.title,
+            description: quest.description,
+            category: quest.category,
+            persona: quest.persona,
+          })
+        ),
+        createdAt: quest.createdAt || now,
+        updatedAt: now,
+        lastInteractedAt: now,
+      });
+    },
+
+    updateQuest: async (questId, updates) => {
+      const { uid, quests } = get();
+      if (!uid) return;
+      const current = quests.find((q) => q.id === questId);
+      const focusArea =
+        updates.focusArea ||
+        current?.focusArea ||
+        inferFocusArea({
+          title: updates.title || current?.title,
+          description: updates.description || current?.description,
+          category: updates.category || current?.category,
+          persona: updates.persona || current?.persona,
+        });
+      await dbService.updateQuest(uid, questId, {
+        ...updates,
+        focusArea,
+        focusAreaSource: updates.focusAreaSource || current?.focusAreaSource || 'auto',
+        updatedAt: new Date().toISOString(),
+        lastInteractedAt: new Date().toISOString(),
+      });
+    },
 
     completeQuest: async (questId: string) => {
       const { uid, quests, userStats } = get();
@@ -771,6 +966,8 @@ export const useAppStore = create<AppState>()((set, get) => {
       await dbService.updateQuest(uid, questId, {
         completed: true,
         completedAt: getLocalDateString() + 'T' + new Date().toTimeString().slice(0, 8),
+        lastInteractedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       });
 
       // Award XP + essence via unified processing
@@ -790,6 +987,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           normalizedTitle: normalized,
           source: 'quest',
           completedAt: getLocalDateString(),
+          focusArea: quest.focusArea,
         }).catch(() => {});
       }
 
@@ -823,24 +1021,45 @@ export const useAppStore = create<AppState>()((set, get) => {
     },
 
     addTask: async (listId, task) => {
-      const { uid } = get();
+      const { uid, lists } = get();
       if (!uid) return;
-      await dbService.addTask(uid, listId, task);
+      const list = lists.find((l) => l.id === listId);
+      const now = new Date().toISOString();
+      await dbService.addTask(uid, listId, {
+        ...coalesceFocusArea(
+          task,
+          inferFocusArea({
+            title: task.title,
+            category: list?.name,
+          })
+        ),
+        createdAt: task.createdAt || now,
+        updatedAt: now,
+        lastInteractedAt: now,
+        postponedCount: task.postponedCount || 0,
+      });
     },
 
     updateTask: async (listId, taskId, updates) => {
       const { uid, lists, userStats } = get();
       if (!uid) return;
+      const list = lists.find((l) => l.id === listId);
+      const task = list?.tasks.find((t) => t.id === taskId);
+      const nextPostponedCount =
+        updates.dueDate && task?.dueDate && updates.dueDate > task.dueDate
+          ? (task.postponedCount || 0) + 1
+          : task?.postponedCount;
 
       // Detect if a task is being newly completed → award XP (only once)
       if (updates.completed === true) {
-        const list = lists.find((l) => l.id === listId);
-        const task = list?.tasks.find((t) => t.id === taskId);
         if (task && !task.completed && !task.xpAwarded) {
           await dbService.updateTask(uid, listId, taskId, {
             ...updates,
             xpAwarded: true,
             completedAt: getLocalDateString(),
+            updatedAt: new Date().toISOString(),
+            lastInteractedAt: new Date().toISOString(),
+            postponedCount: nextPostponedCount,
           });
 
           const xp = TASK_XP[task.priority] || 10;
@@ -858,6 +1077,7 @@ export const useAppStore = create<AppState>()((set, get) => {
               normalizedTitle: normalized,
               source: 'task',
               completedAt: getLocalDateString(),
+              focusArea: task.focusArea,
             }).catch(() => {});
           }
 
@@ -866,7 +1086,20 @@ export const useAppStore = create<AppState>()((set, get) => {
         }
       }
 
-      await dbService.updateTask(uid, listId, taskId, updates);
+      await dbService.updateTask(uid, listId, taskId, {
+        ...updates,
+        focusArea:
+          updates.focusArea ||
+          task?.focusArea ||
+          inferFocusArea({
+            title: updates.title || task?.title,
+            category: list?.name,
+          }),
+        focusAreaSource: updates.focusAreaSource || task?.focusAreaSource || 'auto',
+        updatedAt: new Date().toISOString(),
+        lastInteractedAt: new Date().toISOString(),
+        postponedCount: nextPostponedCount,
+      });
     },
 
     deleteTask: async (listId, taskId) => {
@@ -910,7 +1143,20 @@ export const useAppStore = create<AppState>()((set, get) => {
     addEvent: async (event) => {
       const { uid } = get();
       if (!uid) return;
-      await dbService.addEvent(uid, event);
+      const now = new Date().toISOString();
+      await dbService.addEvent(uid, {
+        ...coalesceFocusArea(
+          event,
+          inferFocusArea({
+            title: event.title,
+            description: event.description,
+            category: event.category,
+          })
+        ),
+        createdAt: event.createdAt || now,
+        updatedAt: now,
+        lastInteractedAt: now,
+      });
 
       const normalized = normalizeTitle(event.title);
       if (normalized) {
@@ -923,14 +1169,29 @@ export const useAppStore = create<AppState>()((set, get) => {
           source: 'event',
           completedAt: eventDate,
           category: event.category || undefined,
+          focusArea: event.focusArea,
         }).catch(() => {});
       }
     },
 
     updateEvent: async (eventId, updates) => {
-      const { uid } = get();
+      const { uid, events } = get();
       if (!uid) return;
-      await dbService.updateEvent(uid, eventId, updates);
+      const current = events.find((event) => event.id === eventId);
+      await dbService.updateEvent(uid, eventId, {
+        ...updates,
+        focusArea:
+          updates.focusArea ||
+          current?.focusArea ||
+          inferFocusArea({
+            title: updates.title || current?.title,
+            description: updates.description || current?.description,
+            category: updates.category || current?.category,
+          }),
+        focusAreaSource: updates.focusAreaSource || current?.focusAreaSource || 'auto',
+        updatedAt: new Date().toISOString(),
+        lastInteractedAt: new Date().toISOString(),
+      });
     },
 
     deleteEvent: async (eventId) => {
@@ -1007,6 +1268,7 @@ export const useAppStore = create<AppState>()((set, get) => {
           source: 'reading',
           completedAt: today,
           category: book.genre || undefined,
+          focusArea: inferFocusArea({ title: readingTitle, category: 'olvasas' }),
         }).catch(() => {});
       }
 
@@ -1022,22 +1284,105 @@ export const useAppStore = create<AppState>()((set, get) => {
       if (!uid) return;
       const now = new Date().toISOString();
       await dbService.addJournalEntry(uid, {
-        ...entry,
+        ...coalesceFocusArea(
+          entry,
+          inferFocusArea({
+            title: entry.gratitude || entry.freeWrite || entry.feelings,
+            category: 'reflexio',
+          })
+        ),
         createdAt: now,
         updatedAt: now,
       });
     },
 
     updateJournalEntry: async (entryId, updates) => {
-      const { uid } = get();
+      const { uid, journalEntries } = get();
       if (!uid) return;
-      await dbService.updateJournalEntry(uid, entryId, updates);
+      const current = journalEntries.find((entry) => entry.id === entryId);
+      await dbService.updateJournalEntry(uid, entryId, {
+        ...updates,
+        focusArea:
+          updates.focusArea ||
+          current?.focusArea ||
+          inferFocusArea({
+            title: updates.gratitude || updates.freeWrite || updates.feelings || current?.gratitude || current?.freeWrite || current?.feelings,
+            category: 'reflexio',
+          }),
+        focusAreaSource: updates.focusAreaSource || current?.focusAreaSource || 'auto',
+      });
     },
 
     deleteJournalEntry: async (entryId) => {
       const { uid } = get();
       if (!uid) return;
       await dbService.deleteJournalEntry(uid, entryId);
+    },
+
+    // ============ GROWTH GOALS ACTIONS ============
+
+    addGrowthGoal: async (goal) => {
+      const { uid } = get();
+      if (!uid) return;
+      const now = new Date().toISOString();
+      const milestones = (goal.milestones || []).map((milestone, index) => ({
+        id: milestone.id || `m-${now}-${index}`,
+        title: milestone.title,
+        completed: Boolean(milestone.completed),
+        completedAt: milestone.completedAt,
+      }));
+      await dbService.addGrowthGoal(uid, {
+        ...goal,
+        milestones,
+        completed: milestones.length > 0 ? milestones.every((milestone) => milestone.completed) : false,
+        createdAt: now,
+        updatedAt: now,
+      });
+    },
+
+    updateGrowthGoal: async (goalId, updates) => {
+      const { uid, growthGoals } = get();
+      if (!uid) return;
+      const current = growthGoals.find((goal) => goal.id === goalId);
+      if (!current) return;
+      const milestones = (updates.milestones || current.milestones || []).map((milestone, index) => ({
+        id: milestone.id || `${goalId}-m${index}`,
+        title: milestone.title,
+        completed: Boolean(milestone.completed),
+        completedAt: milestone.completedAt,
+      }));
+      const completed = milestones.length > 0 ? milestones.every((milestone) => milestone.completed) : false;
+      await dbService.updateGrowthGoal(uid, goalId, {
+        ...updates,
+        milestones,
+        completed,
+      });
+    },
+
+    deleteGrowthGoal: async (goalId) => {
+      const { uid } = get();
+      if (!uid) return;
+      await dbService.deleteGrowthGoal(uid, goalId);
+    },
+
+    toggleGrowthMilestone: async (goalId, milestoneId) => {
+      const { uid, growthGoals } = get();
+      if (!uid) return;
+      const goal = growthGoals.find((item) => item.id === goalId);
+      if (!goal) return;
+      const milestones = (goal.milestones || []).map((milestone) => {
+        if (milestone.id !== milestoneId) return milestone;
+        const nextCompleted = !milestone.completed;
+        return {
+          ...milestone,
+          completed: nextCompleted,
+          completedAt: nextCompleted ? new Date().toISOString() : undefined,
+        };
+      });
+      await dbService.updateGrowthGoal(uid, goalId, {
+        milestones,
+        completed: milestones.length > 0 ? milestones.every((milestone) => milestone.completed) : false,
+      });
     },
 
     // ============ PERSONA ACTIONS ============

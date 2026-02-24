@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Bell, MoreHorizontal, Trash2, Edit3
@@ -31,26 +31,70 @@ export default function Calendar() {
   const formatTime = (dateString: string) => new Date(dateString).toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' });
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' });
   const isToday = (date: Date) => date.toDateString() === new Date().toDateString();
+  const isSameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
   const isSameMonth = (date: Date, ref: Date) => date.getMonth() === ref.getMonth() && date.getFullYear() === ref.getFullYear();
+  const toMondayIndex = (day: number) => (day + 6) % 7; // JS: Sun=0 ... Sat=6 -> Mon=0 ... Sun=6
+
+  const getStartOfWeek = (date: Date) => {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - toMondayIndex(start.getDay()));
+    return start;
+  };
 
   const getDaysInMonth = () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
+    const mondayOffset = toMondayIndex(firstDay.getDay());
     const days = [];
-    for (let i = firstDay.getDay() - 1; i >= 0; i--) days.push(new Date(year, month, -i));
-    for (let day = 1; day <= lastDay.getDate(); day++) days.push(new Date(year, month, day));
+
+    // Leading days from previous month (Mon-first grid)
+    for (let i = mondayOffset; i > 0; i--) {
+      days.push(new Date(year, month, 1 - i));
+    }
+
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    for (let day = 1; day <= lastDay; day++) days.push(new Date(year, month, day));
+
     const rem = 42 - days.length;
     for (let day = 1; day <= rem; day++) days.push(new Date(year, month + 1, day));
     return days;
   };
 
   const getEventsForDate = (date: Date) => events.filter(e => new Date(e.startTime).toDateString() === date.toDateString());
-  const navigateMonth = (dir: 'prev' | 'next') => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + (dir === 'next' ? 1 : -1)));
+  const navigatePeriod = (dir: 'prev' | 'next') => {
+    const delta = dir === 'next' ? 1 : -1;
+    setCurrentDate((prev) => {
+      const next = new Date(prev);
+      if (viewMode === 'month') next.setMonth(next.getMonth() + delta);
+      if (viewMode === 'week') next.setDate(next.getDate() + delta * 7);
+      if (viewMode === 'day') next.setDate(next.getDate() + delta);
+      return next;
+    });
+  };
 
   const today = new Date();
   const upcomingEvents = events.filter(e => new Date(e.startTime) >= today).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()).slice(0, 5);
+  const selectedDateEvents = useMemo(
+    () =>
+      getEventsForDate(currentDate).sort(
+        (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+      ),
+    [events, currentDate]
+  );
+  const weekDays = useMemo(() => getWeekDays(), [currentDate]);
+  const headerTitle = useMemo(() => {
+    if (viewMode === 'month') {
+      return currentDate.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long' });
+    }
+    if (viewMode === 'week') {
+      const from = weekDays[0];
+      const to = weekDays[6];
+      return `${from.toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' })} - ${to.toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' })}`;
+    }
+    return currentDate.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+  }, [currentDate, viewMode, weekDays]);
 
   const handleNewEvent = (category?: string, startTime?: Date) => {
     setEditingEvent(null);
@@ -76,15 +120,14 @@ export default function Calendar() {
   };
 
   // Week view helpers
-  const getWeekDays = () => {
-    const start = new Date(currentDate);
-    start.setDate(start.getDate() - start.getDay() + 1); // Monday
+  function getWeekDays() {
+    const start = getStartOfWeek(currentDate);
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(start);
       d.setDate(d.getDate() + i);
       return d;
     });
-  };
+  }
 
   const hours = Array.from({ length: 14 }, (_, i) => i + 7); // 7-20
 
@@ -106,11 +149,22 @@ export default function Calendar() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
               <div className="flex items-center gap-2 sm:gap-4">
                 <h2 className="text-lg sm:text-2xl font-heading font-bold text-text-primary">
-                  {currentDate.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long' })}
+                  {headerTitle}
                 </h2>
                 <div className="flex gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => navigateMonth('prev')}><ChevronLeft className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="sm" onClick={() => navigateMonth('next')}><ChevronRight className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="sm" onClick={() => navigatePeriod('prev')}><ChevronLeft className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="sm" onClick={() => navigatePeriod('next')}><ChevronRight className="h-4 w-4" /></Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setCurrentDate(new Date());
+                      setViewMode('month');
+                    }}
+                    className="text-xs"
+                  >
+                    Ma
+                  </Button>
                 </div>
               </div>
               <div className="flex bg-surface-1/50 rounded-lg p-1 self-start sm:self-auto">
@@ -131,7 +185,7 @@ export default function Calendar() {
                   { key: 'wed', label: 'Sz' },
                   { key: 'thu', label: 'Cs' },
                   { key: 'fri', label: 'P' },
-                  { key: 'sat', label: 'Sz' },
+                  { key: 'sat', label: 'Szo' },
                   { key: 'sun', label: 'V' },
                 ].map((d) => (
                   <div key={d.key} className="p-1 sm:p-2 text-center text-xs sm:text-sm font-medium text-text-muted">{d.label}</div>
@@ -142,9 +196,11 @@ export default function Calendar() {
                     <motion.div key={index} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.01 }}
                       className={cn("min-h-[48px] sm:min-h-[100px] p-1 sm:p-2 border border-white/5 rounded-md sm:rounded-lg transition-colors cursor-pointer hover:bg-surface-1/30",
                         !isSameMonth(date, currentDate) && "text-text-disabled bg-surface-1/10",
-                        isToday(date) && "bg-primary/20 border-primary/30"
+                        isToday(date) && "bg-primary/20 border-primary/30",
+                        isSameDay(date, currentDate) && "ring-1 ring-secondary/40 bg-surface-1/30"
                       )}
-                      onClick={() => { setCurrentDate(date); setViewMode('day'); }}
+                      onClick={() => setCurrentDate(date)}
+                      onDoubleClick={() => { setCurrentDate(date); setViewMode('day'); }}
                     >
                       <div className={cn("text-xs sm:text-sm font-medium mb-0.5 sm:mb-1", isToday(date) ? "text-primary" : isSameMonth(date, currentDate) ? "text-text-primary" : "text-text-disabled")}>
                         {date.getDate()}
@@ -171,11 +227,73 @@ export default function Calendar() {
               </div>
             )}
 
+            {viewMode === 'month' && (
+              <div className="mt-4 rounded-lg border border-white/10 bg-surface-1/30 p-3 sm:p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                  <div>
+                    <h3 className="text-sm sm:text-base font-semibold text-text-primary">
+                      {currentDate.toLocaleDateString('hu-HU', { month: 'long', day: 'numeric', weekday: 'long' })}
+                    </h3>
+                    <p className="text-xs text-text-muted">
+                      {selectedDateEvents.length > 0 ? `${selectedDateEvents.length} esemény` : 'Nincs esemény erre a napra'}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-white/20 text-text-primary"
+                      onClick={() => {
+                        const start = new Date(currentDate);
+                        start.setHours(9, 0, 0, 0);
+                        handleNewEvent(undefined, start);
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Esemény
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="bg-primary hover:bg-primary/90 text-surface-0"
+                      onClick={() => setViewMode('day')}
+                    >
+                      Napnézet
+                    </Button>
+                  </div>
+                </div>
+
+                {selectedDateEvents.length > 0 ? (
+                  <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-custom pr-1">
+                    {selectedDateEvents.map((event) => (
+                      <div
+                        key={event.id}
+                        className="flex items-center gap-3 rounded-lg bg-surface-1/60 p-2.5 cursor-pointer hover:bg-surface-1/90"
+                        onClick={() => handleEditEvent(event)}
+                      >
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: event.color }} />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm text-text-primary truncate">{event.title}</p>
+                          <p className="text-xs text-text-muted">
+                            {formatTime(event.startTime)} - {formatTime(event.endTime)}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="border-white/20 text-text-muted text-xs">
+                          {event.category}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-text-muted py-2">A nap jelenleg szabadnak tűnik.</div>
+                )}
+              </div>
+            )}
+
             {viewMode === 'week' && (
               <div className="overflow-x-auto -mx-1 px-1 scrollbar-custom">
                 <div className="grid grid-cols-8 gap-0.5 sm:gap-1 min-w-[560px]">
                   <div className="p-1 sm:p-2" />
-                  {getWeekDays().map((d) => (
+                  {weekDays.map((d) => (
                     <div key={d.toISOString()} className={cn("p-1 sm:p-2 text-center text-xs sm:text-sm font-medium", isToday(d) ? "text-primary" : "text-text-muted")}>
                       {d.toLocaleDateString('hu-HU', { weekday: 'short' })} {d.getDate()}
                     </div>
@@ -183,7 +301,7 @@ export default function Calendar() {
                   {hours.map((hour) => (
                     <>
                       <div key={`h-${hour}`} className="p-1 sm:p-2 text-xs text-text-muted text-right">{hour}:00</div>
-                      {getWeekDays().map((d) => {
+                      {weekDays.map((d) => {
                         const dayEvents = getEventsForDate(d).filter(e => new Date(e.startTime).getHours() === hour);
                         return (
                           <div key={`${d.toISOString()}-${hour}`} className="p-0.5 sm:p-1 border border-white/5 min-h-[32px] sm:min-h-[40px] cursor-pointer hover:bg-surface-1/20"
@@ -204,9 +322,15 @@ export default function Calendar() {
 
             {viewMode === 'day' && (
               <div>
-                <h3 className="text-base sm:text-lg font-semibold text-text-primary mb-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base sm:text-lg font-semibold text-text-primary">
                   {currentDate.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}
-                </h3>
+                  </h3>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => navigatePeriod('prev')}><ChevronLeft className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="sm" onClick={() => navigatePeriod('next')}><ChevronRight className="h-4 w-4" /></Button>
+                  </div>
+                </div>
                 <div className="space-y-1">
                   {hours.map((hour) => {
                     const hourEvents = getEventsForDate(currentDate).filter(e => new Date(e.startTime).getHours() === hour);

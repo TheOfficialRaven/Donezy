@@ -2990,7 +2990,7 @@ export interface GenerateOptions {
 }
 
 export function generateDailyQuests(options: GenerateOptions): Omit<Quest, 'id'>[] {
-  const { persona, level, quests, lists, uid, date, interests = [] } = options;
+  const { persona, level, quests, lists, uid, date, interests = [], questFrequency = 'medium' } = options;
   const rng = createRng(`daily-${uid}-${date}`);
   const dayOfWeek = new Date(date).getDay();
 
@@ -3006,7 +3006,9 @@ export function generateDailyQuests(options: GenerateOptions): Omit<Quest, 'id'>
   const habitWeights = analyzeUserHabits(lists);
   const recentTitles = getRecentQuestTitles(quests, 7);
 
-  // ── Select persona quests (always 3) ──
+  // ── Select persona quests (frequency-aware base count) ──
+  const targetDailyCount = questFrequency === 'low' ? 3 : questFrequency === 'high' ? 5 : 4;
+  const personaTarget = Math.max(2, Math.min(4, targetDailyCount - Math.min(1, interests.length)));
   const personaScores = personaPool.map((t) => {
     let score = 1;
     score += (habitWeights[t.category] || 1) * 0.3;
@@ -3014,7 +3016,7 @@ export function generateDailyQuests(options: GenerateOptions): Omit<Quest, 'id'>
     score += rng() * 0.6;
     return score;
   });
-  const selectedPersona = weightedSelect(personaPool, personaScores, rng, 3);
+  const selectedPersona = weightedSelect(personaPool, personaScores, rng, personaTarget);
 
   // Ensure category variety within persona group
   if (selectedPersona.length >= 2) {
@@ -3104,7 +3106,8 @@ export function generateDailyQuests(options: GenerateOptions): Omit<Quest, 'id'>
     };
   });
 
-  return [...personaQuests, ...prefQuests];
+  const combined = [...personaQuests, ...prefQuests];
+  return combined.slice(0, targetDailyCount);
 }
 
 export function generateWeeklyQuests(options: GenerateOptions): Omit<Quest, 'id'>[] {

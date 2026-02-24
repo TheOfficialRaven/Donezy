@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { useAppStore, type Task } from '@/stores/useAppStore';
 import { toast } from 'sonner';
+import { FOCUS_AREAS, FOCUS_AREA_LABELS, type FocusArea } from '@/lib/focusAreas';
 
 interface TaskDialogProps {
   open: boolean;
@@ -21,6 +22,7 @@ export default function TaskDialog({ open, onOpenChange, listId, task }: TaskDia
     title: '',
     priority: 'medium' as Task['priority'],
     dueDate: '',
+    focusArea: 'munka_tanulas' as FocusArea,
   });
 
   useEffect(() => {
@@ -29,9 +31,10 @@ export default function TaskDialog({ open, onOpenChange, listId, task }: TaskDia
         title: task.title,
         priority: task.priority,
         dueDate: task.dueDate || '',
+        focusArea: task.focusArea || 'munka_tanulas',
       });
     } else {
-      setFormData({ title: '', priority: 'medium', dueDate: '' });
+      setFormData({ title: '', priority: 'medium', dueDate: '', focusArea: 'munka_tanulas' });
     }
   }, [task, open]);
 
@@ -45,6 +48,8 @@ export default function TaskDialog({ open, onOpenChange, listId, task }: TaskDia
           title: formData.title,
           priority: formData.priority,
           dueDate: formData.dueDate || undefined,
+          focusArea: formData.focusArea,
+          focusAreaSource: 'manual',
         });
         toast.success('Feladat frissítve!');
       } else {
@@ -53,6 +58,8 @@ export default function TaskDialog({ open, onOpenChange, listId, task }: TaskDia
           completed: false,
           priority: formData.priority,
           dueDate: formData.dueDate || undefined,
+          focusArea: formData.focusArea,
+          focusAreaSource: 'manual',
         });
         toast.success('Feladat hozzáadva!');
       }
@@ -114,6 +121,25 @@ export default function TaskDialog({ open, onOpenChange, listId, task }: TaskDia
                 className="bg-surface-0/50 border-white/10"
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Fókuszterület</Label>
+            <Select
+              value={formData.focusArea}
+              onValueChange={(v) => setFormData((f) => ({ ...f, focusArea: v as FocusArea }))}
+            >
+              <SelectTrigger className="bg-surface-0/50 border-white/10">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-surface-1 border-white/10">
+                {FOCUS_AREAS.map((area) => (
+                  <SelectItem key={area} value={area}>
+                    {FOCUS_AREA_LABELS[area]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex justify-end gap-3 pt-2">

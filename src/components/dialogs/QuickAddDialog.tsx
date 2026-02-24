@@ -6,6 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, Calendar, CheckSquare } from 'lucide-react';
 import { useAppStore } from '@/stores/useAppStore';
 import { toast } from 'sonner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { FOCUS_AREAS, FOCUS_AREA_LABELS, type FocusArea } from '@/lib/focusAreas';
 
 const QUICK_TASK_LIST_NAME = 'Gyors feladatok';
 const QUICK_TASK_LIST_COLOR = '#11E1B1';
@@ -19,6 +21,7 @@ export default function QuickAddDialog({ open, onOpenChange }: QuickAddDialogPro
   const { addNote, addEvent, addTask, addList, lists } = useAppStore();
   const [title, setTitle] = useState('');
   const [activeTab, setActiveTab] = useState('task');
+  const [focusArea, setFocusArea] = useState<FocusArea>('munka_tanulas');
 
   const getOrCreateQuickList = async (): Promise<string> => {
     const existing = lists.find((l) => l.name === QUICK_TASK_LIST_NAME);
@@ -45,6 +48,8 @@ export default function QuickAddDialog({ open, onOpenChange }: QuickAddDialogPro
       title,
       completed: false,
       priority: 'medium',
+      focusArea,
+      focusAreaSource: 'manual',
     });
     toast.success('Feladat hozzáadva a Gyors feladatokhoz!');
     setTitle('');
@@ -78,6 +83,8 @@ export default function QuickAddDialog({ open, onOpenChange }: QuickAddDialogPro
       category: 'Személyes',
       color: '#4DA3FF',
       reminder: 15,
+      focusArea,
+      focusAreaSource: 'manual',
     });
     toast.success('Esemény hozzáadva!');
     setTitle('');
@@ -126,6 +133,19 @@ export default function QuickAddDialog({ open, onOpenChange }: QuickAddDialogPro
               if (e.key === 'Enter') handleSubmit();
             }}
           />
+
+          <Select value={focusArea} onValueChange={(value) => setFocusArea(value as FocusArea)}>
+            <SelectTrigger className="bg-surface-0/50 border-white/10">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-surface-1 border-white/10">
+              {FOCUS_AREAS.map((area) => (
+                <SelectItem key={area} value={area}>
+                  {FOCUS_AREA_LABELS[area]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <TabsContent value="task">
             <div className="space-y-2">

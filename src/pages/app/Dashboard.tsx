@@ -16,18 +16,24 @@ import { INTEREST_GROUPS } from '@/lib/questGenerator';
 import { cn } from '@/lib/utils';
 import { getLocalDateString } from '@/lib/dateUtils';
 import { analyzeHabits } from '@/lib/habitAnalyzer';
+import { scoreCandidates, type ScoreCandidate } from '@/lib/rules/scoring';
+import { detectOverload, supportiveLoadMessage, nonUrgentSuggestionTitle } from '@/lib/rules/stress';
+import { selectTodayFocus } from '@/lib/dashboard/focusSelector';
+import { buildPatternInsight } from '@/lib/rules/patterns';
+import { FOCUS_AREA_LABELS } from '@/lib/focusAreas';
 
 export default function Dashboard() {
   const { currentPersona } = usePersonaStore();
-  const { userStats, quests, lists, events, completeQuest, updateTask } = useAppStore();
+  const { userStats, userPreferences, quests, lists, events, journalEntries, completeQuest, updateTask } = useAppStore();
   const navigate = useNavigate();
 
   const PersonaIcon = LucideIcons[currentPersona.icon as keyof typeof LucideIcons] as React.ComponentType<{ className?: string }>;
   const today = getLocalDateString();
+  const isTodayQuest = (q: Quest) => (q.questType === 'daily' || !q.questType) && (!q.dueDate || q.dueDate === today);
   // Filter quests by current persona (non-generated quests are always shown)
   const myQuests = quests.filter(q => !q.persona || q.persona === currentPersona.id);
-  const todayPersona = myQuests.filter(q => !q.completed && q.questSource !== 'preference').slice(0, 3);
-  const todayPreference = myQuests.filter(q => !q.completed && q.questSource === 'preference');
+  const todayPersona = myQuests.filter(q => !q.completed && isTodayQuest(q) && q.questSource !== 'preference').slice(0, 3);
+  const todayPreference = myQuests.filter(q => !q.completed && isTodayQuest(q) && q.questSource === 'preference');
   const todayQuests = [...todayPersona, ...todayPreference];
   const completedToday = myQuests.filter(q => q.completed && q.completedAt?.startsWith(today)).length;
 
@@ -80,6 +86,155 @@ export default function Dashboard() {
     }))
     .filter((list) => list.tasks.length > 0);
 
+  const dailyQuests = myQuests.filter((q) => !q.completed && isTodayQuest(q));
+  const taskCandidates = lists.flatMap((list) =>
+    list.tasks
+      .filter((task) => !task.completed)
+      .map(
+        (task): ScoreCandidate => ({
+          id: `task:${list.id}:${task.id}`,
+          title: task.title,
+          kind: 'task',
+          focusArea: task.focusArea || 'munka_tanulas',
+          priority: task.priority,
+          dueDate: task.dueDate,
+          createdAt: task.createdAt,
+          lastInteractedAt: task.lastInteractedAt,
+          postponedCount: task.postponedCount,
+          manualPriority: task.manualPriority,
+        })
+      )
+  );
+  const questCandidates = dailyQuests.map(
+    (quest): ScoreCandidate => ({
+      id: `quest:${quest.id}`,
+      title: quest.title,
+      kind: 'quest',
+      focusArea: quest.focusArea || 'munka_tanulas',
+      difficulty: quest.difficulty,
+      dueDate: quest.dueDate,
+      createdAt: quest.createdAt,
+      lastInteractedAt: quest.lastInteractedAt,
+      postponedCount: quest.postponedCount,
+      estimatedTime: quest.estimatedTime,
+      manualPriority: quest.manualPriority,
+    })
+  );
+  const eventCandidates = upcomingEvents.map(
+    (event): ScoreCandidate => ({
+      id: `event:${event.id}`,
+      title: event.title,
+      kind: 'event',
+      focusArea: event.focusArea || 'munka_tanulas',
+      dueDate: event.startTime,
+      createdAt: event.createdAt,
+      lastInteractedAt: event.lastInteractedAt,
+      estimatedTime: Math.max(5, Math.round((new Date(event.endTime).getTime() - new Date(event.startTime).getTime()) / 60000)),
+    })
+  );
+
+  const reflectionLast7 = journalEntries.filter((entry) => {
+    const diff = (new Date(today).getTime() - new Date(entry.date).getTime()) / (1000 * 60 * 60 * 24);
+    return diff >= 0 && diff <= 7;
+  });
+  const lowMoodStreakDays = reflectionLast7.filter((entry) => entry.mood <= 2).length;
+  const positiveReflectionDays = reflectionLast7.filter((entry) => entry.mood >= 4).length;
+  const postponeCountLast3Days = lists
+    .flatMap((list) => list.tasks)
+    .filter((task) => (task.postponedCount || 0) > 0)
+    .reduce((sum, task) => sum + (task.postponedCount || 0), 0);
+  const taskPool = lists.flatMap((list) => list.tasks);
+
+  const scoredCandidates = scoreCandidates([...taskCandidates, ...questCandidates, ...eventCandidates], {
+    persona: currentPersona.id,
+    calendarLoad: upcomingEvents.length,
+    last7dCompletions: completedToday + Math.max(0, userStats.tasksCompleted || 0),
+    streak: userStats.streak || 0,
+    positiveReflectionDays,
+  });
+
+  const candidateDueHours = scoredCandidates
+    .map((candidate) => (candidate.dueDate ? (new Date(candidate.dueDate).getTime() - now.getTime()) / (1000 * 60 * 60) : null))
+    .filter((hours): hours is number => hours !== null);
+  const overdueItemsCount = candidateDueHours.filter((hours) => hours < 0).length;
+  const dueSoonItemsCount = candidateDueHours.filter((hours) => hours >= 0 && hours <= 48).length;
+  const highPriorityOpenTasks = taskPool.filter((task) => !task.completed && task.priority === 'high').length;
+
+  const recentCompletedQuestHours = myQuests
+    .filter((quest) => quest.completed && quest.completedAt)
+    .map((quest) => new Date(quest.completedAt as string))
+    .filter((date) => !Number.isNaN(date.getTime()))
+    .filter((date) => (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24) <= 14)
+    .map((date) => date.getHours());
+
+  const parseCompletedDay = (value?: string) => {
+    if (!value) return null;
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) return date;
+    const fallback = new Date(`${value}T12:00:00`);
+    return Number.isNaN(fallback.getTime()) ? null : fallback;
+  };
+  const completionDates = [
+    ...taskPool
+      .filter((task) => task.completed && task.completedAt)
+      .map((task) => parseCompletedDay(task.completedAt))
+      .filter((date): date is Date => Boolean(date)),
+    ...myQuests
+      .filter((quest) => quest.completed && quest.completedAt)
+      .map((quest) => parseCompletedDay(quest.completedAt))
+      .filter((date): date is Date => Boolean(date)),
+  ];
+  const completedItems7d = completionDates.filter((date) => (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24) <= 7).length;
+  const byDay = Array.from({ length: 7 }, (_, offset) => {
+    const day = new Date(now);
+    day.setHours(0, 0, 0, 0);
+    day.setDate(day.getDate() - (6 - offset));
+    const dayKey = day.toISOString().slice(0, 10);
+    return completionDates.filter((date) => date.toISOString().slice(0, 10) === dayKey).length;
+  });
+  const firstHalf = byDay.slice(0, 3).reduce((sum, value) => sum + value, 0);
+  const secondHalf = byDay.slice(4, 7).reduce((sum, value) => sum + value, 0);
+  const completionTrend =
+    secondHalf - firstHalf >= 2 ? 'up' : firstHalf - secondHalf >= 2 ? 'down' : 'stable';
+
+  const focusAreaOrder = userPreferences.focusAreasOrder || ['tudat', 'test', 'munka_tanulas', 'otthon', 'kapcsolatok'];
+  const prioritizedCandidates = scoredCandidates.map((candidate) => {
+    const rank = focusAreaOrder.indexOf(candidate.focusArea);
+    const bonus = rank === 0 ? 12 : rank === 1 ? 8 : rank === 2 ? 4 : 0;
+    return { ...candidate, importance: Math.min(100, candidate.importance + bonus) };
+  });
+  const focusPack = selectTodayFocus(prioritizedCandidates, userPreferences.maxActiveItems || 5, now);
+  const overload = detectOverload({
+    calendarLoad: upcomingEvents.length,
+    lowMoodStreakDays,
+    postponeCountLast3Days,
+  });
+  const hasEventSoonNow = upcomingEvents.some((event) => isEventSoon(event.startTime));
+
+  const patternInsight = buildPatternInsight({
+    focusAreaCounts: {
+      tudat: prioritizedCandidates.filter((item) => item.focusArea === 'tudat').length,
+      test: prioritizedCandidates.filter((item) => item.focusArea === 'test').length,
+      munka_tanulas: prioritizedCandidates.filter((item) => item.focusArea === 'munka_tanulas').length,
+      otthon: prioritizedCandidates.filter((item) => item.focusArea === 'otthon').length,
+      kapcsolatok: prioritizedCandidates.filter((item) => item.focusArea === 'kapcsolatok').length,
+    },
+    reflectionSignals: reflectionLast7.map((entry) => ({ date: entry.date, mood: entry.mood })),
+    completionHours: recentCompletedQuestHours,
+    upcomingEventTitles: upcomingEvents.map((event) => `${event.title} ${event.category || ''}`),
+    upcomingEventsCount: upcomingEvents.length,
+    hasUrgent: Boolean(focusPack.urgent),
+    overloaded: overload,
+    hasEventSoon: hasEventSoonNow,
+    overdueItemsCount,
+    dueSoonItemsCount,
+    highPriorityOpenTasks,
+    completedItems7d,
+    completionTrend,
+    preferredActiveTime: userPreferences.activeTime,
+    userChallenge: userPreferences.challenge,
+  });
+
   const toggleDashboardTask = async (listId: string, taskId: string, completed: boolean) => {
     await updateTask(listId, taskId, { completed: !completed });
   };
@@ -108,7 +263,7 @@ export default function Dashboard() {
         return { title: 'Karrier célok', icon: Target, content: 'Kövesd nyomon a hosszú távú karrier céljaid felé haladásodat.', action: 'Célok áttekintése', link: '/app/achievements' };
       // Selfdev modules
       case 'habits':
-        return { title: 'Szokás Tracker', icon: Activity, content: 'Tartsd a napi szokásaid sorozatát – ne törd meg a láncot!', action: 'Szokások megtekintése', link: '/app/habits' };
+        return { title: 'Szokás Tracker', icon: Activity, content: 'Figyeld meg, mely rutinok támogatnak most a legjobban.', action: 'Szokások megtekintése', link: '/app/habits' };
       case 'daily-challenge':
         return { title: 'Napi kihívás', icon: Zap, content: 'Lépj ki a komfortzónádból egy napi mikro-kihívással.', action: 'Kihívás teljesítése', link: '/app/quests' };
       case 'reading':
@@ -116,7 +271,7 @@ export default function Dashboard() {
       case 'reflection':
         return { title: 'Napi reflexió', icon: PenLine, content: 'Írj pár sort a napodról: tanulságok, érzések, felismerések.', action: 'Napló megnyitása', link: '/app/reflection' };
       case 'growth':
-        return { title: 'Növekedési célok', icon: Target, content: 'Tekintsd meg a fejlődési céljaidat és az elért mérföldköveket.', action: 'Célok megtekintése', link: '/app/achievements' };
+        return { title: 'Növekedési célok', icon: Target, content: 'Tekintsd meg a fejlődési céljaidat és az elért mérföldköveket.', action: 'Célok megtekintése', link: '/app/growth' };
       // Freelancer modules
       case 'clients':
         return { title: 'Aktív projektek', icon: Target, content: 'Az ügyfeleid és projektjeid állapota egy helyen.', action: 'Projektek kezelése', link: '/app/lists' };
@@ -167,7 +322,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { value: userStats.level, label: 'Szint', color: 'text-primary', delay: 0.1 },
-          { value: userStats.streak, label: 'Napos sorozat', color: 'text-secondary', delay: 0.2 },
+          { value: userStats.streak, label: 'Aktív napok', color: 'text-secondary', delay: 0.2 },
           { value: completedToday, label: 'Ma teljesítve', color: 'text-success', delay: 0.3 },
           { value: userStats.essence, label: 'Essence', color: 'text-warning', delay: 0.4 },
         ].map((stat) => (
@@ -184,6 +339,82 @@ export default function Dashboard() {
           </motion.div>
         ))}
       </div>
+
+      {/* Guided daily focus */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.45 }}
+      >
+        <Card className="glass p-4 sm:p-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
+            <h2 className="text-lg sm:text-xl font-heading font-semibold text-text-primary">Ma erre erdemes figyelned</h2>
+            <Badge variant="outline" className="border-white/20 text-text-muted w-fit text-[11px] sm:text-xs">
+              max {userPreferences.maxActiveItems || 5} aktiv elem
+            </Badge>
+          </div>
+
+          <div className="space-y-2.5 sm:space-y-2">
+            {[
+              ...(focusPack.urgent ? [{ label: 'Surgos', icon: '🔴', item: focusPack.urgent }] : []),
+              { label: 'Fontos', icon: '⭐', item: focusPack.important },
+              { label: 'Lendulet', icon: '🔥', item: focusPack.momentum },
+            ].map((entry) => (
+              <div key={entry.label} className="p-3 rounded-lg bg-surface-1/50">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span>{entry.icon}</span>
+                      <span className="text-[11px] sm:text-xs uppercase tracking-wide text-text-muted">{entry.label}</span>
+                    </div>
+                    <span className="text-sm text-text-primary block break-words leading-relaxed">
+                      {entry.item?.title || 'Nincs kiemelt elem'}
+                    </span>
+                  </div>
+                  {entry.item && (
+                    <Badge variant="outline" className="border-white/20 text-text-secondary text-[10px] sm:text-xs shrink-0 mt-0.5">
+                      {FOCUS_AREA_LABELS[entry.item.focusArea]}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+            {!focusPack.urgent && (
+              <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                <p className="text-sm text-emerald-300">
+                  Ma nem latszik igazan surgos teendo. Ez teljesen rendben van.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4 p-3 rounded-lg bg-primary/10 border border-primary/20">
+            <p className="text-sm text-text-secondary">{supportiveLoadMessage(overload)}</p>
+          </div>
+
+          {focusPack.nonUrgent && (
+            <div className="mt-3 p-3 rounded-lg bg-surface-1/50 border border-white/10">
+              <p className="text-sm text-text-secondary">{nonUrgentSuggestionTitle()}</p>
+              <p className="text-sm text-text-primary mt-1">{focusPack.nonUrgent.title}</p>
+            </div>
+          )}
+
+          <div className="mt-4 grid gap-2.5 sm:gap-3 md:grid-cols-2">
+            <div className="p-3 rounded-lg bg-surface-1/40">
+              <p className="text-[11px] sm:text-xs text-text-muted mb-1">Mai insight</p>
+              <p className="text-sm text-text-secondary leading-relaxed">{patternInsight.daily}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-surface-1/40">
+              <p className="text-[11px] sm:text-xs text-text-muted mb-1">Heti insight</p>
+              <p className="text-sm text-text-secondary leading-relaxed">{patternInsight.weekly}</p>
+            </div>
+          </div>
+          <div className="mt-3 p-3 rounded-lg bg-primary/10 border border-primary/20">
+            <p className="text-[11px] sm:text-xs text-text-muted mb-1">Általános insight</p>
+            <p className="text-sm text-text-secondary leading-relaxed">{patternInsight.coach}</p>
+          </div>
+        </Card>
+      </motion.div>
 
       {/* Today's Quests */}
       <motion.div
@@ -500,7 +731,10 @@ export default function Dashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.7 + index * 0.1 }}
             >
-              <Card className="glass p-4 hover-lift cursor-pointer">
+              <Card
+                className="glass p-4 hover-lift cursor-pointer"
+                onClick={() => navigate(moduleContent.link)}
+              >
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
                     <moduleContent.icon className="h-4 w-4 text-primary" />
@@ -512,7 +746,10 @@ export default function Dashboard() {
                   size="sm"
                   variant="ghost"
                   className="w-full text-primary hover:bg-primary/10"
-                  onClick={() => navigate(moduleContent.link)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(moduleContent.link);
+                  }}
                 >
                   {moduleContent.action}
                 </Button>

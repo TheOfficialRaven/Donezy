@@ -33,6 +33,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useThemeStore } from '@/stores/useThemeStore';
 import * as dbService from '@/services/databaseService';
 import { cn } from '@/lib/utils';
+import { FOCUS_AREAS } from '@/lib/focusAreas';
 
 // ============ CONSTANTS ============
 
@@ -142,6 +143,10 @@ export default function Onboarding() {
         questFrequency,
         activeTime,
         livingWith,
+        focusAreasOrder: FOCUS_AREAS,
+        focusAreasEnabled: FOCUS_AREAS,
+        wellbeingMode: true,
+        maxActiveItems: 5,
       });
 
       // Set persona

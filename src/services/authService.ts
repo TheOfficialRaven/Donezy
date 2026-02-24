@@ -16,6 +16,7 @@ import {
 import { ref, set, get } from 'firebase/database';
 import { auth, googleProvider, db } from '@/lib/firebase';
 import { deleteAllUserData } from './databaseService';
+import { FOCUS_AREAS } from '@/lib/focusAreas';
 
 export async function signUp(email: string, password: string, displayName: string) {
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -61,6 +62,10 @@ export async function signUp(email: string, password: string, displayName: strin
       questFrequency: 'medium',
       activeTime: 'morning',
       livingWith: [],
+      focusAreasOrder: FOCUS_AREAS,
+      focusAreasEnabled: FOCUS_AREAS,
+      wellbeingMode: true,
+      maxActiveItems: 5,
     }),
   ]);
 
@@ -135,6 +140,10 @@ export async function signInWithGoogle(rememberMe: boolean = false) {
           questFrequency: 'medium',
           activeTime: 'morning',
           livingWith: [],
+          focusAreasOrder: FOCUS_AREAS,
+          focusAreasEnabled: FOCUS_AREAS,
+          wellbeingMode: true,
+          maxActiveItems: 5,
         }),
       ]);
     }

@@ -9,11 +9,13 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useAppStore, type JournalEntry } from '@/stores/useAppStore';
 import { getLocalDateString } from '@/lib/dateUtils';
 import ConfirmDialog from '@/components/dialogs/ConfirmDialog';
 import { toast } from 'sonner';
+import { FOCUS_AREAS, FOCUS_AREA_LABELS, type FocusArea } from '@/lib/focusAreas';
 
 const MOOD_CONFIG = [
   { value: 1, icon: Frown, label: 'Nehéz nap', color: 'text-red-400', bg: 'bg-red-500/20', ring: 'ring-red-500/30' },
@@ -678,6 +680,7 @@ function JournalEditor({
   const [freeWrite, setFreeWrite] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [date, setDate] = useState(getLocalDateString());
+  const [focusArea, setFocusArea] = useState<FocusArea>('tudat');
   const [saving, setSaving] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
 
@@ -692,6 +695,7 @@ function JournalEditor({
         setFreeWrite(editingEntry.freeWrite || '');
         setTags(editingEntry.tags || []);
         setDate(editingEntry.date);
+        setFocusArea(editingEntry.focusArea || 'tudat');
       } else {
         setMood(3);
         setGratitude('');
@@ -701,6 +705,7 @@ function JournalEditor({
         setFreeWrite('');
         setTags([]);
         setDate(defaultDate || getLocalDateString());
+        setFocusArea('tudat');
         setActiveSection(null);
       }
     }
@@ -720,6 +725,8 @@ function JournalEditor({
       if (growth.trim()) data.growth = growth.trim();
       if (freeWrite.trim()) data.freeWrite = freeWrite.trim();
       if (tags.length > 0) data.tags = tags;
+      data.focusArea = focusArea;
+      data.focusAreaSource = 'manual';
       await onSave(data);
     } finally {
       setSaving(false);
@@ -764,6 +771,22 @@ function JournalEditor({
                 </button>
               ))}
             </div>
+          </div>
+
+          <div>
+            <label className="text-xs sm:text-sm font-medium text-text-primary mb-2 block">Fókuszterület</label>
+            <Select value={focusArea} onValueChange={(value) => setFocusArea(value as FocusArea)}>
+              <SelectTrigger className="bg-surface-0/50 border-white/10">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-surface-1 border-white/10">
+                {FOCUS_AREAS.map((area) => (
+                  <SelectItem key={area} value={area}>
+                    {FOCUS_AREA_LABELS[area]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Journal sections */}

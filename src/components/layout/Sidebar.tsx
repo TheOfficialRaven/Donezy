@@ -11,6 +11,7 @@ import {
   Activity,
   BookOpen,
   PenLine,
+  Target,
   Moon,
   Sun,
 } from 'lucide-react';
@@ -35,6 +36,7 @@ const navigation: NavItem[] = [
   { name: 'Szokás Tracker', href: '/app/habits', icon: Activity, persona: 'selfdev' },
   { name: 'Olvasási napló', href: '/app/reading', icon: BookOpen, persona: 'selfdev' },
   { name: 'Napi reflexió', href: '/app/reflection', icon: PenLine, persona: 'selfdev' },
+  { name: 'Növekedési célok', href: '/app/growth', icon: Target, persona: 'selfdev' },
   { name: 'Jegyzetek', href: '/app/notes', icon: FileText },
   { name: 'Naptár', href: '/app/calendar', icon: Calendar },
   { name: 'Eredmények', href: '/app/achievements', icon: Trophy },
