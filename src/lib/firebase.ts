@@ -5,6 +5,8 @@ import {
   GoogleAuthProvider,
   browserLocalPersistence,
   browserSessionPersistence,
+  browserPopupRedirectResolver,
+  type Auth,
 } from 'firebase/auth';
 import { getDatabase } from 'firebase/database';
 
@@ -24,10 +26,11 @@ const app = initializeApp(firebaseConfig);
 // correctly. browserLocalPersistence (IndexedDB → localStorage fallback)
 // is tried first; browserSessionPersistence is the fallback.
 // getAuth() fallback handles HMR re-evaluation during development.
-let auth;
+let auth: Auth;
 try {
   auth = initializeAuth(app, {
     persistence: [browserLocalPersistence, browserSessionPersistence],
+    popupRedirectResolver: browserPopupRedirectResolver,
   });
 } catch {
   auth = getAuth(app);
