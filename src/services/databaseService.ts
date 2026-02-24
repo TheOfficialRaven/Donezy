@@ -106,7 +106,11 @@ export async function addTask(uid: string, listId: string, task: Omit<import('@/
 
 export async function updateTask(uid: string, listId: string, taskId: string, updates: Partial<import('@/stores/useAppStore').Task>) {
   const taskRef = ref(db, userPath(uid, `lists/${listId}/tasks/${taskId}`));
-  await update(taskRef, updates);
+  const clean: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(updates)) {
+    if (value !== undefined) clean[key] = value;
+  }
+  await update(taskRef, clean);
 }
 
 export async function deleteTask(uid: string, listId: string, taskId: string) {
