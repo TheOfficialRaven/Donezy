@@ -80,8 +80,17 @@ export async function signUp(email: string, password: string, displayName: strin
 }
 
 export async function signIn(email: string, password: string, rememberMe: boolean = false) {
-  // Set persistence based on "remember me" choice
-  await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+  // If "remember me" is enabled, keep the initializeAuth default persistence chain
+  // (local with session fallback). Only force session mode when disabled.
+  if (!rememberMe) {
+    await setPersistence(auth, browserSessionPersistence);
+  } else {
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+    } catch {
+      // Leave auth configured with initializeAuth persistence fallback.
+    }
+  }
 
   const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
@@ -104,7 +113,15 @@ export async function resendVerificationEmail(email: string, password: string) {
 }
 
 export async function signInWithGoogle(rememberMe: boolean = false) {
-  await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+  if (!rememberMe) {
+    await setPersistence(auth, browserSessionPersistence);
+  } else {
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+    } catch {
+      // Leave auth configured with initializeAuth persistence fallback.
+    }
+  }
 
   const userCredential = await signInWithPopup(auth, googleProvider);
   const user = userCredential.user;

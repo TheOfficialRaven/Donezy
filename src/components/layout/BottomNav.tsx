@@ -40,6 +40,7 @@ const primaryNav: NavItem[] = [
 ];
 
 const secondaryNav: NavItem[] = [
+  { name: 'Heti órarend', href: '/student/timetable', icon: Calendar, persona: 'student' },
   { name: 'Szokás Tracker', href: '/app/habits', icon: Activity, persona: 'selfdev' },
   { name: 'Olvasási napló', href: '/app/reading', icon: BookOpen, persona: 'selfdev' },
   { name: 'Napi reflexió', href: '/app/reflection', icon: PenLine, persona: 'selfdev' },

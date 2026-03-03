@@ -31,6 +31,7 @@ interface NavItem {
 
 const navigation: NavItem[] = [
   { name: 'Dashboard', href: '/app/dashboard', icon: LayoutDashboard },
+  { name: 'Heti órarend', href: '/student/timetable', icon: Calendar, persona: 'student' },
   { name: 'Küldetések', href: '/app/quests', icon: Zap },
   { name: 'Listák', href: '/app/lists', icon: CheckSquare },
   { name: 'Szokás Tracker', href: '/app/habits', icon: Activity, persona: 'selfdev' },
@@ -72,7 +73,8 @@ export default function Sidebar() {
       <nav className="flex-1 p-4 space-y-2">
         {visibleNav.map((item, index) => {
           const isActive = location.pathname === item.href || 
-            (item.href === '/app/dashboard' && location.pathname === '/app');
+            (item.href === '/app/dashboard' && location.pathname === '/app') ||
+            (item.href === '/student/timetable' && location.pathname === '/student');
           
           return (
             <motion.div

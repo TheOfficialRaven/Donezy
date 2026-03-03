@@ -130,6 +130,7 @@ export interface Task {
   id: string;
   title: string;
   completed: boolean;
+  shoppingStatus?: 'pending' | 'purchased' | 'not_available';
   priority: 'low' | 'medium' | 'high';
   dueDate?: string;
   xpAwarded?: boolean;
@@ -148,6 +149,7 @@ export interface TodoList {
   id: string;
   name: string;
   color: string;
+  type?: 'default' | 'shopping';
   tasks: Task[];
 }
 
@@ -321,6 +323,7 @@ export const useAppStore = create<AppState>()((set, get) => {
   let _dailyActivityDate = '';
   let _prefsLoaded = false;
   let _completedTasksCleanedUp = false;
+  let _shoppingListEnsuring = false;
 
   /**
    * Removes completed tasks from all lists if they were completed before today.
@@ -707,6 +710,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       _questGenerationInProgress = false;
       _dailyActivityDate = '';
       _completedTasksCleanedUp = false;
+      _shoppingListEnsuring = false;
 
       const unsubscribers: (() => void)[] = [];
 
@@ -757,17 +761,35 @@ export const useAppStore = create<AppState>()((set, get) => {
         dbService.subscribeToLists(uid, (lists) => {
           const patchedLists = lists.map((list) => ({
             ...list,
+            type: list.type || (list.name.toLowerCase().includes('bevásárl') ? 'shopping' : 'default'),
             tasks: list.tasks.map((task) =>
-              coalesceFocusArea(
-                task,
-                inferFocusArea({
-                  title: task.title,
-                  category: list.name,
-                })
-              )
+              ({
+                ...coalesceFocusArea(
+                  task,
+                  inferFocusArea({
+                    title: task.title,
+                    category: list.name,
+                  })
+                ),
+                shoppingStatus:
+                  (list.type === 'shopping' || list.name.toLowerCase().includes('bevásárl'))
+                    ? (task.shoppingStatus || (task.completed ? 'purchased' : 'pending'))
+                    : task.shoppingStatus,
+              })
             ),
           }));
           set({ lists: patchedLists });
+          if (
+            !_shoppingListEnsuring &&
+            !patchedLists.some((list) => list.type === 'shopping' || list.name.toLowerCase().includes('bevásárl'))
+          ) {
+            _shoppingListEnsuring = true;
+            dbService
+              .addList(uid, { name: 'Bevásárlás', color: '#34D399', type: 'shopping' })
+              .finally(() => {
+                _shoppingListEnsuring = false;
+              });
+          }
           if (!_completedTasksCleanedUp) {
             _completedTasksCleanedUp = true;
             cleanupCompletedTasks(uid, patchedLists);
@@ -892,6 +914,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       _dailyActivityDate = '';
       _prefsLoaded = false;
       _completedTasksCleanedUp = false;
+      _shoppingListEnsuring = false;
       set({
         uid: null,
         userStats: defaultStats,
@@ -1005,7 +1028,7 @@ export const useAppStore = create<AppState>()((set, get) => {
     addList: async (list) => {
       const { uid } = get();
       if (!uid) return;
-      await dbService.addList(uid, list);
+      await dbService.addList(uid, { ...list, type: list.type || 'default' });
     },
 
     updateList: async (listId, updates) => {
@@ -1025,9 +1048,15 @@ export const useAppStore = create<AppState>()((set, get) => {
       if (!uid) return;
       const list = lists.find((l) => l.id === listId);
       const now = new Date().toISOString();
+      const isShoppingList = list?.type === 'shopping';
       await dbService.addTask(uid, listId, {
         ...coalesceFocusArea(
-          task,
+          {
+            ...task,
+            ...(isShoppingList
+              ? { shoppingStatus: task.shoppingStatus || (task.completed ? 'purchased' : 'pending') }
+              : {}),
+          },
           inferFocusArea({
             title: task.title,
             category: list?.name,
@@ -1045,16 +1074,23 @@ export const useAppStore = create<AppState>()((set, get) => {
       if (!uid) return;
       const list = lists.find((l) => l.id === listId);
       const task = list?.tasks.find((t) => t.id === taskId);
+      const isShoppingList = list?.type === 'shopping';
+      const normalizedUpdates: Partial<Task> = { ...updates };
+      if (isShoppingList && updates.shoppingStatus) {
+        normalizedUpdates.completed = updates.shoppingStatus === 'purchased';
+      } else if (isShoppingList && updates.completed !== undefined) {
+        normalizedUpdates.shoppingStatus = updates.completed ? 'purchased' : 'pending';
+      }
       const nextPostponedCount =
-        updates.dueDate && task?.dueDate && updates.dueDate > task.dueDate
+        normalizedUpdates.dueDate && task?.dueDate && normalizedUpdates.dueDate > task.dueDate
           ? (task.postponedCount || 0) + 1
           : task?.postponedCount;
 
       // Detect if a task is being newly completed → award XP (only once)
-      if (updates.completed === true) {
+      if (normalizedUpdates.completed === true) {
         if (task && !task.completed && !task.xpAwarded) {
           await dbService.updateTask(uid, listId, taskId, {
-            ...updates,
+            ...normalizedUpdates,
             xpAwarded: true,
             completedAt: getLocalDateString(),
             updatedAt: new Date().toISOString(),
@@ -1087,15 +1123,15 @@ export const useAppStore = create<AppState>()((set, get) => {
       }
 
       await dbService.updateTask(uid, listId, taskId, {
-        ...updates,
+        ...normalizedUpdates,
         focusArea:
-          updates.focusArea ||
+          normalizedUpdates.focusArea ||
           task?.focusArea ||
           inferFocusArea({
-            title: updates.title || task?.title,
+            title: normalizedUpdates.title || task?.title,
             category: list?.name,
           }),
-        focusAreaSource: updates.focusAreaSource || task?.focusAreaSource || 'auto',
+        focusAreaSource: normalizedUpdates.focusAreaSource || task?.focusAreaSource || 'auto',
         updatedAt: new Date().toISOString(),
         lastInteractedAt: new Date().toISOString(),
         postponedCount: nextPostponedCount,

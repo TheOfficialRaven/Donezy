@@ -11,7 +11,7 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { usePersonaStore } from '@/stores/usePersonaStore';
-import { useAppStore, type Quest } from '@/stores/useAppStore';
+import { useAppStore, type Quest, type TodoList, type Task } from '@/stores/useAppStore';
 import { INTEREST_GROUPS } from '@/lib/questGenerator';
 import { cn } from '@/lib/utils';
 import { getLocalDateString } from '@/lib/dateUtils';
@@ -29,6 +29,12 @@ export default function Dashboard() {
 
   const PersonaIcon = LucideIcons[currentPersona.icon as keyof typeof LucideIcons] as React.ComponentType<{ className?: string }>;
   const today = getLocalDateString();
+  const isShoppingList = (list: TodoList) =>
+    list.type === 'shopping' || list.name.toLowerCase().includes('bevásárl');
+  const isTaskHandled = (list: TodoList, task: Task) =>
+    isShoppingList(list)
+      ? task.shoppingStatus === 'purchased' || task.shoppingStatus === 'not_available'
+      : task.completed;
   const isTodayQuest = (q: Quest) => (q.questType === 'daily' || !q.questType) && (!q.dueDate || q.dueDate === today);
   // Filter quests by current persona (non-generated quests are always shown)
   const myQuests = quests.filter(q => !q.persona || q.persona === currentPersona.id);
@@ -81,15 +87,15 @@ export default function Dashboard() {
   const listsWithTasks = lists
     .map((list) => ({
       ...list,
-      incompleteTasks: list.tasks.filter((t) => !t.completed),
-      completedCount: list.tasks.filter((t) => t.completed).length,
+      incompleteTasks: list.tasks.filter((task) => !isTaskHandled(list, task)),
+      completedCount: list.tasks.filter((task) => isTaskHandled(list, task)).length,
     }))
     .filter((list) => list.tasks.length > 0);
 
   const dailyQuests = myQuests.filter((q) => !q.completed && isTodayQuest(q));
   const taskCandidates = lists.flatMap((list) =>
     list.tasks
-      .filter((task) => !task.completed)
+      .filter((task) => !isTaskHandled(list, task))
       .map(
         (task): ScoreCandidate => ({
           id: `task:${list.id}:${task.id}`,
@@ -158,7 +164,9 @@ export default function Dashboard() {
     .filter((hours): hours is number => hours !== null);
   const overdueItemsCount = candidateDueHours.filter((hours) => hours < 0).length;
   const dueSoonItemsCount = candidateDueHours.filter((hours) => hours >= 0 && hours <= 48).length;
-  const highPriorityOpenTasks = taskPool.filter((task) => !task.completed && task.priority === 'high').length;
+  const highPriorityOpenTasks = lists.flatMap((list) =>
+    list.tasks.filter((task) => !isTaskHandled(list, task) && task.priority === 'high')
+  ).length;
 
   const recentCompletedQuestHours = myQuests
     .filter((quest) => quest.completed && quest.completedAt)
@@ -235,7 +243,19 @@ export default function Dashboard() {
     userChallenge: userPreferences.challenge,
   });
 
-  const toggleDashboardTask = async (listId: string, taskId: string, completed: boolean) => {
+  const toggleDashboardTask = async (
+    listId: string,
+    taskId: string,
+    completed: boolean,
+    shoppingStatus?: 'pending' | 'purchased' | 'not_available'
+  ) => {
+    const list = lists.find((item) => item.id === listId);
+    if (!list) return;
+    if (isShoppingList(list)) {
+      const current = shoppingStatus || (completed ? 'purchased' : 'pending');
+      await updateTask(listId, taskId, { shoppingStatus: current === 'purchased' ? 'pending' : 'purchased' });
+      return;
+    }
     await updateTask(listId, taskId, { completed: !completed });
   };
 
@@ -243,7 +263,7 @@ export default function Dashboard() {
     switch (module) {
       // Student modules
       case 'schedule':
-        return { title: 'Mai órarend', icon: Clock, content: 'Tekintsd meg a mai óráid beosztását és készülj fel rájuk.', action: 'Órarend megtekintése', link: '/app/calendar' };
+        return { title: 'Heti órarend', icon: Clock, content: 'Építsd fel a heti órarendedet, és kapj holnapi felkészülési javaslatokat.', action: 'Órarend megnyitása', link: '/student/timetable' };
       case 'exams':
         return { title: 'Vizsga felkészülés', icon: Target, content: 'Tervezd meg a tanulási blokkjaidat a következő vizsgáidra.', action: 'Felkészülés tervezése', link: '/app/quests' };
       case 'study-quests':
@@ -594,7 +614,7 @@ export default function Dashboard() {
                         className="flex items-center gap-3 px-3 py-2 rounded-lg bg-surface-1/30 hover:bg-surface-1/50 transition-colors group"
                       >
                         <button
-                          onClick={() => toggleDashboardTask(list.id, task.id, task.completed)}
+                          onClick={() => toggleDashboardTask(list.id, task.id, task.completed, task.shoppingStatus)}
                           className="text-text-muted hover:text-primary transition-colors flex-shrink-0"
                         >
                           <Circle className="h-4 w-4" />

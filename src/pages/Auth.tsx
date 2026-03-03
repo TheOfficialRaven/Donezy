@@ -9,6 +9,8 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { toast } from 'sonner';
 import DonezyLogo from '@/components/DonezyLogo';
 
+const REMEMBER_ME_STORAGE_KEY = 'donezy-remember-me';
+
 export default function Auth() {
   const [searchParams] = useSearchParams();
   const [isLogin, setIsLogin] = useState(searchParams.get('tab') !== 'register');
@@ -17,7 +19,11 @@ export default function Auth() {
   const [resetEmail, setResetEmail] = useState('');
   const [resetSent, setResetSent] = useState(false);
   const [verificationResent, setVerificationResent] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    const saved = localStorage.getItem(REMEMBER_ME_STORAGE_KEY);
+    if (saved === null) return true; // better default for PWA/mobile
+    return saved === 'true';
+  });
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -82,6 +88,11 @@ export default function Auth() {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleRememberMeChange = (checked: boolean) => {
+    setRememberMe(checked);
+    localStorage.setItem(REMEMBER_ME_STORAGE_KEY, String(checked));
   };
 
   const switchMode = (login: boolean) => {
@@ -391,7 +402,7 @@ export default function Auth() {
                           <input
                             type="checkbox"
                             checked={rememberMe}
-                            onChange={(e) => setRememberMe(e.target.checked)}
+                            onChange={(e) => handleRememberMeChange(e.target.checked)}
                             className="peer sr-only"
                           />
                           <div className="w-4 h-4 rounded border border-white/20 bg-surface-1/50 peer-checked:bg-primary peer-checked:border-primary transition-all duration-200 flex items-center justify-center group-hover:border-primary/50">

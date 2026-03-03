@@ -258,10 +258,14 @@ export async function updatePreferences(uid: string, prefs: Record<string, any>)
 
 export async function savePersona(uid: string, personaId: string) {
   const profileRef = ref(db, userPath(uid, 'profile/persona'));
-  await set(profileRef, personaId);
+  const rootRef = ref(db, userPath(uid, 'persona'));
+  await Promise.all([set(profileRef, personaId), set(rootRef, personaId)]);
 }
 
 export async function getPersona(uid: string): Promise<string | null> {
+  const rootRef = ref(db, userPath(uid, 'persona'));
+  const rootSnapshot = await get(rootRef);
+  if (rootSnapshot.exists()) return rootSnapshot.val();
   const profileRef = ref(db, userPath(uid, 'profile/persona'));
   const snapshot = await get(profileRef);
   return snapshot.val();
@@ -309,6 +313,47 @@ export interface GrowthGoalData {
   completed: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface StudentTimetableClassData {
+  title: string;
+  startTime: string;
+  endTime: string;
+  location?: string;
+  note?: string;
+  importance?: 'low' | 'normal' | 'high';
+  energyDemand?: 'easy' | 'medium' | 'hard';
+}
+
+export interface StudentScheduleSettingsData {
+  timezone: string;
+  dayStart: string;
+  dayEnd: string;
+  minGapMinutes: number;
+  minStudyMinutes: number;
+  maxStudyMinutes: number;
+  splitLongGapsAboveMinutes: number;
+  preferredStudyWindowMinutes: number;
+  allowMiniWindows: boolean;
+}
+
+export interface StudentPrepItemData {
+  subject: string;
+  topic?: string;
+  note?: string;
+  priority?: 'low' | 'normal' | 'high';
+  updatedAt: number;
+}
+
+export interface StudentStudyWindowData {
+  startISO: string;
+  endISO: string;
+  type: 'mini' | 'normal' | 'deep';
+  suggestedMinutes: number;
+  source: 'auto-gap';
+  status: 'suggested' | 'accepted' | 'dismissed' | 'completed';
+  createdAt: number;
+  updatedAt: number;
 }
 
 export function subscribeToBooks(uid: string, callback: (books: Array<BookData & { id: string }>) => void): Unsubscribe {
@@ -359,6 +404,152 @@ export async function addReadingLog(uid: string, log: ReadingLogData) {
   const newRef = push(logsRef);
   await set(newRef, log);
   return newRef.key!;
+}
+
+// ============ STUDENT SCHEDULE ============
+
+function cleanUndefined<T extends Record<string, unknown>>(data: T): Partial<T> {
+  const clean: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) clean[key] = value;
+  }
+  return clean as Partial<T>;
+}
+
+export function subscribeToStudentScheduleSettings(
+  uid: string,
+  callback: (settings: StudentScheduleSettingsData | null) => void
+): Unsubscribe {
+  const settingsRef = ref(db, userPath(uid, 'student/schedule/settings'));
+  return onValue(settingsRef, (snapshot) => callback(snapshot.val()));
+}
+
+export async function updateStudentScheduleSettings(uid: string, updates: Partial<StudentScheduleSettingsData>) {
+  const settingsRef = ref(db, userPath(uid, 'student/schedule/settings'));
+  await update(settingsRef, cleanUndefined(updates));
+}
+
+export function subscribeToStudentTimetable(
+  uid: string,
+  callback: (timetable: Record<number, Array<StudentTimetableClassData & { id: string }>>) => void
+): Unsubscribe {
+  const timetableRef = ref(db, userPath(uid, 'student/timetable'));
+  return onValue(timetableRef, (snapshot) => {
+    const data = snapshot.val() || {};
+    const out: Record<number, Array<StudentTimetableClassData & { id: string }>> = {
+      1: [],
+      2: [],
+      3: [],
+      4: [],
+      5: [],
+      6: [],
+      7: [],
+    };
+    for (const day of [1, 2, 3, 4, 5, 6, 7]) {
+      const dayData = data[String(day)] || {};
+      out[day] = Object.entries(dayData).map(([id, item]) => ({ ...(item as StudentTimetableClassData), id }));
+    }
+    callback(out);
+  });
+}
+
+export async function upsertStudentTimetableClass(
+  uid: string,
+  dayOfWeek: number,
+  classData: StudentTimetableClassData,
+  classId?: string
+) {
+  const dayRef = ref(db, userPath(uid, `student/timetable/${dayOfWeek}`));
+  if (!classId) {
+    const newRef = push(dayRef);
+    await set(newRef, cleanUndefined(classData));
+    return newRef.key!;
+  }
+  const classRef = ref(db, userPath(uid, `student/timetable/${dayOfWeek}/${classId}`));
+  await update(classRef, cleanUndefined(classData));
+  return classId;
+}
+
+export async function deleteStudentTimetableClass(uid: string, dayOfWeek: number, classId: string) {
+  const classRef = ref(db, userPath(uid, `student/timetable/${dayOfWeek}/${classId}`));
+  await remove(classRef);
+}
+
+export async function clearStudentTimetable(uid: string) {
+  const timetableRef = ref(db, userPath(uid, 'student/timetable'));
+  await remove(timetableRef);
+}
+
+export function subscribeToStudentPrepByDate(
+  uid: string,
+  date: string,
+  callback: (items: Array<StudentPrepItemData & { id: string }>) => void
+): Unsubscribe {
+  const prepRef = ref(db, userPath(uid, `student/prepByDate/${date}`));
+  return onValue(prepRef, (snapshot) => {
+    const data = snapshot.val();
+    if (!data) {
+      callback([]);
+      return;
+    }
+    callback(Object.entries(data).map(([id, item]) => ({ ...(item as StudentPrepItemData), id })));
+  });
+}
+
+export async function upsertStudentPrepByDate(
+  uid: string,
+  date: string,
+  item: Omit<StudentPrepItemData, 'updatedAt'>,
+  id?: string
+) {
+  const payload: StudentPrepItemData = { ...item, updatedAt: Date.now() };
+  const dayRef = ref(db, userPath(uid, `student/prepByDate/${date}`));
+  if (!id) {
+    const newRef = push(dayRef);
+    await set(newRef, cleanUndefined(payload));
+    return newRef.key!;
+  }
+  const itemRef = ref(db, userPath(uid, `student/prepByDate/${date}/${id}`));
+  await update(itemRef, cleanUndefined(payload));
+  return id;
+}
+
+export async function deleteStudentPrepByDate(uid: string, date: string, id: string) {
+  const itemRef = ref(db, userPath(uid, `student/prepByDate/${date}/${id}`));
+  await remove(itemRef);
+}
+
+export function subscribeToStudentStudyWindows(
+  uid: string,
+  date: string,
+  callback: (windows: Array<StudentStudyWindowData & { id: string }>) => void
+): Unsubscribe {
+  const windowsRef = ref(db, userPath(uid, `student/studyWindows/${date}`));
+  return onValue(windowsRef, (snapshot) => {
+    const data = snapshot.val();
+    if (!data) {
+      callback([]);
+      return;
+    }
+    callback(Object.entries(data).map(([id, item]) => ({ ...(item as StudentStudyWindowData), id })));
+  });
+}
+
+export async function addStudentStudyWindow(uid: string, date: string, windowItem: StudentStudyWindowData) {
+  const windowsRef = ref(db, userPath(uid, `student/studyWindows/${date}`));
+  const newRef = push(windowsRef);
+  await set(newRef, cleanUndefined(windowItem));
+  return newRef.key!;
+}
+
+export async function updateStudentStudyWindow(
+  uid: string,
+  date: string,
+  windowId: string,
+  updates: Partial<StudentStudyWindowData>
+) {
+  const windowRef = ref(db, userPath(uid, `student/studyWindows/${date}/${windowId}`));
+  await update(windowRef, cleanUndefined({ ...updates, updatedAt: Date.now() }));
 }
 
 // ============ GROWTH GOALS ============

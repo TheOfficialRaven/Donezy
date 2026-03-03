@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, MoreHorizontal, Check, Circle, Trash2, Edit3, Pencil } from 'lucide-react';
+import { Plus, MoreHorizontal, Check, Circle, Trash2, Edit3, Pencil, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -51,18 +51,35 @@ export default function Lists() {
     setTaskDialogOpen(true);
   };
 
-  const toggleTask = async (listId: string, taskId: string, completed: boolean) => {
-    await updateTask(listId, taskId, { completed: !completed });
+  const isShoppingList = (list: TodoList) =>
+    list.type === 'shopping' || list.name.toLowerCase().includes('bevásárl');
+
+  const isTaskHandled = (list: TodoList, task: Task) => {
+    if (!isShoppingList(list)) return task.completed;
+    return task.shoppingStatus === 'purchased' || task.shoppingStatus === 'not_available';
+  };
+
+  const toggleTask = async (list: TodoList, task: Task) => {
+    if (isShoppingList(list)) {
+      const currentStatus = task.shoppingStatus || (task.completed ? 'purchased' : 'pending');
+      const nextStatus = currentStatus === 'purchased' ? 'pending' : 'purchased';
+      await updateTask(list.id, task.id, { shoppingStatus: nextStatus });
+      return;
+    }
+    await updateTask(list.id, task.id, { completed: !task.completed });
   };
 
   const handleAddTask = async (listId: string) => {
     const title = newTaskInputs[listId]?.trim();
     if (!title) return;
+    const list = lists.find((item) => item.id === listId);
+    const shopping = Boolean(list && isShoppingList(list));
 
     await addTask(listId, {
       title,
       completed: false,
       priority: newTaskPriorities[listId] || 'medium',
+      ...(shopping ? { shoppingStatus: 'pending' as const } : {}),
     });
     setNewTaskInputs({ ...newTaskInputs, [listId]: '' });
     setNewTaskPriorities({ ...newTaskPriorities, [listId]: 'medium' });
@@ -96,12 +113,12 @@ export default function Lists() {
     }
   };
 
-  const getCompletedCount = (tasks: { completed: boolean }[]) => {
-    return tasks.filter(task => task.completed).length;
+  const getCompletedCount = (list: TodoList) => {
+    return list.tasks.filter((task) => isTaskHandled(list, task)).length;
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -144,15 +161,15 @@ export default function Lists() {
               {list.tasks.length > 0 && (
                 <div className="mb-4">
                   <div className="flex justify-between text-sm text-text-muted mb-2">
-                    <span>{getCompletedCount(list.tasks)} / {list.tasks.length} kész</span>
-                    <span>{Math.round((getCompletedCount(list.tasks) / list.tasks.length) * 100)}%</span>
+                    <span>{getCompletedCount(list)} / {list.tasks.length} kész</span>
+                    <span>{Math.round((getCompletedCount(list) / list.tasks.length) * 100)}%</span>
                   </div>
                   <div className="w-full bg-surface-2 rounded-full h-2">
                     <div
                       className="h-2 rounded-full transition-all duration-300"
                       style={{
                         backgroundColor: list.color,
-                        width: `${(getCompletedCount(list.tasks) / list.tasks.length) * 100}%`
+                        width: `${(getCompletedCount(list) / list.tasks.length) * 100}%`
                       }}
                     />
                   </div>
@@ -165,23 +182,70 @@ export default function Lists() {
                   <motion.div key={task.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="group">
                     <div className={cn(
                       "flex items-center gap-3 p-3 rounded-lg bg-surface-1/30 hover:bg-surface-1/50 transition-colors",
-                      task.completed && "opacity-60"
+                      isTaskHandled(list, task) && "opacity-60"
                     )}>
-                      <button onClick={() => toggleTask(list.id, task.id, task.completed)} className="text-text-muted hover:text-primary transition-colors">
-                        {task.completed ? (
-                          <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: list.color }}>
-                            <Check className="h-3 w-3 text-surface-0" />
-                          </div>
-                        ) : (
-                          <Circle className="h-5 w-5" />
-                        )}
-                      </button>
+                      {isShoppingList(list) ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="text-text-muted hover:text-primary transition-colors">
+                              {task.shoppingStatus === 'not_available' ? (
+                                <div className="w-5 h-5 rounded-full flex items-center justify-center bg-danger/80">
+                                  <X className="h-3 w-3 text-surface-0" />
+                                </div>
+                              ) : task.shoppingStatus === 'purchased' || task.completed ? (
+                                <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: list.color }}>
+                                  <Check className="h-3 w-3 text-surface-0" />
+                                </div>
+                              ) : (
+                                <Circle className="h-5 w-5" />
+                              )}
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="bg-surface-1 border border-white/10 min-w-[180px]">
+                            <DropdownMenuItem
+                              className="text-text-primary hover:bg-white/5 cursor-pointer"
+                              onClick={() => updateTask(list.id, task.id, { shoppingStatus: 'pending' })}
+                            >
+                              <Circle className="h-4 w-4 mr-2" />
+                              Függőben
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-success hover:bg-white/5 cursor-pointer"
+                              onClick={() => updateTask(list.id, task.id, { shoppingStatus: 'purchased' })}
+                            >
+                              <Check className="h-4 w-4 mr-2" />
+                              Megvásárolva
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-danger hover:bg-white/5 cursor-pointer"
+                              onClick={() => updateTask(list.id, task.id, { shoppingStatus: 'not_available' })}
+                            >
+                              <X className="h-4 w-4 mr-2" />
+                              Nem volt a boltban
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : (
+                        <button onClick={() => toggleTask(list, task)} className="text-text-muted hover:text-primary transition-colors">
+                          {task.completed ? (
+                            <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: list.color }}>
+                              <Check className="h-3 w-3 text-surface-0" />
+                            </div>
+                          ) : (
+                            <Circle className="h-5 w-5" />
+                          )}
+                        </button>
+                      )}
                       <div
                         className="flex-1 min-w-0 cursor-pointer"
                         onClick={() => handleEditTask(list.id, task)}
                       >
-                        <p className={cn("text-sm text-text-primary", task.completed && "line-through")}>{task.title}</p>
+                        <p className={cn("text-sm text-text-primary", isTaskHandled(list, task) && "line-through")}>{task.title}</p>
                         <div className="flex items-center gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
+                          {isShoppingList(list) && task.shoppingStatus === 'not_available' && (
+                            <Badge className="text-xs bg-danger/20 text-danger border-danger/30">Nem volt a boltban</Badge>
+                          )}
+                          {!isShoppingList(list) && (
                           <DropdownMenu>
                             <DropdownMenuTrigger className="focus:outline-none">
                               <Badge className={cn('text-xs cursor-pointer hover:opacity-80 transition-opacity', priorityColors[task.priority])}>
@@ -212,6 +276,7 @@ export default function Lists() {
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
+                          )}
                           {task.dueDate && (
                             <Badge variant="outline" className="text-xs border-white/20">{new Date(task.dueDate).toLocaleDateString('hu-HU')}</Badge>
                           )}
@@ -240,31 +305,33 @@ export default function Lists() {
 
               {/* Add Task Input */}
               <div className="flex gap-2 items-center">
-                <Select
-                  value={newTaskPriorities[list.id] || 'medium'}
-                  onValueChange={(v) => setNewTaskPriorities({ ...newTaskPriorities, [list.id]: v as Task['priority'] })}
-                >
-                  <SelectTrigger className={cn(
-                    "w-9 h-9 flex-shrink-0 border-white/10 px-0 justify-center [&>svg.lucide-chevron-down]:hidden",
-                    (newTaskPriorities[list.id] || 'medium') === 'low' && 'bg-blue-500/10',
-                    (newTaskPriorities[list.id] || 'medium') === 'medium' && 'bg-warning/10',
-                    (newTaskPriorities[list.id] || 'medium') === 'high' && 'bg-danger/10',
-                  )}>
-                    <div className={cn(
-                      "w-3 h-3 rounded-full",
-                      (newTaskPriorities[list.id] || 'medium') === 'low' && 'bg-blue-400',
-                      (newTaskPriorities[list.id] || 'medium') === 'medium' && 'bg-warning',
-                      (newTaskPriorities[list.id] || 'medium') === 'high' && 'bg-danger',
-                    )} />
-                  </SelectTrigger>
-                  <SelectContent className="bg-surface-1 border-white/10">
-                    <SelectItem value="low" className="text-blue-400">Alacsony</SelectItem>
-                    <SelectItem value="medium" className="text-warning">Közepes</SelectItem>
-                    <SelectItem value="high" className="text-danger">Magas</SelectItem>
-                  </SelectContent>
-                </Select>
+                {!isShoppingList(list) && (
+                  <Select
+                    value={newTaskPriorities[list.id] || 'medium'}
+                    onValueChange={(v) => setNewTaskPriorities({ ...newTaskPriorities, [list.id]: v as Task['priority'] })}
+                  >
+                    <SelectTrigger className={cn(
+                      "w-9 h-9 flex-shrink-0 border-white/10 px-0 justify-center [&>svg.lucide-chevron-down]:hidden",
+                      (newTaskPriorities[list.id] || 'medium') === 'low' && 'bg-blue-500/10',
+                      (newTaskPriorities[list.id] || 'medium') === 'medium' && 'bg-warning/10',
+                      (newTaskPriorities[list.id] || 'medium') === 'high' && 'bg-danger/10',
+                    )}>
+                      <div className={cn(
+                        "w-3 h-3 rounded-full",
+                        (newTaskPriorities[list.id] || 'medium') === 'low' && 'bg-blue-400',
+                        (newTaskPriorities[list.id] || 'medium') === 'medium' && 'bg-warning',
+                        (newTaskPriorities[list.id] || 'medium') === 'high' && 'bg-danger',
+                      )} />
+                    </SelectTrigger>
+                    <SelectContent className="bg-surface-1 border-white/10">
+                      <SelectItem value="low" className="text-blue-400">Alacsony</SelectItem>
+                      <SelectItem value="medium" className="text-warning">Közepes</SelectItem>
+                      <SelectItem value="high" className="text-danger">Magas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
                 <Input
-                  placeholder="Új feladat hozzáadása..."
+                  placeholder={isShoppingList(list) ? 'Új termék hozzáadása...' : 'Új feladat hozzáadása...'}
                   value={newTaskInputs[list.id] || ''}
                   onChange={(e) => setNewTaskInputs({ ...newTaskInputs, [list.id]: e.target.value })}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleAddTask(list.id); }}

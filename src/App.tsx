@@ -8,6 +8,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { useAppStore } from "@/stores/useAppStore";
 import { useThemeStore } from "@/stores/useThemeStore";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import StudentOnlyRoute from "@/components/StudentOnlyRoute";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import AppShell from "./components/AppShell";
@@ -22,6 +23,7 @@ import HabitTracker from "./pages/app/HabitTracker";
 import ReadingJournal from "./pages/app/ReadingJournal";
 import DailyReflection from "./pages/app/DailyReflection";
 import GrowthGoals from "./pages/app/GrowthGoals";
+import StudentTimetable from "./pages/student/StudentTimetable";
 import Settings from "./pages/Settings";
 import Onboarding from "./pages/Onboarding";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -97,6 +99,19 @@ function AppInner() {
               <Route path="growth" element={<GrowthGoals />} />
               <Route path="achievements" element={<Achievements />} />
               <Route path="shop" element={<Shop />} />
+            </Route>
+            <Route
+              path="/student"
+              element={
+                <ProtectedRoute>
+                  <StudentOnlyRoute>
+                    <AppShell />
+                  </StudentOnlyRoute>
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<StudentTimetable />} />
+              <Route path="timetable" element={<StudentTimetable />} />
             </Route>
             <Route
               path="/onboarding"
