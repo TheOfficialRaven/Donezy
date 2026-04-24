@@ -41,6 +41,9 @@ import { getLocalDateString } from '@/lib/dateUtils';
 import { getOverdueItemsCount, getHighPriorityOpenItemsCount } from '@/lib/lists/selectors';
 import { getGoalsNeedingAttention } from '@/lib/goals/selectors';
 import { getCaptureProductivityMetrics } from '@/lib/capture/selectors';
+import { getDashboardRoutingHints } from '@/lib/routing';
+import RoutingCandidatePanel from '@/components/routing/RoutingCandidatePanel';
+import RoutingReviewPanel from '@/components/routing/RoutingReviewPanel';
 import {
   getDailyGuidanceProfile,
   getGuidanceAttentionItems,
@@ -52,6 +55,7 @@ import {
   getGuidanceTopFocusItems,
   normalizeGuidanceInputs,
 } from '@/lib/guidance';
+import { getTargetGroupGuidanceProfile } from '@/lib/guidance/targetGroupAdapter';
 
 export default function Dashboard() {
   const {
@@ -63,8 +67,13 @@ export default function Dashboard() {
     missions,
     reflections,
     books,
+    readingEntries,
     notes,
     quickCaptureItems,
+    routingCandidates,
+    routingReviewFilter,
+    routingPanelOpen,
+    onboardingResultProfile,
     userStats,
     userPreferences,
     currentDayMode,
@@ -74,6 +83,11 @@ export default function Dashboard() {
     refreshDayModeSuggestion,
     acceptSuggestedDayMode,
     dismissDayModeSuggestion,
+    generateRoutingCandidates,
+    acceptRoutingCandidate,
+    dismissRoutingCandidate,
+    setRoutingReviewFilter,
+    setRoutingPanelOpen,
   } = useAppStore();
   const navigate = useNavigate();
   const today = getLocalDateString();
@@ -85,6 +99,7 @@ export default function Dashboard() {
   const highPriorityOpenItemsCount = useMemo(() => getHighPriorityOpenItemsCount(lists as any), [lists]);
   const goalsAttentionCount = useMemo(() => getGoalsNeedingAttention(growthGoals as any).length, [growthGoals]);
   const captureMetrics = useMemo(() => getCaptureProductivityMetrics(quickCaptureItems as any), [quickCaptureItems]);
+  const routingHints = useMemo(() => getDashboardRoutingHints(routingCandidates || []), [routingCandidates]);
   const activeDayMode = useMemo(
     () =>
       getEffectiveDayModeWithSuggestion({
@@ -203,6 +218,9 @@ export default function Dashboard() {
   useEffect(() => {
     refreshDayModeSuggestion();
   }, [refreshDayModeSuggestion, lists, events, growthGoals, habits, habitCompletions, missions, userPreferences]);
+  useEffect(() => {
+    void generateRoutingCandidates();
+  }, [generateRoutingCandidates, quickCaptureItems, notes, growthGoals, reflections, readingEntries, lists, habits, events]);
 
   const guidanceProfile = useMemo(() => {
     const input = normalizeGuidanceInputs({
@@ -224,6 +242,10 @@ export default function Dashboard() {
         quickCaptureUnprocessedCount: captureMetrics.unprocessed,
         readingActiveCount: books.filter((book) => book.status === 'reading').length,
         reflectionMissingToday: !reflections.some((entry) => entry.dateKey === today),
+        routingPendingCount: routingCandidates.filter((candidate) => candidate.status === 'pending').length,
+        routingHighConfidenceCount: routingCandidates.filter(
+          (candidate) => candidate.status === 'pending' && (candidate.confidence || 0) >= 0.8
+        ).length,
       },
       preferences: {
         dashboardDensity: userPreferences.dashboardDensity,
@@ -249,6 +271,7 @@ export default function Dashboard() {
     habitAttention,
     missionMetrics.activeMissions,
     captureMetrics.unprocessed,
+    routingCandidates,
     books,
     reflections,
   ]);
@@ -260,9 +283,17 @@ export default function Dashboard() {
   const guidanceInsights = useMemo(() => getGuidanceSupportiveInsights(guidanceProfile), [guidanceProfile]);
   const guidanceSummary = useMemo(() => getGuidanceNarrativeSummary(guidanceProfile), [guidanceProfile]);
   const guidanceQuickActionIds = useMemo(() => getGuidanceQuickActions(guidanceProfile), [guidanceProfile]);
+  const guidanceTargetProfile = useMemo(() => getTargetGroupGuidanceProfile(userPreferences.targetGroup), [userPreferences.targetGroup]);
   const quickActions = useMemo(
-    () => getDashboardQuickActions(userPreferences, activeDayMode, userPreferences.targetGroup, guidanceQuickActionIds),
-    [userPreferences, activeDayMode, guidanceQuickActionIds]
+    () =>
+      getDashboardQuickActions(
+        userPreferences,
+        activeDayMode,
+        userPreferences.targetGroup,
+        guidanceQuickActionIds,
+        onboardingResultProfile?.suggestedQuickActionsProfile
+      ),
+    [userPreferences, activeDayMode, guidanceQuickActionIds, onboardingResultProfile]
   );
 
   return (
@@ -330,7 +361,9 @@ export default function Dashboard() {
 
       {(guidanceQuickWin || guidanceMaintenance) && (
         <section className="space-y-3">
-          <h2 className="text-lg font-heading font-semibold text-text-primary">Napi guidance</h2>
+          <h2 className="text-lg font-heading font-semibold text-text-primary">
+            {guidanceTargetProfile.labelOverrides.nextBest || 'Napi guidance'}
+          </h2>
           <div className="grid gap-3 md:grid-cols-2">
             {guidanceQuickWin && (
               <Card className="glass p-4 border-primary/20">
@@ -353,11 +386,40 @@ export default function Dashboard() {
                 {guidanceInsights.map((insight) => (
                   <li key={insight} className="text-xs text-text-secondary">• {insight}</li>
                 ))}
+                {routingHints.length > 0 && (
+                  <li className="text-xs text-text-secondary">• Van {routingHints.length} elem, amit erdemes lehet masik modulba tovabbvinni.</li>
+                )}
               </ul>
             </Card>
           )}
         </section>
       )}
+
+      <RoutingCandidatePanel
+        candidates={routingHints}
+        onAccept={(id) => void acceptRoutingCandidate(id)}
+        onDismiss={(id) => void dismissRoutingCandidate(id)}
+      />
+      {routingHints.length > 0 && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            className="text-xs text-text-secondary hover:text-text-primary transition-colors"
+            onClick={() => setRoutingPanelOpen(!routingPanelOpen)}
+          >
+            {routingPanelOpen ? 'Routing review bezarasa' : 'Routing review megnyitasa'}
+          </button>
+        </div>
+      )}
+      {routingPanelOpen ? (
+        <RoutingReviewPanel
+          candidates={routingCandidates}
+          filter={routingReviewFilter}
+          onFilterChange={setRoutingReviewFilter}
+          onAccept={(id) => void acceptRoutingCandidate(id)}
+          onDismiss={(id) => void dismissRoutingCandidate(id)}
+        />
+      ) : null}
 
       <section className="space-y-3">
         <h2 className="text-lg font-heading font-semibold text-text-primary">{targetGroupLabels.loadOverview}</h2>

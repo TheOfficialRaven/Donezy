@@ -2,7 +2,5 @@ export * from './types';
 export * from './constants';
 export * from './normalize';
 export * from './adapters';
-export * from './targetGroupAdapter';
 export * from './rules';
-export * from './copy';
 export * from './selectors';

@@ -14,6 +14,7 @@ import type { UserProfilePreferences } from '@/lib/preferences/types';
 import type { DayModeKey } from '@/lib/dayModes/types';
 import { dayModeToQuickActionAdjustment } from '@/lib/dayModes/adapters';
 import { getTargetGroupQuickActions } from './targetGroupAdapter';
+import type { OnboardingQuickActionsProfile } from '@/lib/onboarding';
 
 export function getDashboardTodaySummary(input: {
   openTasks: number;
@@ -60,7 +61,8 @@ export function getDashboardQuickActions(
   preferences?: UserProfilePreferences | null,
   dayMode?: DayModeKey,
   targetGroup?: UserProfilePreferences['targetGroup'],
-  guidanceBoostActionIds: string[] = []
+  guidanceBoostActionIds: string[] = [],
+  onboardingQuickActionsProfile?: OnboardingQuickActionsProfile
 ) {
   const actions = [
     { id: 'quick-list', label: 'Gyors listaelem', target: '/app/lists' },
@@ -80,6 +82,8 @@ export function getDashboardQuickActions(
     if (quickAdjustment.boostedActionIds.includes(action.id)) score += 3;
     if (quickAdjustment.demotedActionIds.includes(action.id)) score -= 2;
     if (guidanceBoostActionIds.includes(action.id)) score += 4;
+    if (onboardingQuickActionsProfile?.boostedActionIds.includes(action.id)) score += 2;
+    if (onboardingQuickActionsProfile?.demotedActionIds.includes(action.id)) score -= 1;
     return { ...action, score };
   });
   const base = boosted.sort((a, b) => b.score - a.score).map(({ score: _score, ...rest }) => rest);

@@ -191,7 +191,15 @@ export function getTargetGroupLabels(targetGroup: PreferenceTargetGroup): Target
   return getTargetGroupDashboardProfile(targetGroup).labels;
 }
 
+export function getTargetGroupLabelOverrides(targetGroup: PreferenceTargetGroup) {
+  return getTargetGroupDashboardProfile(targetGroup).labels;
+}
+
 export function getTargetGroupSummaryCopy(targetGroup: PreferenceTargetGroup): string {
+  return getTargetGroupDashboardProfile(targetGroup).toneNuance;
+}
+
+export function getTargetGroupNarrativeStyle(targetGroup: PreferenceTargetGroup): string {
   return getTargetGroupDashboardProfile(targetGroup).toneNuance;
 }
 

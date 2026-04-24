@@ -7,12 +7,14 @@ import {
   buildTopFocusItems,
 } from './rules';
 import type { DailyGuidanceProfile, GuidanceEngineInputs, GuidanceItem } from './types';
+import { getTargetGroupAdjustedGuidance } from './targetGroupAdapter';
 
 export function getDailyGuidanceProfile(input: GuidanceEngineInputs): DailyGuidanceProfile {
   const topFocusItems = buildTopFocusItems(input);
+  const adjustedFocus = getTargetGroupAdjustedGuidance(topFocusItems, input.targetGroup);
   const quickWinItem = buildQuickWinItem(input);
   const maintenanceItem = buildMaintenanceItem(input);
-  const attentionItems = buildAttentionItems(input);
+  const attentionItems = getTargetGroupAdjustedGuidance(buildAttentionItems(input), input.targetGroup);
   const supportiveInsights = buildSupportiveInsights(input);
   const quickActions = buildGuidanceQuickActions(input);
 
@@ -22,7 +24,7 @@ export function getDailyGuidanceProfile(input: GuidanceEngineInputs): DailyGuida
     effectiveDayMode: input.effectiveDayMode,
     effectiveTone: input.effectiveTone,
     loadLevel: input.loadIndicator.level,
-    topFocusItems,
+    topFocusItems: adjustedFocus,
     quickWinItem,
     maintenanceItem,
     attentionItems,

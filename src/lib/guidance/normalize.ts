@@ -15,6 +15,8 @@ export function normalizeGuidanceInputs(input: GuidanceEngineInputs): GuidanceEn
       missionActiveCount: Math.max(0, input.signals.missionActiveCount),
       quickCaptureUnprocessedCount: Math.max(0, input.signals.quickCaptureUnprocessedCount),
       readingActiveCount: Math.max(0, input.signals.readingActiveCount),
+      routingPendingCount: Math.max(0, input.signals.routingPendingCount),
+      routingHighConfidenceCount: Math.max(0, input.signals.routingHighConfidenceCount),
     },
   };
 }

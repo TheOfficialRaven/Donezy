@@ -143,6 +143,21 @@ import {
   type DayModeSuggestion,
 } from '@/lib/dayModes';
 import { getDashboardLoadIndicator } from '@/lib/dashboard';
+import {
+  generateRoutingCandidatesFromModules,
+  getDashboardRoutingHints,
+  normalizeRoutingCandidate,
+  ROUTING_EXPIRE_DAYS,
+  type RoutingCandidate,
+  type RoutingReviewFilter,
+} from '@/lib/routing';
+import {
+  ONBOARDING_TOTAL_STEPS,
+  buildOnboardingResultProfile,
+  normalizeOnboardingAnswers,
+  type OnboardingAnswerSet,
+  type OnboardingResultProfile,
+} from '@/lib/onboarding';
 
 // ============ TYPES ============
 
@@ -426,6 +441,15 @@ interface AppState {
   quickCaptureStatusFilter: 'all' | QuickCaptureStatus;
   selectedQuickCaptureId?: string;
   quickCapturePanelOpen?: boolean;
+  routingCandidates: RoutingCandidate[];
+  routingReviewFilter: RoutingReviewFilter;
+  selectedRoutingCandidateId?: string;
+  routingPanelOpen?: boolean;
+  onboardingStep: number;
+  onboardingAnswers: OnboardingAnswerSet;
+  onboardingCompleted: boolean;
+  onboardingInProgress: boolean;
+  onboardingResultProfile?: OnboardingResultProfile;
   dataLoaded: boolean;
   _unsubscribers: (() => void)[];
 
@@ -471,6 +495,14 @@ interface AppState {
     reason: string;
   };
   confirmQuickCaptureRouting: (captureId: string, target: QuickCaptureTargetModule) => Promise<void>;
+  generateRoutingCandidates: () => Promise<void>;
+  addRoutingCandidate: (candidate: Omit<RoutingCandidate, 'id'>) => Promise<void>;
+  dismissRoutingCandidate: (candidateId: string) => Promise<void>;
+  acceptRoutingCandidate: (candidateId: string) => Promise<void>;
+  expireRoutingCandidate: (candidateId: string) => Promise<void>;
+  setRoutingReviewFilter: (filter: RoutingReviewFilter) => void;
+  setSelectedRoutingCandidateId: (candidateId?: string) => void;
+  setRoutingPanelOpen: (open: boolean) => void;
 
   // List actions
   addList: (list: Omit<TodoList, 'id' | 'tasks'>) => Promise<void>;
@@ -605,6 +637,12 @@ interface AppState {
   triggerQuestGeneration: (forceRegenerate?: boolean) => Promise<void>;
   loadUserPreferences: () => Promise<void>;
   updateUserPreferences: (updates: Partial<UserPreferences>) => Promise<void>;
+  setOnboardingAnswer: (updates: Partial<OnboardingAnswerSet>) => void;
+  goToNextOnboardingStep: () => void;
+  goToPreviousOnboardingStep: () => void;
+  applyOnboardingProfile: (result: OnboardingResultProfile) => Promise<void>;
+  completeOnboarding: () => Promise<void>;
+  skipOnboarding: () => Promise<void>;
   resetUserPreferencesSection: (section: PreferencesViewSection) => void;
   setPreferencesViewSection: (section: PreferencesViewSection) => void;
   savePreferencesDraft: (draft: Partial<UserPreferences>) => void;
@@ -1359,6 +1397,15 @@ export const useAppStore = create<AppState>()((set, get) => {
     quickCaptureStatusFilter: 'all',
     selectedQuickCaptureId: undefined,
     quickCapturePanelOpen: false,
+    routingCandidates: [],
+    routingReviewFilter: 'all',
+    selectedRoutingCandidateId: undefined,
+    routingPanelOpen: false,
+    onboardingStep: 0,
+    onboardingAnswers: normalizeOnboardingAnswers(undefined),
+    onboardingCompleted: defaultPreferences.onboardingCompleted,
+    onboardingInProgress: !defaultPreferences.onboardingCompleted,
+    onboardingResultProfile: undefined,
     dataLoaded: false,
     _unsubscribers: [],
 
@@ -1568,6 +1615,11 @@ export const useAppStore = create<AppState>()((set, get) => {
           set({ quickCaptureItems });
         })
       );
+      unsubscribers.push(
+        dbService.subscribeToRoutingCandidates(uid, (routingCandidates) => {
+          set({ routingCandidates });
+        })
+      );
 
       // Subscribe to achievements (with seeding for new users)
       unsubscribers.push(
@@ -1674,7 +1726,12 @@ export const useAppStore = create<AppState>()((set, get) => {
         dbService.subscribeToPreferences(uid, (prefs) => {
           _prefsLoaded = true;
           const normalized = normalizeUserPreferences((prefs || undefined) as UserProfilePreferences | undefined, uid);
-          set({ userPreferences: normalized, preferencesLoaded: true });
+          set({
+            userPreferences: normalized,
+            preferencesLoaded: true,
+            onboardingCompleted: normalized.onboardingCompleted,
+            onboardingInProgress: !normalized.onboardingCompleted,
+          });
         })
       );
 
@@ -1779,6 +1836,15 @@ export const useAppStore = create<AppState>()((set, get) => {
         quickCaptureStatusFilter: 'all',
         selectedQuickCaptureId: undefined,
         quickCapturePanelOpen: false,
+        routingCandidates: [],
+        routingReviewFilter: 'all',
+        selectedRoutingCandidateId: undefined,
+        routingPanelOpen: false,
+        onboardingStep: 0,
+        onboardingAnswers: normalizeOnboardingAnswers(undefined),
+        onboardingCompleted: defaultPreferences.onboardingCompleted,
+        onboardingInProgress: !defaultPreferences.onboardingCompleted,
+        onboardingResultProfile: undefined,
         dataLoaded: false,
         _unsubscribers: [],
       });
@@ -1805,6 +1871,51 @@ export const useAppStore = create<AppState>()((set, get) => {
         // (e.g. 503). This avoids jarring UI rollback while the server recovers.
         throw error;
       }
+    },
+    setOnboardingAnswer: (updates) => {
+      const current = get().onboardingAnswers;
+      set({ onboardingAnswers: normalizeOnboardingAnswers({ ...current, ...updates }) });
+    },
+    goToNextOnboardingStep: () =>
+      set((state) => ({ onboardingStep: Math.min(ONBOARDING_TOTAL_STEPS - 1, state.onboardingStep + 1) })),
+    goToPreviousOnboardingStep: () =>
+      set((state) => ({ onboardingStep: Math.max(0, state.onboardingStep - 1) })),
+    applyOnboardingProfile: async (result) => {
+      const patch = result.derivedPreferencesPatch;
+      const mode = result.suggestedInitialDayMode;
+      await get().updateUserPreferences({
+        ...patch,
+        onboardingCompleted: true,
+      });
+      if (mode) {
+        get().setDayMode(mode, { override: true });
+      }
+      set({
+        onboardingCompleted: true,
+        onboardingInProgress: false,
+        onboardingStep: ONBOARDING_TOTAL_STEPS - 1,
+        onboardingResultProfile: result,
+      });
+    },
+    completeOnboarding: async () => {
+      const state = get();
+      const result = buildOnboardingResultProfile(state.onboardingAnswers, state.userPreferences);
+      await state.applyOnboardingProfile(result);
+    },
+    skipOnboarding: async () => {
+      const state = get();
+      const result = buildOnboardingResultProfile(
+        normalizeOnboardingAnswers({
+          goalPrimary: 'daily-organization',
+          targetGroupChoice: state.userPreferences.targetGroup,
+          tonePreference: state.userPreferences.preferredTone,
+          dashboardDensityPreference: state.userPreferences.dashboardDensity,
+          overwhelmPreference: state.userPreferences.overloadProtection === 'on' ? 'medium' : 'low',
+          dashboardEmphasis: 'tasks-events',
+        }),
+        state.userPreferences
+      );
+      await state.applyOnboardingProfile(result);
     },
 
     resetUserPreferencesSection: (section) => {
@@ -2535,6 +2646,109 @@ export const useAppStore = create<AppState>()((set, get) => {
     setQuickCaptureStatusFilter: (status) => set({ quickCaptureStatusFilter: status }),
     setSelectedQuickCaptureId: (captureId) => set({ selectedQuickCaptureId: captureId }),
     setQuickCapturePanelOpen: (open) => set({ quickCapturePanelOpen: open }),
+    setRoutingReviewFilter: (filter) => set({ routingReviewFilter: filter }),
+    setSelectedRoutingCandidateId: (candidateId) => set({ selectedRoutingCandidateId: candidateId }),
+    setRoutingPanelOpen: (open) => set({ routingPanelOpen: open }),
+    generateRoutingCandidates: async () => {
+      const state = get();
+      const { uid } = state;
+      if (!uid) return;
+      const nowTs = Date.now();
+      const expireBeforeMs = nowTs - ROUTING_EXPIRE_DAYS * 24 * 60 * 60 * 1000;
+      for (const existing of state.routingCandidates) {
+        if (existing.status !== 'pending') continue;
+        const createdTs = new Date(existing.createdAt).getTime();
+        if (!Number.isFinite(createdTs)) continue;
+        if (createdTs < expireBeforeMs) {
+          await dbService.updateRoutingCandidate(uid, existing.id, { status: 'expired' });
+        }
+      }
+      const generated = generateRoutingCandidatesFromModules({
+        quickCaptureItems: state.quickCaptureItems,
+        notes: state.notes.map((n) => ({ id: n.id, title: n.title, content: n.content, type: n.type, updatedAt: n.updatedAt })),
+        readingEntries: state.readingEntries.map((e) => ({ id: e.id, bookId: e.bookId, note: e.note, quote: e.quote, lesson: e.lesson, date: e.date })),
+        goals: state.growthGoals.map((g) => ({ id: g.id, title: g.title, targetDate: g.targetDate, milestones: g.milestones })),
+        reflections: state.reflections.map((r) => ({ id: r.id, content: r.content, lessons: r.lessons, date: r.date })),
+        lists: state.lists.map((l) => ({ id: l.id, title: l.title || l.name, tasks: l.tasks })),
+        habits: state.habits.map((h) => ({ id: h.id, title: h.title, active: h.active, updatedAt: h.updatedAt })),
+        events: state.events.map((e) => ({ id: e.id, title: e.title, date: e.date, type: e.type })),
+        currentDayMode: state.currentDayMode,
+        targetGroup: state.userPreferences.targetGroup,
+      });
+      const existingIds = new Set(state.routingCandidates.map((c) => c.id));
+      for (const candidate of generated) {
+        if (existingIds.has(candidate.id)) continue;
+        const { id: _id, ...toSave } = normalizeRoutingCandidate(candidate);
+        await dbService.upsertRoutingCandidate(uid, candidate.id, toSave);
+      }
+    },
+    addRoutingCandidate: async (candidate) => {
+      const { uid } = get();
+      if (!uid) return;
+      await dbService.upsertRoutingCandidate(uid, candidate.sourceEntityId || `manual-${Date.now()}`, candidate);
+    },
+    dismissRoutingCandidate: async (candidateId) => {
+      const { uid } = get();
+      if (!uid) return;
+      await dbService.updateRoutingCandidate(uid, candidateId, { status: 'dismissed' });
+    },
+    expireRoutingCandidate: async (candidateId) => {
+      const { uid } = get();
+      if (!uid) return;
+      await dbService.updateRoutingCandidate(uid, candidateId, { status: 'expired' });
+    },
+    acceptRoutingCandidate: async (candidateId) => {
+      const state = get();
+      const { uid } = state;
+      if (!uid) return;
+      const candidate = state.routingCandidates.find((row) => row.id === candidateId);
+      if (!candidate) return;
+
+      const payload = candidate.suggestedPayload || {};
+      const title = typeof payload.title === 'string' ? payload.title : candidate.title;
+      const description = typeof payload.description === 'string' ? payload.description : candidate.description || '';
+      if (candidate.targetModule === 'lists') {
+        const firstList = state.lists[0];
+        if (firstList) {
+          await state.addTask(firstList.id, { title, description, completed: false, priority: 'medium' });
+        }
+      } else if (candidate.targetModule === 'notes') {
+        await state.addNote({ title, content: description || title, type: 'idea', sourceType: 'suggestion' });
+      } else if (candidate.targetModule === 'goals') {
+        await state.addGoal({ title, description, priority: 'medium', type: 'project', status: 'active', sourceType: 'suggestion' });
+      } else if (candidate.targetModule === 'missions') {
+        await state.addMission({ title, description, category: 'general', difficulty: 'medium', estimatedMinutes: 25, priority: 'medium', type: 'suggested', status: 'active', sourceType: 'suggestion' });
+      } else if (candidate.targetModule === 'calendar') {
+        const now = new Date();
+        const end = new Date(now.getTime() + 60 * 60 * 1000);
+        await state.addEvent({
+          title,
+          description,
+          date: getLocalDateString(now),
+          startTime: now.toISOString(),
+          endTime: end.toISOString(),
+          allDay: false,
+          type: 'event',
+          priority: 'medium',
+          color: '#4F46E5',
+          category: 'general',
+          reminderSettings: { enabled: true, minutesBefore: 15 },
+          status: 'scheduled',
+          sourceType: 'suggested',
+          futureLinkTargets: {},
+          schemaVersion: 2,
+          createdAt: now.toISOString(),
+          updatedAt: now.toISOString(),
+        });
+      } else if (candidate.targetModule === 'reflection') {
+        await state.addReflection({ date: getLocalDateString(), type: 'normal', mood: 3, title, content: description || title, tags: [], sourceType: 'suggestion' });
+      } else if (candidate.targetModule === 'reading') {
+        await state.addBook({ title, author: 'Ismeretlen', totalPages: 0, currentPage: 0, status: 'wishlist', category: 'general', tags: [], sourceType: 'suggestion' });
+      } else if (candidate.targetModule === 'habits') {
+        await state.addHabit({ title, description, trackingMode: 'auto', frequencyType: 'daily', frequencyTarget: 1, sourceType: 'suggestion' });
+      }
+      await dbService.updateRoutingCandidate(uid, candidateId, { status: 'accepted' });
+    },
 
     suggestQuickCaptureRouting: (rawInput) => {
       const { lists, growthGoals, habits, missions, notes, userPreferences } = get();

@@ -29,6 +29,8 @@ import type { BookRaw, ReadingEntryRaw } from '@/lib/reading/types';
 import { normalizeQuickCaptureItem } from '@/lib/capture/normalize';
 import type { QuickCaptureItem, QuickCaptureItemRaw } from '@/lib/capture/types';
 import type { UserProfilePreferencesRaw } from '@/lib/preferences/types';
+import { normalizeRoutingCandidate } from '@/lib/routing/normalize';
+import type { RoutingCandidate } from '@/lib/routing/types';
 
 // Helper to get user-specific path
 function userPath(uid: string, path: string) {
@@ -380,6 +382,45 @@ export async function updateQuickCaptureItem(uid: string, captureId: string, upd
 export async function deleteQuickCaptureItem(uid: string, captureId: string) {
   const captureItemRef = ref(db, userPath(uid, `quickCaptureItems/${captureId}`));
   await remove(captureItemRef);
+}
+
+// ============ CROSS-MODULE ROUTING ============
+
+export function subscribeToRoutingCandidates(uid: string, callback: (items: RoutingCandidate[]) => void): Unsubscribe {
+  const routingRef = ref(db, userPath(uid, 'routingCandidates'));
+  return onValue(routingRef, (snapshot) => {
+    const data = snapshot.val();
+    if (!data) {
+      callback([]);
+      return;
+    }
+    const items = Object.entries(data).map(([id, row]) =>
+      normalizeRoutingCandidate({ ...(row as Partial<RoutingCandidate>), id })
+    );
+    callback(items);
+  });
+}
+
+export async function addRoutingCandidate(uid: string, candidate: Omit<RoutingCandidate, 'id'>) {
+  const routingRef = ref(db, userPath(uid, 'routingCandidates'));
+  const newRef = push(routingRef);
+  await set(newRef, cleanUndefinedDeep(candidate));
+  return newRef.key!;
+}
+
+export async function upsertRoutingCandidate(uid: string, candidateId: string, candidate: Omit<RoutingCandidate, 'id'>) {
+  const candidateRef = ref(db, userPath(uid, `routingCandidates/${candidateId}`));
+  await set(candidateRef, cleanUndefinedDeep(candidate));
+}
+
+export async function updateRoutingCandidate(uid: string, candidateId: string, updates: Partial<RoutingCandidate>) {
+  const candidateRef = ref(db, userPath(uid, `routingCandidates/${candidateId}`));
+  await update(candidateRef, cleanUndefinedDeep(updates));
+}
+
+export async function deleteRoutingCandidate(uid: string, candidateId: string) {
+  const candidateRef = ref(db, userPath(uid, `routingCandidates/${candidateId}`));
+  await remove(candidateRef);
 }
 
 // ============ ACHIEVEMENTS ============

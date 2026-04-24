@@ -52,6 +52,8 @@ export interface GuidanceEngineInputs {
     quickCaptureUnprocessedCount: number;
     readingActiveCount: number;
     reflectionMissingToday: boolean;
+    routingPendingCount: number;
+    routingHighConfidenceCount: number;
   };
   preferences: {
     dashboardDensity: 'minimal' | 'balanced' | 'detailed';
