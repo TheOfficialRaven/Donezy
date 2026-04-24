@@ -30,7 +30,6 @@ import { Button } from '@/components/ui/button';
 import { personas, usePersonaStore, type Persona } from '@/stores/usePersonaStore';
 import { useAppStore } from '@/stores/useAppStore';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { useThemeStore } from '@/stores/useThemeStore';
 import * as dbService from '@/services/databaseService';
 import { cn } from '@/lib/utils';
 import { FOCUS_AREAS } from '@/lib/focusAreas';
@@ -82,7 +81,6 @@ const TOTAL_STEPS = 5;
 // ============ COMPONENT ============
 
 export default function Onboarding() {
-  const isLight = useThemeStore((s) => s.theme) === 'light';
   const [step, setStep] = useState(0);
   const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
@@ -225,14 +223,8 @@ export default function Onboarding() {
             >
               <div
                 className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-                style={{
-                  background: `linear-gradient(135deg, ${persona.color}, ${isLight ? persona.color : persona.color + '88'})`,
-                  boxShadow: isSelected
-                    ? (isLight ? `0 2px 12px ${persona.color}50, 0 0 0 1px ${persona.color}30` : `0 0 20px ${persona.color}50`)
-                    : (isLight ? `0 1px 4px ${persona.color}30` : 'none'),
-                }}
               >
-                <PersonaIcon className="h-6 w-6 text-white" />
+                <PersonaIcon className="h-6 w-6" style={{ color: persona.iconColor }} />
               </div>
 
               <div className="flex-1 min-w-0">
@@ -479,11 +471,10 @@ export default function Onboarding() {
           <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/10">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: `linear-gradient(135deg, ${selectedPersona.color}, ${selectedPersona.color}88)` }}
             >
               {(() => {
                 const Icon = LucideIcons[selectedPersona.icon as keyof typeof LucideIcons] as React.ComponentType<{ className?: string }>;
-                return <Icon className="h-4 w-4 text-white" />;
+                return <Icon className="h-4 w-4" style={{ color: selectedPersona.iconColor }} />;
               })()}
             </div>
             <div>

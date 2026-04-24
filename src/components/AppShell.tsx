@@ -7,21 +7,45 @@ import BottomNav from './layout/BottomNav';
 import AlarmPopup from './AlarmPopup';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAlarmSystem } from '@/hooks/useAlarmSystem';
-import { usePersonaStore, applyPersonaTheme } from '@/stores/usePersonaStore';
+import { usePersonaStore, applyPersonaTheme, personas } from '@/stores/usePersonaStore';
 import { useAppStore } from '@/stores/useAppStore';
 
 export default function AppShell() {
   const isMobile = useIsMobile();
   const { activeAlarms, dismissAlarm, dismissAll, snoozeAlarm } = useAlarmSystem();
   const currentPersona = usePersonaStore((s) => s.currentPersona);
+  const setPersona = usePersonaStore((s) => s.setPersona);
   const dataLoaded = useAppStore((s) => s.dataLoaded);
   const onboardingCompleted = useAppStore((s) => s.userPreferences.onboardingCompleted);
+  const targetGroup = useAppStore((s) => s.userPreferences.targetGroup);
   const navigate = useNavigate();
 
   // Apply persona theme colors on mount and when persona changes
   useEffect(() => {
     applyPersonaTheme(currentPersona);
   }, [currentPersona]);
+
+  // Keep legacy persona-driven UI in sync with preferences targetGroup.
+  useEffect(() => {
+    const targetPersonaId =
+      targetGroup === 'self-development'
+        ? 'selfdev'
+        : targetGroup === 'student'
+          ? 'student'
+          : targetGroup === 'young-professional'
+            ? 'worker'
+            : targetGroup === 'freelancer'
+              ? 'freelancer'
+              : targetGroup === 'organizer'
+                ? 'organizer'
+                : 'student';
+
+    if (currentPersona.id === targetPersonaId) return;
+    const resolved = personas.find((p) => p.id === targetPersonaId);
+    if (resolved) {
+      setPersona(resolved);
+    }
+  }, [targetGroup, currentPersona.id, setPersona]);
 
   // Redirect to onboarding if not completed
   useEffect(() => {

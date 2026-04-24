@@ -4,7 +4,6 @@ import { User, LogIn, Zap, Target, Calendar, Trophy, Star, Shield } from 'lucide
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { personas } from '@/stores/usePersonaStore';
-import { useThemeStore } from '@/stores/useThemeStore';
 import * as LucideIcons from 'lucide-react';
 import DonezyLogo from '@/components/DonezyLogo';
 
@@ -50,7 +49,6 @@ const stats = [
 
 export default function Landing() {
   const navigate = useNavigate();
-  const isLight = useThemeStore((s) => s.theme) === 'light';
 
   return (
     <div className="min-h-screen bg-surface-0">
@@ -67,10 +65,7 @@ export default function Landing() {
             className="text-center mb-12 sm:mb-16"
           >
             <div className="flex items-center justify-center gap-3 sm:gap-5 mb-6">
-              <DonezyLogo className="w-14 h-14 sm:w-20 sm:h-20 md:w-28 md:h-28" />
-              <h1 className="text-4xl sm:text-5xl md:text-7xl font-heading font-bold">
-                <span className="text-gradient-primary">Donezy</span>
-              </h1>
+              <DonezyLogo className="h-14 sm:h-20 md:h-28 w-auto" />
             </div>
             <p className="text-base sm:text-xl md:text-2xl text-text-secondary max-w-3xl mx-auto mb-8 px-2">
               Gamifikált produktivitási platform, amely átalakítja a mindennapjaidat
@@ -169,12 +164,8 @@ export default function Landing() {
                     <div className="flex items-center gap-4 mb-4">
                       <div
                         className="w-12 h-12 rounded-xl flex items-center justify-center group-hover:animate-glow-pulse"
-                        style={{
-                          background: `linear-gradient(135deg, ${persona.color}, ${isLight ? persona.color : persona.color + '88'})`,
-                          boxShadow: isLight ? `0 2px 8px ${persona.color}40` : `0 0 20px ${persona.color}40`
-                        }}
                       >
-                        <IconComponent className="h-6 w-6 text-surface-0" />
+                        <IconComponent className="h-6 w-6" style={{ color: persona.iconColor }} />
                       </div>
                       <div>
                         <h3 className="font-heading font-semibold text-text-primary">{persona.label}</h3>

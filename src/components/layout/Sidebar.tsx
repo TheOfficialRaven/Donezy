@@ -62,10 +62,7 @@ export default function Sidebar() {
           animate={{ opacity: 1, scale: 1 }}
           className="flex items-center gap-3"
         >
-          <DonezyLogo className="w-10 h-10" />
-          <span className="text-xl font-heading font-bold text-gradient-primary">
-            Donezy
-          </span>
+          <DonezyLogo className="h-10 w-auto" />
         </motion.div>
       </div>
 

@@ -1,495 +1,445 @@
-import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { Activity, Flame, TrendingUp, BarChart3, Calendar, Repeat, CheckSquare, Zap, BookOpen, CalendarDays, Tag } from 'lucide-react';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { useEffect, useMemo, useState } from 'react';
+import { Activity, SlidersHorizontal } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAppStore } from '@/stores/useAppStore';
-import { analyzeHabits, type GroupedHabit, type HabitSource } from '@/lib/habitAnalyzer';
-import { useThemeStore } from '@/stores/useThemeStore';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-  AreaChart,
-  Area,
-} from 'recharts';
-
-type TimeRange = 7 | 14 | 30 | 90;
-
-const TIME_LABELS: Record<TimeRange, string> = {
-  7: '7 nap',
-  14: '14 nap',
-  30: '30 nap',
-  90: '90 nap',
-};
-
-const SOURCE_META: Record<HabitSource, { label: string; icon: typeof CheckSquare; color: string }> = {
-  task: { label: 'Lista feladat', icon: CheckSquare, color: 'text-blue-400' },
-  quest: { label: 'Küldetés', icon: Zap, color: 'text-primary' },
-  event: { label: 'Naptár esemény', icon: CalendarDays, color: 'text-purple-400' },
-  reading: { label: 'Olvasás', icon: BookOpen, color: 'text-amber-400' },
-};
+  getActivityDensitySeries,
+  getHabitCandidates,
+  getHabitCompletionTrend,
+  getPromotableHabitCandidates,
+  getMergedHabitRepresentations,
+  getHabitOverviewMetrics,
+  getPrimaryHabitInsights,
+  getHabitNarrativeSummary,
+  filterHabitsForView,
+} from '@/lib/habits/selectors';
+import type { Habit, HabitTimeRangeFilter, HabitsStatusFilter, HabitTrackingModeFilter, UserFacingHabit } from '@/lib/habits/types';
+import HabitDetailPanel from '@/components/habits/HabitDetailPanel';
+import HabitDialog from '@/components/habits/HabitDialog';
+import { HabitActivityChart, HabitTrendChart } from '@/components/habits/HabitCharts';
+import { Card } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { getHabitPreferenceProfile, getGuidancePreferenceProfile, getDashboardPreferenceProfile } from '@/lib/preferences/selectors';
 
 export default function HabitTracker() {
-  const { habitEntries } = useAppStore();
-  const { theme } = useThemeStore();
-  const isLight = theme === 'light';
-  const [timeRange, setTimeRange] = useState<TimeRange>(30);
-  const [selectedHabit, setSelectedHabit] = useState<string | null>(null);
-  const [sourceFilter, setSourceFilter] = useState<HabitSource | 'all'>('all');
+  const {
+    habits,
+    habitCompletions,
+    habitActivitySignals,
+    habitCandidates,
+    habitsSearchQuery,
+    habitsCategoryFilter,
+    habitsStatusFilter,
+    habitsTrackingModeFilter,
+    habitsTimeRangeFilter,
+    userPreferences,
+    selectedHabitId,
+    setHabitsSearchQuery,
+    setHabitsCategoryFilter,
+    setHabitsStatusFilter,
+    setHabitsTrackingModeFilter,
+    setHabitsTimeRangeFilter,
+    setSelectedHabitId,
+    addHabit,
+    updateHabit,
+    archiveHabit,
+    toggleHabitCompletionForDate,
+    promoteHabitCandidate,
+  } = useAppStore();
 
-  const filteredEntries = useMemo(
-    () => sourceFilter === 'all' ? habitEntries : habitEntries.filter((e) => e.source === sourceFilter),
-    [habitEntries, sourceFilter]
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
+  const [focusFilter, setFocusFilter] = useState<'all' | 'stable' | 'needs-attention' | 'emerging'>('all');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const safeHabits = useMemo(() => habits || [], [habits]);
+  const safeCompletions = useMemo(() => habitCompletions || [], [habitCompletions]);
+  const safeActivitySignals = useMemo(() => habitActivitySignals || [], [habitActivitySignals]);
+  const safeStoredCandidates = useMemo(() => habitCandidates || [], [habitCandidates]);
+
+  const computedCandidates = useMemo(() => {
+    const fromSignals = getHabitCandidates(safeActivitySignals);
+    if (fromSignals.length > 0) return fromSignals;
+    return safeStoredCandidates;
+  }, [safeActivitySignals, safeStoredCandidates]);
+
+  const filteredHabits = useMemo(
+    () =>
+      filterHabitsForView(safeHabits, 'active', {
+        search: habitsSearchQuery,
+        categoryFilter: habitsCategoryFilter,
+        statusFilter: habitsStatusFilter,
+        trackingModeFilter: habitsTrackingModeFilter,
+        completions: safeCompletions,
+      }),
+    [
+      safeHabits,
+      habitsSearchQuery,
+      habitsCategoryFilter,
+      habitsStatusFilter,
+      habitsTrackingModeFilter,
+      safeCompletions,
+    ]
   );
 
-  const habits = useMemo(
-    () => analyzeHabits(filteredEntries, timeRange),
-    [filteredEntries, timeRange]
+  const categories = useMemo(() => [...new Set(safeHabits.map((h) => h.category).filter(Boolean))].sort(), [safeHabits]);
+
+  const promotable = useMemo(() => getPromotableHabitCandidates(computedCandidates), [computedCandidates]);
+  const mergedHabits = useMemo(() => getMergedHabitRepresentations(filteredHabits, safeCompletions), [filteredHabits, safeCompletions]);
+  const overviewMetrics = useMemo(() => getHabitOverviewMetrics(mergedHabits), [mergedHabits]);
+  const insightGroups = useMemo(() => getPrimaryHabitInsights(mergedHabits), [mergedHabits]);
+  const habitPreferenceProfile = useMemo(() => getHabitPreferenceProfile(userPreferences), [userPreferences]);
+  const guidanceProfile = useMemo(() => getGuidancePreferenceProfile(userPreferences), [userPreferences]);
+  const dashboardPreference = useMemo(() => getDashboardPreferenceProfile(userPreferences), [userPreferences]);
+  const insightLimit = dashboardPreference.dashboardDensity === 'minimal' ? 2 : dashboardPreference.dashboardDensity === 'detailed' ? 4 : 3;
+  const groupedSummary = useMemo(() => getHabitNarrativeSummary(mergedHabits), [mergedHabits]);
+  const visibleMergedHabits = useMemo(() => {
+    if (focusFilter === 'stable') return insightGroups.stable;
+    if (focusFilter === 'needs-attention') return insightGroups.needsAttention;
+    if (focusFilter === 'emerging') return [...insightGroups.emerging, ...insightGroups.strengthening].slice(0, 6);
+    return mergedHabits.slice(0, 8);
+  }, [focusFilter, insightGroups, mergedHabits]);
+
+  const globalCompletionSeries = useMemo(() => {
+    const syntheticHabit: Habit = {
+      id: 'all',
+      title: 'All',
+      description: '',
+      category: '',
+      trackingMode: 'auto',
+      frequencyType: 'daily',
+      frequencyTarget: 1,
+      preferredDays: [],
+      color: '#8B5CF6',
+      icon: 'repeat',
+      active: true,
+      archived: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      tags: [],
+      sourceType: 'system',
+      futureLinkTargets: {},
+      schemaVersion: 2,
+    };
+    return getHabitCompletionTrend(syntheticHabit, safeCompletions, habitsTimeRangeFilter);
+  }, [safeCompletions, habitsTimeRangeFilter]);
+  const activitySeries = useMemo(
+    () => getActivityDensitySeries(safeActivitySignals, habitsTimeRangeFilter),
+    [safeActivitySignals, habitsTimeRangeFilter]
   );
+  const selectedHabit = useMemo(() => {
+    if (selectedHabitId) return safeHabits.find((h) => h.id === selectedHabitId) ?? null;
+    const firstVisible = visibleMergedHabits[0]?.sourceHabitIds[0];
+    if (!firstVisible) return null;
+    return safeHabits.find((h) => h.id === firstVisible) ?? null;
+  }, [selectedHabitId, safeHabits, visibleMergedHabits]);
 
-  const activeHabit = habits.find((h) => h.key === selectedHabit) || habits[0] || null;
+  useEffect(() => {
+    setShowAdvancedFilters(Boolean(userPreferences.showAdvancedFilters));
+  }, [userPreferences.showAdvancedFilters]);
 
-  const aggregateDaily = useMemo(() => {
-    const map = new Map<string, number>();
-    const today = new Date();
-    for (let i = timeRange - 1; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      map.set(d.toISOString().slice(0, 10), 0);
+  const openCreate = () => {
+    setEditingHabit(null);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (habit: Habit) => {
+    setEditingHabit(habit);
+    setDialogOpen(true);
+  };
+
+  const saveHabit = async (payload: Partial<Habit> & Pick<Habit, 'title'>) => {
+    if (editingHabit) {
+      await updateHabit(editingHabit.id, payload);
+      toast.success('Szokas frissitve.');
+    } else {
+      await addHabit(payload);
+      toast.success('Szokas letrehozva.');
     }
-    for (const entry of filteredEntries) {
-      if (map.has(entry.completedAt)) {
-        map.set(entry.completedAt, map.get(entry.completedAt)! + 1);
-      }
-    }
-    return [...map.entries()].map(([date, count]) => ({
-      date,
-      label: formatDateShort(date),
-      count,
-    }));
-  }, [filteredEntries, timeRange]);
-
-  // Global source counts (unfiltered)
-  const sourceCounts = useMemo(() => {
-    const counts: Record<HabitSource, number> = { task: 0, quest: 0, event: 0, reading: 0 };
-    for (const e of habitEntries) counts[e.source] = (counts[e.source] || 0) + 1;
-    return counts;
-  }, [habitEntries]);
-
-  const totalHabits = habits.length;
-  const longestStreak = habits.reduce((max, h) => Math.max(max, h.currentStreak), 0);
-  const totalCompletions = filteredEntries.length;
-  const activeStreaks = habits.filter((h) => h.currentStreak > 0).length;
+    setEditingHabit(null);
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-heading font-bold text-text-primary flex items-center gap-3">
-            <Activity className="h-8 w-8 text-primary" />
-            Szokás Tracker
-          </h1>
-          <p className="text-text-secondary mt-1">
-            Listáid, naptárad, olvasásaid és küldetéseid alapján követi szokásaidat
-          </p>
+    <div className="space-y-5">
+      <Card className="glass border-white/5 p-5 md:p-6">
+        <h1 className="text-3xl font-heading font-bold text-text-primary flex items-center gap-3">
+          <Activity className="h-8 w-8 text-primary" />
+          Szokas Tracker
+        </h1>
+        <p className="text-text-secondary mt-2 max-w-3xl text-sm leading-relaxed">
+          {guidanceProfile.preferredTone === 'direct'
+            ? 'Itt latod, mely rutinok stabilak, melyek erosodnek, es melyek kernek azonnali figyelmet.'
+            : 'Itt azt latod, milyen visszatero mintak alakulnak a napi mukodesedben. Nem az egyszeri aktivitast emeljuk ki, hanem a rutinna ero viselkedest: mi stabil, mi erosodik, es mi ker most figyelmet.'}
+        </p>
+      </Card>
+
+      <Card className="glass p-4 border-white/5 space-y-3">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+          <Input
+            value={habitsSearchQuery}
+            onChange={(e) => setHabitsSearchQuery(e.target.value)}
+            className="md:max-w-sm bg-surface-1/50 border-white/10"
+            placeholder="Kereses rutin nev vagy leiras alapjan..."
+          />
+          <Select value={focusFilter} onValueChange={(value) => setFocusFilter(value as typeof focusFilter)}>
+            <SelectTrigger className="md:w-56 bg-surface-1/50 border-white/10">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-surface-1 border-white/10">
+              <SelectItem value="all">Minden minta</SelectItem>
+              <SelectItem value="stable">Stabil rutinok</SelectItem>
+              <SelectItem value="needs-attention">Figyelmet ker</SelectItem>
+              <SelectItem value="emerging">Uj / erosodo</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={habitsTimeRangeFilter} onValueChange={(value) => setHabitsTimeRangeFilter(value as HabitTimeRangeFilter)}>
+            <SelectTrigger className="md:w-44 bg-surface-1/50 border-white/10">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-surface-1 border-white/10">
+              <SelectItem value="7d">7 nap</SelectItem>
+              <SelectItem value="14d">14 nap</SelectItem>
+              <SelectItem value="30d">30 nap</SelectItem>
+              <SelectItem value="90d">90 nap</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button className="bg-primary text-surface-0 md:ml-auto" onClick={openCreate}>Uj rutin</Button>
         </div>
-        {/* Time range selector */}
-        <div className="flex bg-surface-2/50 rounded-lg p-1 gap-1">
-          {(Object.keys(TIME_LABELS) as unknown as TimeRange[]).map((range) => (
-            <button
-              key={range}
-              onClick={() => setTimeRange(Number(range) as TimeRange)}
-              className={cn(
-                'px-3 py-1.5 rounded-md text-sm font-medium transition-all',
-                timeRange === Number(range)
-                  ? 'bg-primary text-surface-0 shadow-lg'
-                  : 'text-text-secondary hover:text-text-primary'
-              )}
-            >
-              {TIME_LABELS[Number(range) as TimeRange]}
-            </button>
-          ))}
-        </div>
+        <Collapsible open={showAdvancedFilters} onOpenChange={setShowAdvancedFilters}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="h-8 px-2 text-text-muted">
+              <SlidersHorizontal className="h-4 w-4 mr-2" />
+              Tovabbi szurok
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-2">
+            <div className="grid gap-2 md:grid-cols-3">
+              <Select value={habitsStatusFilter} onValueChange={(v) => setHabitsStatusFilter(v as HabitsStatusFilter)}>
+                <SelectTrigger className="bg-surface-1/50 border-white/10"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-surface-1 border-white/10">
+                  <SelectItem value="all">Minden allapot</SelectItem>
+                  <SelectItem value="active">Aktiv</SelectItem>
+                  <SelectItem value="paused">Szuneteltetett</SelectItem>
+                  <SelectItem value="archived">Archivalt</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={habitsTrackingModeFilter} onValueChange={(v) => setHabitsTrackingModeFilter(v as HabitTrackingModeFilter)}>
+                <SelectTrigger className="bg-surface-1/50 border-white/10"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-surface-1 border-white/10">
+                  <SelectItem value="all">Minden forras</SelectItem>
+                  <SelectItem value="auto">Automatikus</SelectItem>
+                  <SelectItem value="hybrid">Vegyes</SelectItem>
+                  <SelectItem value="manual">Kezileg rogzitett</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={habitsCategoryFilter} onValueChange={setHabitsCategoryFilter}>
+                <SelectTrigger className="bg-surface-1/50 border-white/10"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-surface-1 border-white/10">
+                  <SelectItem value="all">Minden kategoria</SelectItem>
+                  {categories.map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </Card>
+
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+        <OverviewCard label="Stabil rutinok" value={overviewMetrics.stableCount} tone="text-emerald-300" />
+        <OverviewCard label="Erosodo rutinok" value={overviewMetrics.strengtheningCount} tone="text-primary" />
+        <OverviewCard label="Figyelmet ker" value={overviewMetrics.needsAttentionCount} tone="text-amber-300" />
+        <OverviewCard label="Uj mintak" value={overviewMetrics.emergingCount} tone="text-sky-300" />
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Felismert szokás', value: totalHabits, icon: Repeat, color: 'text-primary' },
-          { label: 'Leghosszabb sorozat', value: `${longestStreak} nap`, icon: Flame, color: 'text-orange-400' },
-          { label: 'Összes teljesítés', value: totalCompletions, icon: BarChart3, color: 'text-emerald-400' },
-          { label: 'Aktív sorozatok', value: activeStreaks, icon: TrendingUp, color: 'text-blue-400' },
-        ].map((stat, i) => (
-          <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-            <Card className="glass p-4">
-              <div className="flex items-center gap-3">
-                <div className={cn('p-2 rounded-lg bg-surface-2/50', stat.color)}>
-                  <stat.icon className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-text-primary">{stat.value}</p>
-                  <p className="text-xs text-text-muted">{stat.label}</p>
-                </div>
-              </div>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
+      <Card className="glass border-white/5 p-4">
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <h3 className="font-heading font-semibold text-text-primary">Rutin osszkep</h3>
+          <Badge variant="outline" className="border-white/15 text-text-muted text-xs">
+            {overviewMetrics.groupedCount} osszevont rutin
+          </Badge>
+        </div>
+        <p className="text-sm text-text-secondary">{groupedSummary}</p>
+      </Card>
 
-      {/* Source filter */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold text-text-muted uppercase tracking-wide mr-1">Forrás:</span>
-        <button
-          onClick={() => setSourceFilter('all')}
-          className={cn(
-            'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border',
-            sourceFilter === 'all'
-              ? 'bg-primary/20 text-primary border-primary/30'
-              : 'bg-white/5 text-text-secondary border-transparent hover:bg-white/10'
+      <div className="grid gap-6 xl:grid-cols-3">
+        <div className="space-y-4 xl:col-span-2">
+          {mergedHabits.length === 0 ? (
+            <HabitEmptyState />
+          ) : (
+            <>
+              <InsightSection title="Stabil rutinok" items={insightGroups.stable} onOpenHabit={setSelectedHabitId} limit={insightLimit} />
+              <InsightSection title="Erosodo rutinok" items={insightGroups.strengthening} onOpenHabit={setSelectedHabitId} limit={insightLimit} />
+              <InsightSection title="Figyelmet kero rutinok" items={insightGroups.needsAttention} onOpenHabit={setSelectedHabitId} limit={insightLimit} attention />
+            </>
           )}
-        >
-          <Activity className="h-3.5 w-3.5" />
-          Mind ({habitEntries.length})
-        </button>
-        {(Object.entries(SOURCE_META) as [HabitSource, typeof SOURCE_META['task']][]).map(([src, meta]) => {
-          const count = sourceCounts[src];
-          if (count === 0) return null;
-          const Icon = meta.icon;
-          return (
-            <button
-              key={src}
-              onClick={() => setSourceFilter(src)}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border',
-                sourceFilter === src
-                  ? 'bg-primary/20 text-primary border-primary/30'
-                  : 'bg-white/5 text-text-secondary border-transparent hover:bg-white/10'
-              )}
-            >
-              <Icon className={cn('h-3.5 w-3.5', meta.color)} />
-              {meta.label} ({count})
-            </button>
-          );
-        })}
-      </div>
 
-      {habits.length === 0 ? (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <Card className="glass p-12 text-center">
-            <Activity className="h-16 w-16 text-text-disabled mx-auto mb-4" />
-            <h3 className="text-lg font-heading font-semibold text-text-primary mb-2">
-              Még nincsenek felismert szokásaid
-            </h3>
-            <p className="text-text-muted mb-2 max-w-md mx-auto">
-              A rendszer automatikusan felismeri az ismétlődő tevékenységeket a listáidból,
-              naptárad eseményeiből, olvasási naplódból és küldetéseidből.
-            </p>
-            <p className="text-xs text-text-muted">
-              Legalább 2 hasonló tevékenység szükséges egy szokás felismeréséhez.
-            </p>
+          <Card className="glass p-4 border-white/5 space-y-4">
+            <div>
+              <h3 className="font-heading font-semibold text-text-primary">Rutin trendek</h3>
+              <p className="text-xs text-text-muted mt-1">Nem nyers adat: azt mutatja, mennyire tartosak a visszatero mintak.</p>
+            </div>
+            <div className={`grid grid-cols-1 ${dashboardPreference.dashboardDensity === 'minimal' ? '' : 'xl:grid-cols-2'} gap-4`}>
+              <HabitTrendChart data={globalCompletionSeries} title="Kovetkezetesseg trend" />
+              {dashboardPreference.dashboardDensity !== 'minimal' && <HabitActivityChart data={activitySeries} />}
+            </div>
+            <div className="rounded-lg border border-white/10 bg-surface-0/25 p-3 text-sm text-text-secondary">
+              {overviewMetrics.strengtheningCount > 0
+                ? `Az elmult idoszakban ${overviewMetrics.strengtheningCount} rutin erosodeset latjuk.`
+                : 'Most inkabb stabilizalo idoszak latszik, keves uj erosodo rutinnal.'}
+              {` `}
+              {overviewMetrics.needsAttentionCount > 0
+                ? `${overviewMetrics.needsAttentionCount} rutin ker finom visszacsatlakozast.`
+                : 'Jelenleg nincs kifejezetten visszaeso rutin.'}
+            </div>
           </Card>
-        </motion.div>
-      ) : (
-        <>
-          {/* Aggregate Activity Chart */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-            <Card className="glass p-6">
-              <h2 className="text-lg font-heading font-semibold text-text-primary mb-4 flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-primary" />
-                Napi aktivitás
-              </h2>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={aggregateDaily} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                        <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.06)'} />
-                    <XAxis
-                      dataKey="label"
-                      tick={{ fill: 'hsl(var(--text-muted))', fontSize: 11 }}
-                      axisLine={false}
-                      tickLine={false}
-                      interval={timeRange <= 14 ? 0 : timeRange <= 30 ? 2 : 6}
-                    />
-                    <YAxis
-                      allowDecimals={false}
-                      tick={{ fill: 'hsl(var(--text-muted))', fontSize: 11 }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        background: 'hsl(var(--surface-1))',
-                        border: isLight ? '1px solid hsl(220 16% 85%)' : '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: 8,
-                        color: 'hsl(var(--text-primary))',
-                        fontSize: 13,
+        </div>
+
+        <div className="space-y-4">
+          {selectedHabit ? (
+            <HabitDetailPanel
+              habit={selectedHabit}
+              completions={safeCompletions}
+              signals={safeActivitySignals}
+              candidates={computedCandidates}
+              range={habitsTimeRangeFilter}
+              onToggleToday={() => toggleHabitCompletionForDate(selectedHabit.id, new Date().toISOString().slice(0, 10))}
+              onArchive={() => archiveHabit(selectedHabit.id, !selectedHabit.archived)}
+              onActivate={(active) => updateHabit(selectedHabit.id, { active })}
+            />
+          ) : (
+            <Card className="glass border-white/5 p-4 text-sm text-text-muted">
+              Valassz egy rutint a fenti insight listakbol a reszletes nezethez.
+            </Card>
+          )}
+
+          {promotable.length > 0 && (
+            <Card className="glass p-4 border-white/5">
+              <p className="text-xs text-text-muted uppercase tracking-wide mb-2">Javasolt uj rutinok</p>
+              <div className="space-y-2">
+                {promotable.slice(0, habitPreferenceProfile.habitTrackingPreference === 'manual-light' ? 1 : 2).map((candidate) => (
+                  <div key={candidate.id} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-surface-0/20 px-3 py-2">
+                    <div>
+                      <p className="text-sm text-text-primary">{candidate.titleHint || 'Uj minta'}</p>
+                      <p className="text-xs text-text-muted">Ez mostanaban rendszeresebben visszater.</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-white/15"
+                      onClick={async () => {
+                        await promoteHabitCandidate(candidate.id);
+                        toast.success('A minta felkerult a rutinok koze.');
                       }}
-                      labelFormatter={(l) => `${l}`}
-                      formatter={(v: number) => [`${v} teljesítés`, 'Aktivitás']}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="count"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={2}
-                      fill="url(#areaGrad)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+                    >
+                      Hozzaad
+                    </Button>
+                  </div>
+                ))}
               </div>
             </Card>
-          </motion.div>
+          )}
+        </div>
+      </div>
 
-          {/* Habit List + Detail */}
-          <div className="grid gap-6 lg:grid-cols-3">
-            {/* Habit List */}
-            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="lg:col-span-1">
-              <Card className="glass p-4 space-y-2 max-h-[520px] overflow-y-auto">
-                <h3 className="text-sm font-semibold text-text-muted uppercase tracking-wide px-2 mb-2">
-                  Szokásaid ({habits.length})
-                </h3>
-                {habits.map((habit) => {
-                  const sources = (Object.entries(habit.sourceBreakdown) as [HabitSource, number][])
-                    .filter(([, count]) => count > 0);
-                  return (
-                    <button
-                      key={habit.key}
-                      onClick={() => setSelectedHabit(habit.key)}
-                      className={cn(
-                        'w-full text-left p-3 rounded-lg transition-all',
-                        activeHabit?.key === habit.key
-                          ? 'bg-primary/20 border border-primary/30'
-                          : 'hover:bg-white/5 border border-transparent'
-                      )}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-text-primary truncate pr-2">
-                          {habit.displayName}
-                        </span>
-                        <Badge className="text-xs bg-primary/20 text-primary border-primary/30 flex-shrink-0">
-                          {habit.totalCount}×
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-text-muted flex-wrap">
-                        {habit.currentStreak > 0 && (
-                          <span className="flex items-center gap-1 text-orange-400">
-                            <Flame className="h-3 w-3" />
-                            {habit.currentStreak} nap
-                          </span>
-                        )}
-                        <span>{habit.weeklyAvg}/hét</span>
-                        <span className="flex items-center gap-1 ml-auto">
-                          {sources.map(([src]) => {
-                            const meta = SOURCE_META[src];
-                            const Icon = meta.icon;
-                            return <Icon key={src} className={cn('h-3 w-3', meta.color)} title={meta.label} />;
-                          })}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </Card>
-            </motion.div>
+      <HabitDialog open={dialogOpen} onOpenChange={setDialogOpen} editing={editingHabit} onSave={saveHabit} />
 
-            {/* Habit Detail */}
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.25 }} className="lg:col-span-2">
-              {activeHabit ? (
-                <HabitDetail habit={activeHabit} timeRange={timeRange} />
-              ) : (
-                <Card className="glass p-8 text-center">
-                  <p className="text-text-muted">Válassz egy szokást a részletekért</p>
-                </Card>
-              )}
-            </motion.div>
-          </div>
-        </>
+      {selectedHabit && (
+        <div className="flex justify-end">
+          <button type="button" className="text-xs text-text-muted underline" onClick={() => openEdit(selectedHabit)}>
+            Kivalasztott rutin szerkesztese
+          </button>
+        </div>
       )}
     </div>
   );
 }
 
-function HabitDetail({ habit, timeRange }: { habit: GroupedHabit; timeRange: TimeRange }) {
-  const { theme } = useThemeStore();
-  const isLight = theme === 'light';
-  const sources = (Object.entries(habit.sourceBreakdown) as [HabitSource, number][])
-    .filter(([, count]) => count > 0)
-    .sort((a, b) => b[1] - a[1]);
-
+function HabitEmptyState() {
   return (
-    <Card className="glass p-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-xl font-heading font-bold text-text-primary mb-1">
-          {habit.displayName}
-        </h2>
-        <div className="flex flex-wrap items-center gap-3 text-sm text-text-muted">
-          <span className="flex items-center gap-1">
-            <BarChart3 className="h-4 w-4" />
-            {habit.totalCount} teljesítés
-          </span>
-          <span className="flex items-center gap-1">
-            <TrendingUp className="h-4 w-4" />
-            {habit.weeklyAvg}/hét átlag
-          </span>
-          {habit.currentStreak > 0 && (
-            <span className="flex items-center gap-1 text-orange-400">
-              <Flame className="h-4 w-4" />
-              {habit.currentStreak} napos sorozat
-            </span>
-          )}
-          {habit.longestStreak > 0 && (
-            <span className="flex items-center gap-1 text-emerald-400">
-              <Flame className="h-4 w-4" />
-              {habit.longestStreak} nap rekord
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Source breakdown + categories */}
-      <div className="flex flex-wrap gap-2">
-        {sources.map(([src, count]) => {
-          const meta = SOURCE_META[src];
-          const Icon = meta.icon;
-          return (
-            <div key={src} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-2/50 text-xs font-medium">
-              <Icon className={cn('h-3.5 w-3.5', meta.color)} />
-              <span className="text-text-secondary">{meta.label}</span>
-              <span className="text-text-primary font-bold">{count}×</span>
-            </div>
-          );
-        })}
-        {habit.categories.map((cat) => (
-          <div key={cat} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 text-xs font-medium border border-amber-500/20">
-            <Tag className="h-3 w-3 text-amber-400" />
-            <span className="text-text-secondary">{cat}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Frequency Chart */}
-      <div>
-        <h3 className="text-sm font-semibold text-text-muted uppercase tracking-wide mb-3">
-          Gyakoriság ({TIME_LABELS[timeRange]})
-        </h3>
-        <div className="h-44">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={habit.dailyCounts} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.06)'} />
-              <XAxis
-                dataKey="date"
-                tickFormatter={(d) => formatDateShort(d)}
-                tick={{ fill: 'hsl(var(--text-muted))', fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                interval={timeRange <= 14 ? 0 : timeRange <= 30 ? 2 : 6}
-              />
-              <YAxis
-                allowDecimals={false}
-                tick={{ fill: 'hsl(var(--text-muted))', fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip
-                contentStyle={{
-                  background: 'hsl(var(--surface-1))',
-                  border: isLight ? '1px solid hsl(220 16% 85%)' : '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: 8,
-                  color: 'hsl(var(--text-primary))',
-                  fontSize: 13,
-                }}
-                labelFormatter={(l) => formatDateFull(l as string)}
-                formatter={(v: number) => [`${v}×`, 'Teljesítve']}
-              />
-              <Bar
-                dataKey="count"
-                fill="hsl(var(--primary))"
-                radius={[4, 4, 0, 0]}
-                maxBarSize={24}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Heatmap-style mini calendar (last 5 weeks) */}
-      <div>
-        <h3 className="text-sm font-semibold text-text-muted uppercase tracking-wide mb-3">
-          Aktivitás térkép
-        </h3>
-        <HeatmapGrid entries={habit.entries} />
-      </div>
+    <Card className="glass p-8 border-white/5">
+      <h3 className="text-lg font-heading font-semibold text-text-primary">Meg nincs eleg adat a rutinmintakhoz</h3>
+      <p className="text-sm text-text-muted mt-2 max-w-xl">
+        Ahogy rendszeresebben hasznalod az oldalt, itt fokozatosan kirajzolodnak a visszatero mintak. Nem minden egyszeri
+        aktivitas jelenik meg, csak az, ami valoban ismétlodik.
+      </p>
     </Card>
   );
 }
 
-function HeatmapGrid({ entries }: { entries: GroupedHabit['entries'] }) {
-  const dateCountMap = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const e of entries) {
-      map.set(e.completedAt, (map.get(e.completedAt) || 0) + 1);
-    }
-    return map;
-  }, [entries]);
-
-  // Build 5 weeks (35 days) grid ending today
-  const cells = useMemo(() => {
-    const today = new Date();
-    const dayOfWeek = today.getDay() || 7; // Monday = 1
-    const totalDays = 7 * 5 + dayOfWeek;
-    const result: { date: string; count: number }[] = [];
-    for (let i = totalDays - 1; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().slice(0, 10);
-      result.push({ date: dateStr, count: dateCountMap.get(dateStr) || 0 });
-    }
-    return result;
-  }, [dateCountMap]);
-
-  const maxCount = Math.max(1, ...cells.map((c) => c.count));
-
+function OverviewCard({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
-    <div className="flex gap-1 flex-wrap">
-      {cells.map((cell) => {
-        const intensity = cell.count / maxCount;
-        return (
-          <div
-            key={cell.date}
-            title={`${formatDateFull(cell.date)}: ${cell.count}×`}
-            className="w-4 h-4 rounded-sm transition-colors"
-            style={{
-              backgroundColor:
-                cell.count === 0
-                  ? 'hsl(var(--surface-2))'
-                  : `hsla(var(--primary) / ${0.25 + intensity * 0.75})`,
-            }}
-          />
-        );
-      })}
-    </div>
+    <Card className="glass p-4 border-white/5">
+      <p className={`text-2xl font-bold ${tone}`}>{value}</p>
+      <p className="text-xs text-text-muted">{label}</p>
+    </Card>
   );
 }
 
-function formatDateShort(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+function InsightSection({
+  title,
+  items,
+  onOpenHabit,
+  limit,
+  attention,
+}: {
+  title: string;
+  items: UserFacingHabit[];
+  onOpenHabit: (habitId: string | undefined) => void;
+  limit: number;
+  attention?: boolean;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <section className="space-y-2">
+      <p className="text-xs text-text-muted uppercase tracking-wide">{title}</p>
+      <div className="grid gap-3 md:grid-cols-2">
+        {items.slice(0, limit).map((group) => (
+          <GroupedHabitCard
+            key={`${group.groupKey}-${group.sourceHabitIds[0]}`}
+            group={group}
+            attention={attention}
+            onOpen={() => onOpenHabit(group.sourceHabitIds[0])}
+          />
+        ))}
+      </div>
+    </section>
+  );
 }
 
-function formatDateFull(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('hu-HU', { year: 'numeric', month: 'long', day: 'numeric' });
+function GroupedHabitCard({ group, onOpen, attention }: { group: UserFacingHabit; onOpen: () => void; attention?: boolean }) {
+  const badgeLabel =
+    group.insightStatus === 'stable'
+      ? 'Stabil'
+      : group.insightStatus === 'strengthening'
+        ? 'Erosodik'
+        : group.insightStatus === 'emerging'
+          ? 'Kialakulo'
+          : 'Figyelmet ker';
+
+  return (
+    <Card className={`glass border-white/5 p-4 ${attention ? 'border-amber-500/30' : ''}`}>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h3 className="font-heading font-semibold text-text-primary">{group.title}</h3>
+          <p className="text-sm text-text-secondary mt-1">{group.description}</p>
+        </div>
+        <Badge variant="outline" className="border-white/15 text-xs">{badgeLabel}</Badge>
+      </div>
+      <p className="mt-2 text-xs text-text-muted">
+        Heti ritmus: {group.weeklyRate}% · Sorozat: {group.streak} nap
+        {group.lastActivityDateKey ? ` · Utolso aktivitas: ${group.lastActivityDateKey}` : ''}
+      </p>
+      <p className="mt-2 text-sm text-text-secondary">{group.insight}</p>
+      <div className="mt-3 flex justify-end">
+        <Button size="sm" variant="outline" className="border-white/15" onClick={onOpen}>
+          Reszletek
+        </Button>
+      </div>
+    </Card>
+  );
 }

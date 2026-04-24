@@ -11,14 +11,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { personas, usePersonaStore, type Persona } from '@/stores/usePersonaStore';
 import { useAppStore } from '@/stores/useAppStore';
-import { useThemeStore } from '@/stores/useThemeStore';
 import ConfirmDialog from '@/components/dialogs/ConfirmDialog';
 import { cn } from '@/lib/utils';
 
 export default function PersonaSwitcher() {
   const { currentPersona, setPersona } = usePersonaStore();
   const triggerQuestGeneration = useAppStore((s) => s.triggerQuestGeneration);
-  const isLight = useThemeStore((s) => s.theme) === 'light';
   const [isOpen, setIsOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingPersona, setPendingPersona] = useState<Persona | null>(null);
@@ -59,12 +57,8 @@ export default function PersonaSwitcher() {
           >
             <div 
               className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ 
-                background: `linear-gradient(135deg, ${currentPersona.color}, ${isLight ? currentPersona.color : currentPersona.color + '88'})`,
-                boxShadow: isLight ? `0 2px 8px ${currentPersona.color}50, 0 0 0 1px ${currentPersona.color}30` : `0 0 20px ${currentPersona.color}40`
-              }}
             >
-              <IconComponent className="h-4 w-4 text-white" />
+              <IconComponent className="h-4 w-4" style={{ color: currentPersona.iconColor }} />
             </div>
             
             <span className="text-xs font-medium text-text-primary sm:hidden">
@@ -113,14 +107,8 @@ export default function PersonaSwitcher() {
                   >
                     <div 
                       className="w-10 h-10 rounded-lg flex items-center justify-center"
-                      style={{ 
-                        background: `linear-gradient(135deg, ${persona.color}, ${isLight ? persona.color : persona.color + '88'})`,
-                        boxShadow: isSelected
-                          ? (isLight ? `0 2px 12px ${persona.color}50, 0 0 0 1px ${persona.color}30` : `0 0 20px ${persona.color}60`)
-                          : (isLight ? `0 1px 4px ${persona.color}30` : 'none')
-                      }}
                     >
-                      <PersonaIcon className="h-5 w-5 text-white" />
+                      <PersonaIcon className="h-5 w-5" style={{ color: persona.iconColor }} />
                     </div>
                     
                     <div className="flex flex-col flex-1">

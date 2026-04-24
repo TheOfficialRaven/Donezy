@@ -1,227 +1,300 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Plus, Search, FolderPlus, Lock, MoreHorizontal, Edit3, Trash2, Folder, Unlock } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { FileText, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { useAppStore } from '@/stores/useAppStore';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { useAppStore, type Note } from '@/stores/useAppStore';
-import { cn } from '@/lib/utils';
-import NoteDialog from '@/components/dialogs/NoteDialog';
+  filterNotesForMainView,
+  getNoteFolderLabel,
+  getNoteFolderSidebarEntries,
+  getNoteProductivityMetrics,
+} from '@/lib/notes/selectors';
+import { DEFAULT_NOTE_FOLDER_COLOR, DEFAULT_NOTE_FOLDER_ICON } from '@/lib/notes/constants';
+import type { Note, NoteType } from '@/lib/notes/types';
+import NotesToolbar from '@/components/notes/NotesToolbar';
+import NoteCard from '@/components/notes/NoteCard';
+import NotesEmptyState from '@/components/notes/NotesEmptyState';
+import type { NotesEmptyKind } from '@/components/notes/NotesEmptyState';
+import NoteEditorDialog from '@/components/notes/NoteEditorDialog';
+import NoteDetailPanel from '@/components/notes/NoteDetailPanel';
+import FolderSidebar from '@/components/notes/FolderSidebar';
+import NotesSummaryPanel from '@/components/notes/NotesSummaryPanel';
+import QuickCaptureBar from '@/components/notes/QuickCaptureBar';
 import ConfirmDialog from '@/components/dialogs/ConfirmDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 
 export default function Notes() {
-  const { notes, updateNote, deleteNote } = useAppStore();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFolder, setSelectedFolder] = useState('all');
-  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const {
+    notes,
+    noteFolders,
+    notesViewFilter,
+    notesSearchQuery,
+    notesTypeFilter,
+    notesFolderFilter,
+    notesArchivedFilter,
+    selectedNoteId,
+    notesLayoutMode,
+    setNotesViewFilter,
+    setNotesSearchQuery,
+    setNotesTypeFilter,
+    setNotesFolderFilter,
+    setNotesArchivedFilter,
+    setSelectedNoteId,
+    setNotesLayoutMode,
+    addNote,
+    updateNote,
+    deleteNote,
+    archiveNote,
+    pinNote,
+    addFolder,
+    touchNoteOpened,
+  } = useAppStore();
+
+  const [editorOpen, setEditorOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
-  const [newFolderMode, setNewFolderMode] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [folderDialogOpen, setFolderDialogOpen] = useState(false);
+  const [newFolderTitle, setNewFolderTitle] = useState('');
 
-  const folders = Array.from(new Set(notes.map(note => note.folder)));
+  const safeNotes = notes || [];
+  const safeFolders = noteFolders || [];
 
-  const filteredNotes = notes.filter(note => {
-    const matchesSearch = note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         note.content.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFolder = selectedFolder === 'all' || note.folder === selectedFolder;
-    return matchesSearch && matchesFolder;
-  });
+  const filtered = useMemo(
+    () =>
+      filterNotesForMainView(safeNotes, {
+        view: notesViewFilter,
+        searchQuery: notesSearchQuery,
+        typeFilter: notesTypeFilter,
+        folderFilter: notesFolderFilter,
+        archivedFilter: notesArchivedFilter,
+      }),
+    [safeNotes, notesViewFilter, notesSearchQuery, notesTypeFilter, notesFolderFilter, notesArchivedFilter]
+  );
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('hu-HU', {
-      year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-    });
+  const metrics = useMemo(() => getNoteProductivityMetrics(safeNotes, safeFolders), [safeNotes, safeFolders]);
+
+  const folderSidebarEntries = useMemo(() => getNoteFolderSidebarEntries(safeNotes, safeFolders), [safeNotes, safeFolders]);
+
+  const selectedNote = useMemo(
+    () => (selectedNoteId ? safeNotes.find((n) => n.id === selectedNoteId) || null : null),
+    [safeNotes, selectedNoteId]
+  );
+
+  const selectNote = (id: string) => {
+    setSelectedNoteId(id);
+    void touchNoteOpened(id);
   };
 
-  const truncateContent = (content: string, maxLength: number = 150) => {
-    if (content.length <= maxLength) return content;
-    return content.substring(0, maxLength) + '...';
-  };
+  const emptyKind: NotesEmptyKind | null = useMemo(() => {
+    if (safeNotes.length === 0) return 'no-notes';
+    if (filtered.length > 0) return null;
+    if (notesSearchQuery.trim()) return 'no-search';
+    if (notesViewFilter === 'archived') return 'no-archived';
+    if (notesViewFilter === 'pinned') return 'no-pinned';
+    if (notesTypeFilter !== 'all') return 'no-type-match';
+    if (notesFolderFilter !== 'all') return 'no-folder-notes';
+    return 'no-search';
+  }, [safeNotes.length, filtered.length, notesSearchQuery, notesViewFilter, notesTypeFilter, notesFolderFilter]);
 
-  const handleEditNote = (note: Note) => {
-    setEditingNote(note);
-    setNoteDialogOpen(true);
-  };
-
-  const handleNewNote = () => {
+  const openCreate = () => {
     setEditingNote(null);
-    setNoteDialogOpen(true);
+    setEditorOpen(true);
   };
 
-  const handleToggleLock = async (note: Note) => {
-    await updateNote(note.id, { isLocked: !note.isLocked });
-    toast.success(note.isLocked ? 'Jegyzet feloldva!' : 'Jegyzet zárolva!');
+  const openEdit = (n: Note) => {
+    setEditingNote(n);
+    setEditorOpen(true);
   };
 
-  const handleDeleteNote = async () => {
-    if (noteToDelete) {
-      await deleteNote(noteToDelete);
-      toast.success('Jegyzet törölve.');
-      setDeleteConfirmOpen(false);
-      setNoteToDelete(null);
+  const handleEditorSave = async (payload: Partial<Note> & { title?: string; content?: string }) => {
+    try {
+      if (editingNote) {
+        await updateNote(editingNote.id, payload);
+        toast.success('Jegyzet mentve.');
+      } else {
+        await addNote({
+          title: payload.title,
+          content: payload.content,
+          type: payload.type,
+          folderId: payload.folderId,
+          legacyFolder: payload.legacyFolder,
+          tags: payload.tags,
+          pinned: payload.pinned,
+          archived: payload.archived,
+          locked: payload.locked,
+        });
+        toast.success('Elmentve.');
+      }
+    } catch {
+      toast.error('Mentési hiba.');
     }
   };
 
-  const handleNewFolder = () => {
-    if (newFolderName.trim()) {
-      setSelectedFolder(newFolderName.trim());
-      setNewFolderMode(false);
-      setNewFolderName('');
-      // The folder will appear once a note is created in it
-      toast.success(`"${newFolderName.trim()}" mappa kiválasztva. Hozz létre benne egy jegyzetet!`);
-    }
+  const handleQuickSave = async ({ content, type }: { content: string; type: NoteType }) => {
+    await addNote({ content, type });
+    toast.success('Gyors rögzítés elmentve.');
+  };
+
+  const handleCreateFolder = async () => {
+    const t = newFolderTitle.trim();
+    if (!t) return;
+    await addFolder({
+      title: t,
+      color: DEFAULT_NOTE_FOLDER_COLOR,
+      icon: DEFAULT_NOTE_FOLDER_ICON,
+    });
+    toast.success('Mappa létrehozva.');
+    setNewFolderTitle('');
+    setFolderDialogOpen(false);
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-heading font-bold text-text-primary">Jegyzetek</h1>
-          <p className="text-text-secondary">Rögzítsd gondolataidat és ötleteidet</p>
+          <h1 className="text-3xl font-heading font-bold text-text-primary flex items-center gap-3">
+            <FileText className="h-8 w-8 text-primary" />
+            Jegyzetek
+          </h1>
+          <p className="text-text-secondary mt-1 max-w-2xl text-sm">
+            Gyors mentális inbox: írd ki, ami a fejedben van, majd rendezd mappa és típus szerint — anélkül, hogy
+            dokumentumrendszer érzése lenne.
+          </p>
         </div>
-        <div className="flex gap-2">
-          {newFolderMode ? (
-            <div className="flex gap-2">
-              <Input
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleNewFolder(); if (e.key === 'Escape') setNewFolderMode(false); }}
-                placeholder="Mappa neve..."
-                className="w-40 bg-surface-1/50 border-white/10"
-                autoFocus
-              />
-              <Button size="sm" onClick={handleNewFolder} className="bg-primary text-surface-0">OK</Button>
-              <Button size="sm" variant="ghost" onClick={() => setNewFolderMode(false)}>Mégse</Button>
-            </div>
+        <Button className="bg-primary text-surface-0 shrink-0" onClick={openCreate}>
+          <Plus className="h-4 w-4 mr-2" />
+          Új jegyzet
+        </Button>
+      </div>
+
+      <NotesSummaryPanel metrics={metrics} />
+
+      <QuickCaptureBar onSave={handleQuickSave} />
+
+      <NotesToolbar
+        view={notesViewFilter}
+        onView={setNotesViewFilter}
+        query={notesSearchQuery}
+        onQuery={setNotesSearchQuery}
+        typeFilter={notesTypeFilter}
+        onTypeFilter={setNotesTypeFilter}
+        archivedFilter={notesArchivedFilter}
+        onArchivedFilter={setNotesArchivedFilter}
+        layoutMode={notesLayoutMode}
+        onLayoutMode={setNotesLayoutMode}
+      />
+
+      <div className="grid gap-6 xl:grid-cols-[220px_minmax(0,1fr)_minmax(280px,340px)]">
+        <FolderSidebar
+          entries={folderSidebarEntries}
+          selected={notesFolderFilter}
+          onSelect={setNotesFolderFilter}
+          onCreateFolder={() => setFolderDialogOpen(true)}
+        />
+
+        <div className="space-y-4 min-w-0">
+          {emptyKind ? (
+            <NotesEmptyState kind={emptyKind} onCreate={openCreate} />
           ) : (
-            <Button variant="outline" className="border-white/20" onClick={() => setNewFolderMode(true)}>
-              <FolderPlus className="h-4 w-4 mr-2" />Új mappa
-            </Button>
+            <div
+              className={
+                notesLayoutMode === 'compact' ? 'grid gap-3 sm:grid-cols-2 lg:grid-cols-3' : 'grid gap-4 sm:grid-cols-2'
+              }
+            >
+              {filtered.map((note) => (
+                <NoteCard
+                  key={note.id}
+                  note={note}
+                  folderLabel={getNoteFolderLabel(note, safeFolders)}
+                  selected={selectedNoteId === note.id}
+                  compact={notesLayoutMode === 'compact'}
+                  onOpen={() => selectNote(note.id)}
+                />
+              ))}
+            </div>
           )}
-          <Button className="bg-primary hover:bg-primary/90 text-surface-0" onClick={handleNewNote}>
-            <Plus className="h-4 w-4 mr-2" />Új jegyzet
-          </Button>
+        </div>
+
+        <div className="min-w-0 space-y-4">
+          {selectedNote ? (
+            <NoteDetailPanel
+              note={selectedNote}
+              folders={safeFolders}
+              onArchive={() => void archiveNote(selectedNote.id, !selectedNote.archived)}
+              onPin={() => void pinNote(selectedNote.id, !selectedNote.pinned)}
+              onDelete={() => setDeleteId(selectedNote.id)}
+              onEdit={() => openEdit(selectedNote)}
+              onToggleLock={() => void updateNote(selectedNote.id, { locked: !selectedNote.locked })}
+            />
+          ) : (
+            <div className="glass border border-white/5 rounded-xl p-6 text-sm text-text-muted">
+              Válassz jegyzetet a részletekhez, vagy hozz létre újat.
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Search and Filters */}
-      <Card className="glass p-4">
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
-            <Input placeholder="Jegyzetek keresése..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 bg-surface-1/50 border-white/10" />
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            <Button variant={selectedFolder === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setSelectedFolder('all')}
-              className={cn(selectedFolder === 'all' ? 'bg-primary text-surface-0' : 'border-white/20')}>
-              Összes ({notes.length})
-            </Button>
-            {folders.map(folder => (
-              <Button key={folder} variant={selectedFolder === folder ? 'default' : 'outline'} size="sm" onClick={() => setSelectedFolder(folder)}
-                className={cn(selectedFolder === folder ? 'bg-primary text-surface-0' : 'border-white/20')}>
-                <Folder className="h-3 w-3 mr-1" />{folder} ({notes.filter(n => n.folder === folder).length})
-              </Button>
-            ))}
-          </div>
-        </div>
-      </Card>
-
-      {/* Notes Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredNotes.map((note, index) => (
-          <motion.div key={note.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
-            <Card className="glass p-6 hover-lift cursor-pointer group h-fit" onClick={() => handleEditNote(note)}>
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  {note.isLocked && <Lock className="h-4 w-4 text-warning flex-shrink-0" />}
-                  <h3 className="font-heading font-semibold text-text-primary truncate">{note.title}</h3>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-surface-1 border border-white/10">
-                    <DropdownMenuItem className="text-text-primary hover:bg-white/5" onClick={(e) => { e.stopPropagation(); handleEditNote(note); }}>
-                      <Edit3 className="h-4 w-4 mr-2" />Szerkesztés
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-text-primary hover:bg-white/5" onClick={(e) => { e.stopPropagation(); handleToggleLock(note); }}>
-                      {note.isLocked ? <Unlock className="h-4 w-4 mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
-                      {note.isLocked ? 'Feloldás' : 'Zárolás'}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-danger hover:bg-danger/10" onClick={(e) => { e.stopPropagation(); setNoteToDelete(note.id); setDeleteConfirmOpen(true); }}>
-                      <Trash2 className="h-4 w-4 mr-2" />Törlés
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              <div className="mb-4">
-                <p className="text-text-secondary text-sm leading-relaxed">
-                  {note.isLocked ? <span className="italic text-text-muted">Ez a jegyzet zárolva van</span> : truncateContent(note.content)}
-                </p>
-              </div>
-              <div className="space-y-3">
-                {note.tags?.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {note.tags.map(tag => (
-                      <Badge key={tag} variant="outline" className="text-xs border-white/20 text-text-muted">#{tag}</Badge>
-                    ))}
-                  </div>
-                )}
-                <div className="flex items-center justify-between text-xs text-text-muted">
-                  <div className="flex items-center gap-2"><Folder className="h-3 w-3" /><span>{note.folder}</span></div>
-                  <div className="text-right"><div>Módosítva:</div><div>{formatDate(note.updatedAt)}</div></div>
-                </div>
-              </div>
-            </Card>
-          </motion.div>
-        ))}
-
-        {filteredNotes.length === 0 && searchQuery && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="col-span-full">
-            <Card className="glass p-12 text-center">
-              <Search className="h-16 w-16 text-text-disabled mx-auto mb-4" />
-              <h3 className="text-lg font-heading font-semibold text-text-primary mb-2">Nincs találat</h3>
-              <p className="text-text-muted">Próbálj másik keresési kifejezést</p>
-            </Card>
-          </motion.div>
-        )}
-
-        {notes.length === 0 && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="col-span-full">
-            <Card className="glass p-12 text-center">
-              <Plus className="h-16 w-16 text-text-disabled mx-auto mb-4" />
-              <h3 className="text-lg font-heading font-semibold text-text-primary mb-2">Még nincsenek jegyzeteid</h3>
-              <p className="text-text-muted mb-6">Hozd létre az első jegyzetedet ötletek és gondolatok rögzítéséhez</p>
-              <Button className="bg-primary hover:bg-primary/90 text-surface-0" onClick={handleNewNote}>
-                <Plus className="h-4 w-4 mr-2" />Első jegyzet létrehozása
-              </Button>
-            </Card>
-          </motion.div>
-        )}
-      </div>
-
-      {/* FAB for Mobile */}
-      <div className="fixed bottom-20 right-4 md:hidden">
-        <Button size="lg" className="w-14 h-14 rounded-full bg-primary hover:bg-primary/90 text-surface-0 shadow-lg glow-primary" onClick={handleNewNote}>
+      <div className="fixed bottom-20 right-4 md:hidden z-40">
+        <Button
+          size="lg"
+          className="w-14 h-14 rounded-full bg-primary text-surface-0 shadow-lg"
+          onClick={openCreate}
+          aria-label="Új jegyzet"
+        >
           <Plus className="h-6 w-6" />
         </Button>
       </div>
 
-      <NoteDialog open={noteDialogOpen} onOpenChange={setNoteDialogOpen} note={editingNote} />
-      <ConfirmDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen} title="Jegyzet törlése" description="Biztosan törölni szeretnéd ezt a jegyzetet?" confirmLabel="Törlés" onConfirm={handleDeleteNote} destructive />
+      <NoteEditorDialog
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        note={editingNote}
+        folders={safeFolders}
+        onSave={handleEditorSave}
+      />
+
+      <Dialog open={folderDialogOpen} onOpenChange={setFolderDialogOpen}>
+        <DialogContent className="bg-surface-1 border border-white/10">
+          <DialogHeader>
+            <DialogTitle>Új mappa</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={newFolderTitle}
+            onChange={(e) => setNewFolderTitle(e.target.value)}
+            placeholder="Mappa neve"
+            className="bg-surface-0/50 border-white/10"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void handleCreateFolder();
+            }}
+          />
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={() => setFolderDialogOpen(false)}>
+              Mégse
+            </Button>
+            <Button className="bg-primary text-surface-0" onClick={() => void handleCreateFolder()}>
+              Létrehozás
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(deleteId)}
+        onOpenChange={(o) => !o && setDeleteId(null)}
+        title="Jegyzet törlése"
+        description="Véglegesen törlöd? Ez nem archiválás."
+        confirmLabel="Törlés"
+        destructive
+        onConfirm={async () => {
+          if (deleteId) {
+            await deleteNote(deleteId);
+            setSelectedNoteId(undefined);
+            setDeleteId(null);
+            toast.success('Törölve.');
+          }
+        }}
+      />
     </div>
   );
 }

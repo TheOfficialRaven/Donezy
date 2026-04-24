@@ -1,10 +1,53 @@
 import { ref, set, get, push, remove, update, onValue, type Unsubscribe } from 'firebase/database';
 import { db } from '@/lib/firebase';
-import type { Quest, Note, CalendarEvent, Achievement, UserStats, TodoList } from '@/stores/useAppStore';
+import type { Quest, CalendarEvent, Achievement, UserStats, TodoList } from '@/stores/useAppStore';
+import { normalizeNote, normalizeNoteFolder } from '@/lib/notes/normalize';
+import type { Note, NoteFolder } from '@/lib/notes/types';
+import { toLocalDateKey } from '@/lib/calendar/dateKey';
+import { normalizeGoal } from '@/lib/goals/normalize';
+import type { Goal, GoalRaw, Milestone } from '@/lib/goals/types';
+import {
+  normalizeHabit,
+  normalizeHabitActivitySignal,
+  normalizeHabitCandidate,
+  normalizeHabitCompletion,
+} from '@/lib/habits/normalize';
+import { normalizeReflectionEntry } from '@/lib/reflection/normalize';
+import { normalizeBook, normalizeReadingEntry } from '@/lib/reading/normalize';
+import type {
+  Habit,
+  HabitActivitySignal,
+  HabitActivitySignalRaw,
+  HabitCandidate,
+  HabitCandidateRaw,
+  HabitCompletion,
+  HabitCompletionRaw,
+  HabitRaw,
+} from '@/lib/habits/types';
+import type { ReflectionEntryRaw } from '@/lib/reflection/types';
+import type { BookRaw, ReadingEntryRaw } from '@/lib/reading/types';
+import { normalizeQuickCaptureItem } from '@/lib/capture/normalize';
+import type { QuickCaptureItem, QuickCaptureItemRaw } from '@/lib/capture/types';
+import type { UserProfilePreferencesRaw } from '@/lib/preferences/types';
 
 // Helper to get user-specific path
 function userPath(uid: string, path: string) {
   return `users/${uid}/${path}`;
+}
+
+function cleanUndefinedDeep<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => cleanUndefinedDeep(item)) as T;
+  }
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+      if (nested === undefined) continue;
+      out[key] = cleanUndefinedDeep(nested);
+    }
+    return out as T;
+  }
+  return value;
 }
 
 // ============ USER STATS ============
@@ -74,7 +117,16 @@ export function subscribeToLists(uid: string, callback: (lists: TodoList[]) => v
             id: taskId,
           }))
         : [];
-      return { ...listData, id, tasks };
+      return {
+        ...listData,
+        id,
+        title: listData.title || listData.name,
+        name: listData.name || listData.title,
+        schemaVersion: listData.schemaVersion || 1,
+        archived: Boolean(listData.archived),
+        pinned: Boolean(listData.pinned),
+        tasks,
+      };
     });
     callback(lists);
   });
@@ -83,7 +135,23 @@ export function subscribeToLists(uid: string, callback: (lists: TodoList[]) => v
 export async function addList(uid: string, list: Omit<TodoList, 'id' | 'tasks'>) {
   const listsRef = ref(db, userPath(uid, 'lists'));
   const newRef = push(listsRef);
-  await set(newRef, { ...list, tasks: {} });
+  const now = new Date().toISOString();
+  await set(newRef, {
+    ...list,
+    title: (list.title || list.name || '').trim(),
+    name: (list.name || list.title || '').trim(),
+    description: list.description || '',
+    icon: list.icon || 'list',
+    archived: Boolean(list.archived),
+    pinned: Boolean(list.pinned),
+    sortOrder: Number.isFinite(list.sortOrder) ? list.sortOrder : Date.now(),
+    schemaVersion: list.schemaVersion || 2,
+    targetGroupVisibility: list.targetGroupVisibility || ['all'],
+    tags: list.tags || [],
+    createdAt: list.createdAt || now,
+    updatedAt: list.updatedAt || now,
+    tasks: {},
+  });
   return newRef.key!;
 }
 
@@ -100,7 +168,7 @@ export async function deleteList(uid: string, listId: string) {
 export async function addTask(uid: string, listId: string, task: Omit<import('@/stores/useAppStore').Task, 'id'>) {
   const tasksRef = ref(db, userPath(uid, `lists/${listId}/tasks`));
   const newRef = push(tasksRef);
-  await set(newRef, task);
+  await set(newRef, cleanUndefinedDeep(task));
   return newRef.key!;
 }
 
@@ -118,6 +186,22 @@ export async function deleteTask(uid: string, listId: string, taskId: string) {
   await remove(taskRef);
 }
 
+export async function setListArchived(uid: string, listId: string, archived: boolean) {
+  await updateList(uid, listId, { archived, updatedAt: new Date().toISOString() } as Partial<TodoList>);
+}
+
+export async function setListPinned(uid: string, listId: string, pinned: boolean) {
+  await updateList(uid, listId, { pinned, updatedAt: new Date().toISOString() } as Partial<TodoList>);
+}
+
+export async function updateListSortOrder(uid: string, listId: string, sortOrder: number) {
+  await updateList(uid, listId, { sortOrder, updatedAt: new Date().toISOString() } as Partial<TodoList>);
+}
+
+export async function updateTaskSortOrder(uid: string, listId: string, taskId: string, sortOrder: number) {
+  await updateTask(uid, listId, taskId, { sortOrder, updatedAt: new Date().toISOString() } as any);
+}
+
 // ============ NOTES ============
 
 export function subscribeToNotes(uid: string, callback: (notes: Note[]) => void): Unsubscribe {
@@ -128,11 +212,25 @@ export function subscribeToNotes(uid: string, callback: (notes: Note[]) => void)
       callback([]);
       return;
     }
-    const notes = Object.entries(data).map(([id, note]) => ({
-      ...(note as Note),
-      id,
-    }));
+    const notes = Object.entries(data).map(([id, note]) =>
+      normalizeNote({ ...(note as Record<string, unknown>), id } as import('@/lib/notes/types').NoteRaw, uid)
+    );
     callback(notes);
+  });
+}
+
+export function subscribeToNoteFolders(uid: string, callback: (folders: NoteFolder[]) => void): Unsubscribe {
+  const refPath = ref(db, userPath(uid, 'noteFolders'));
+  return onValue(refPath, (snapshot) => {
+    const data = snapshot.val();
+    if (!data) {
+      callback([]);
+      return;
+    }
+    const folders = Object.entries(data).map(([id, row]) =>
+      normalizeNoteFolder({ ...(row as Record<string, unknown>), id } as import('@/lib/notes/types').NoteFolderRaw, uid)
+    );
+    callback(folders);
   });
 }
 
@@ -140,18 +238,38 @@ export async function addNote(uid: string, note: Omit<Note, 'id' | 'createdAt' |
   const notesRef = ref(db, userPath(uid, 'notes'));
   const newRef = push(notesRef);
   const now = new Date().toISOString();
-  await set(newRef, { ...note, createdAt: now, updatedAt: now });
+  const payload = cleanUndefinedDeep({ ...note, createdAt: now, updatedAt: now });
+  await set(newRef, payload);
   return newRef.key!;
 }
 
 export async function updateNote(uid: string, noteId: string, updates: Partial<Note>) {
   const noteRef = ref(db, userPath(uid, `notes/${noteId}`));
-  await update(noteRef, { ...updates, updatedAt: new Date().toISOString() });
+  const payload = cleanUndefinedDeep({ ...updates, updatedAt: new Date().toISOString() });
+  await update(noteRef, payload);
 }
 
 export async function deleteNote(uid: string, noteId: string) {
   const noteRef = ref(db, userPath(uid, `notes/${noteId}`));
   await remove(noteRef);
+}
+
+export async function addNoteFolder(uid: string, folder: Omit<NoteFolder, 'id' | 'createdAt' | 'updatedAt'>) {
+  const foldersRef = ref(db, userPath(uid, 'noteFolders'));
+  const newRef = push(foldersRef);
+  const now = new Date().toISOString();
+  await set(newRef, cleanUndefinedDeep({ ...folder, createdAt: now, updatedAt: now }));
+  return newRef.key!;
+}
+
+export async function updateNoteFolder(uid: string, folderId: string, updates: Partial<NoteFolder>) {
+  const folderRef = ref(db, userPath(uid, `noteFolders/${folderId}`));
+  await update(folderRef, cleanUndefinedDeep({ ...updates, updatedAt: new Date().toISOString() }));
+}
+
+export async function deleteNoteFolder(uid: string, folderId: string) {
+  const folderRef = ref(db, userPath(uid, `noteFolders/${folderId}`));
+  await remove(folderRef);
 }
 
 // ============ EVENTS ============
@@ -164,10 +282,30 @@ export function subscribeToEvents(uid: string, callback: (events: CalendarEvent[
       callback([]);
       return;
     }
-    const events = Object.entries(data).map(([id, event]) => ({
-      ...(event as CalendarEvent),
-      id,
-    }));
+    const events = Object.entries(data).map(([id, event]) => {
+      const e = event as CalendarEvent;
+      const start = e.startTime || new Date().toISOString();
+      const end = e.endTime || new Date(new Date(start).getTime() + 60 * 60 * 1000).toISOString();
+      return {
+        ...e,
+        id,
+        date: e.date || toLocalDateKey(new Date(start)),
+        allDay: Boolean(e.allDay),
+        type: e.type || 'event',
+        priority: e.priority || 'medium',
+        status: e.status || 'scheduled',
+        reminderSettings:
+          e.reminderSettings || {
+            enabled: e.reminder !== 0,
+            minutesBefore: e.reminder ?? 15,
+          },
+        sourceType: e.sourceType || 'manual',
+        futureLinkTargets: e.futureLinkTargets || {},
+        schemaVersion: e.schemaVersion || 2,
+        startTime: start,
+        endTime: end,
+      } as CalendarEvent;
+    });
     callback(events);
   });
 }
@@ -175,18 +313,73 @@ export function subscribeToEvents(uid: string, callback: (events: CalendarEvent[
 export async function addEvent(uid: string, event: Omit<CalendarEvent, 'id'>) {
   const eventsRef = ref(db, userPath(uid, 'events'));
   const newRef = push(eventsRef);
-  await set(newRef, event);
+  const now = new Date().toISOString();
+  await set(newRef, cleanUndefinedDeep({
+    ...event,
+    date: event.date || toLocalDateKey(new Date(event.startTime)),
+    type: event.type || 'event',
+    priority: event.priority || 'medium',
+    status: event.status || 'scheduled',
+    allDay: Boolean(event.allDay),
+    reminderSettings:
+      event.reminderSettings || {
+        enabled: event.reminder !== 0,
+        minutesBefore: event.reminder ?? 15,
+      },
+    sourceType: event.sourceType || 'manual',
+    futureLinkTargets: event.futureLinkTargets || {},
+    schemaVersion: event.schemaVersion || 2,
+    createdAt: event.createdAt || now,
+    updatedAt: now,
+  }));
   return newRef.key!;
 }
 
 export async function updateEvent(uid: string, eventId: string, updates: Partial<CalendarEvent>) {
   const eventRef = ref(db, userPath(uid, `events/${eventId}`));
-  await update(eventRef, updates);
+  const clean = cleanUndefinedDeep({ ...updates, updatedAt: new Date().toISOString() });
+  await update(eventRef, clean as Record<string, unknown>);
 }
 
 export async function deleteEvent(uid: string, eventId: string) {
   const eventRef = ref(db, userPath(uid, `events/${eventId}`));
   await remove(eventRef);
+}
+
+// ============ QUICK CAPTURE ============
+
+export interface QuickCaptureData extends Omit<QuickCaptureItemRaw, 'id'> {}
+
+export function subscribeToQuickCaptureItems(uid: string, callback: (items: QuickCaptureItem[]) => void): Unsubscribe {
+  const captureRef = ref(db, userPath(uid, 'quickCaptureItems'));
+  return onValue(captureRef, (snapshot) => {
+    const data = snapshot.val();
+    if (!data) {
+      callback([]);
+      return;
+    }
+    const items = Object.entries(data).map(([id, row]) =>
+      normalizeQuickCaptureItem({ ...(row as QuickCaptureItemRaw), id }, uid)
+    );
+    callback(items);
+  });
+}
+
+export async function addQuickCaptureItem(uid: string, item: QuickCaptureData) {
+  const captureRef = ref(db, userPath(uid, 'quickCaptureItems'));
+  const newRef = push(captureRef);
+  await set(newRef, cleanUndefinedDeep(item));
+  return newRef.key!;
+}
+
+export async function updateQuickCaptureItem(uid: string, captureId: string, updates: Partial<QuickCaptureData>) {
+  const captureItemRef = ref(db, userPath(uid, `quickCaptureItems/${captureId}`));
+  await update(captureItemRef, cleanUndefinedDeep({ ...updates, updatedAt: new Date().toISOString() }));
+}
+
+export async function deleteQuickCaptureItem(uid: string, captureId: string) {
+  const captureItemRef = ref(db, userPath(uid, `quickCaptureItems/${captureId}`));
+  await remove(captureItemRef);
 }
 
 // ============ ACHIEVEMENTS ============
@@ -242,16 +435,22 @@ export async function seedAchievements(uid: string, definitions: Array<{
 
 // ============ USER PREFERENCES ============
 
-export function subscribeToPreferences(uid: string, callback: (prefs: Record<string, any> | null) => void): Unsubscribe {
+export function subscribeToPreferences(uid: string, callback: (prefs: UserProfilePreferencesRaw | null) => void): Unsubscribe {
   const prefsRef = ref(db, userPath(uid, 'preferences'));
   return onValue(prefsRef, (snapshot) => {
     callback(snapshot.val());
   });
 }
 
-export async function updatePreferences(uid: string, prefs: Record<string, any>) {
+export async function getPreferences(uid: string): Promise<UserProfilePreferencesRaw | null> {
   const prefsRef = ref(db, userPath(uid, 'preferences'));
-  await update(prefsRef, prefs);
+  const snap = await get(prefsRef);
+  return (snap.val() as UserProfilePreferencesRaw | null) || null;
+}
+
+export async function updatePreferences(uid: string, prefs: Partial<UserProfilePreferencesRaw>) {
+  const prefsRef = ref(db, userPath(uid, 'preferences'));
+  await update(prefsRef, cleanUndefinedDeep(prefs));
 }
 
 // ============ PERSONA ============
@@ -274,45 +473,102 @@ export async function getPersona(uid: string): Promise<string | null> {
 // ============ BOOKS (Reading Journal) ============
 
 export interface BookData {
+  userId?: string;
   title: string;
   author: string;
+  cover?: string;
   totalPages: number;
   currentPage: number;
-  status: 'reading' | 'completed' | 'want-to-read';
-  coverColor: string;
-  genre: string;
+  status: 'wishlist' | 'reading' | 'finished' | 'paused' | 'completed' | 'want-to-read';
+  category?: string;
+  tags?: string[];
+  coverColor?: string;
+  genre?: string;
   startedAt?: string;
-  completedAt?: string;
-  summary?: string;
+  finishedAt?: string;
+  completedAt?: string; // legacy
+  notesSummary?: string;
+  summary?: string; // legacy
   rating?: number;
-  favoriteQuotes?: string[];
-  keyLessons?: string[];
+  sourceType?: 'manual' | 'import' | 'suggestion' | 'system' | 'integration';
+  futureOriginReference?: {
+    module?: 'notes' | 'habits' | 'goals' | 'dashboard' | 'reflection' | 'reading' | 'unknown';
+    entityId?: string;
+    note?: string;
+  };
+  futureLinkTargets?: {
+    noteCandidate?: boolean;
+    habitSignalCandidate?: boolean;
+    goalLinkCandidate?: boolean;
+    dashboardHighlightCandidate?: boolean;
+    reflectionPromptCandidate?: boolean;
+  };
+  schemaVersion?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ReadingLogData {
   bookId: string;
   date: string; // YYYY-MM-DD
-  pagesRead: number;
+  pageFrom?: number;
+  pageTo?: number;
+  pagesRead?: number; // legacy quick log payload
   note?: string;
+  quote?: string;
+  lesson?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
+/** Firebase persistence shape for milestones (additive; legacy `completedAt` read in normalize). */
 export interface GrowthMilestoneData {
   id?: string;
+  goalId?: string;
   title: string;
+  description?: string;
   completed: boolean;
+  dueDate?: string;
+  sortOrder?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  completionDate?: string;
   completedAt?: string;
+  effortEstimate?: string;
+  priority?: 'low' | 'medium' | 'high';
+  notes?: string;
+  sourceType?: string;
+  futureOriginReference?: Milestone['futureOriginReference'];
+  futureLinkTargets?: Milestone['futureLinkTargets'];
 }
 
+/** Firebase persistence for growth goals — additive v2 fields; legacy `area` / `completed` still read by normalize. */
 export interface GrowthGoalData {
   title: string;
   description?: string;
-  area: 'mindset' | 'habit' | 'skill' | 'wellbeing';
+  /** @deprecated v1 — migrated to `type` + `category` in domain normalize */
+  area?: 'mindset' | 'habit' | 'skill' | 'wellbeing';
+  type?: Goal['type'];
+  status?: Goal['status'];
   targetDate?: string;
+  startDate?: string;
+  reasonWhy?: string;
+  category?: string;
+  tags?: string[];
   priority: 'low' | 'medium' | 'high';
+  progress?: number;
   milestones: GrowthMilestoneData[];
-  completed: boolean;
+  /** @deprecated v1 — derived into `status` */
+  completed?: boolean;
+  archived?: boolean;
   createdAt: string;
   updatedAt: string;
+  completedAt?: string;
+  sourceType?: Goal['sourceType'];
+  futureOriginReference?: Goal['futureOriginReference'];
+  futureLinkTargets?: Goal['futureLinkTargets'];
+  schemaVersion?: number;
+  userId?: string;
 }
 
 export interface StudentTimetableClassData {
@@ -361,10 +617,7 @@ export function subscribeToBooks(uid: string, callback: (books: Array<BookData &
   return onValue(booksRef, (snapshot) => {
     const data = snapshot.val();
     if (!data) { callback([]); return; }
-    const books = Object.entries(data).map(([id, book]) => ({
-      ...(book as BookData),
-      id,
-    }));
+    const books = Object.entries(data).map(([id, book]) => normalizeBook({ ...(book as BookRaw), id }, uid));
     callback(books);
   });
 }
@@ -391,10 +644,15 @@ export function subscribeToReadingLogs(uid: string, callback: (logs: Array<Readi
   return onValue(logsRef, (snapshot) => {
     const data = snapshot.val();
     if (!data) { callback([]); return; }
-    const logs = Object.entries(data).map(([id, log]) => ({
-      ...(log as ReadingLogData),
-      id,
-    }));
+    const logs = Object.entries(data).map(([id, log]) => {
+      const normalized = normalizeReadingEntry({ ...(log as ReadingEntryRaw), id });
+      return {
+        ...normalized,
+        pagesRead: normalized.pageFrom !== undefined && normalized.pageTo !== undefined
+          ? Math.max(0, normalized.pageTo - normalized.pageFrom)
+          : undefined,
+      };
+    });
     callback(logs);
   });
 }
@@ -404,6 +662,16 @@ export async function addReadingLog(uid: string, log: ReadingLogData) {
   const newRef = push(logsRef);
   await set(newRef, log);
   return newRef.key!;
+}
+
+export async function updateReadingLog(uid: string, logId: string, updates: Partial<ReadingLogData>) {
+  const logRef = ref(db, userPath(uid, `readingLogs/${logId}`));
+  await update(logRef, cleanUndefinedDeep({ ...updates, updatedAt: new Date().toISOString() }));
+}
+
+export async function deleteReadingLog(uid: string, logId: string) {
+  const logRef = ref(db, userPath(uid, `readingLogs/${logId}`));
+  await remove(logRef);
 }
 
 // ============ STUDENT SCHEDULE ============
@@ -554,63 +822,115 @@ export async function updateStudentStudyWindow(
 
 // ============ GROWTH GOALS ============
 
-export function subscribeToGrowthGoals(uid: string, callback: (goals: Array<GrowthGoalData & { id: string }>) => void): Unsubscribe {
+export function subscribeToGrowthGoals(uid: string, callback: (goals: Goal[]) => void): Unsubscribe {
   const goalsRef = ref(db, userPath(uid, 'growthGoals'));
   return onValue(goalsRef, (snapshot) => {
     const data = snapshot.val();
-    if (!data) { callback([]); return; }
-    const goals = Object.entries(data).map(([id, goal]) => ({
-      ...(goal as GrowthGoalData),
-      id,
-    }));
+    if (!data) {
+      callback([]);
+      return;
+    }
+    const goals = Object.entries(data).map(([id, goal]) =>
+      normalizeGoal({ ...(goal as GrowthGoalData), id } as GoalRaw, uid)
+    );
     callback(goals);
   });
 }
 
 function sanitizeGrowthMilestones(milestones: GrowthMilestoneData[] | undefined): GrowthMilestoneData[] {
   if (!milestones || milestones.length === 0) return [];
-  return milestones.map((milestone) => {
+  return milestones.map((milestone, index) => {
     const clean: GrowthMilestoneData = {
       id: milestone.id,
-      title: milestone.title,
+      title: milestone.title.trim(),
       completed: Boolean(milestone.completed),
+      sortOrder: Number.isFinite(milestone.sortOrder) ? milestone.sortOrder : index,
     };
-    if (milestone.completedAt) clean.completedAt = milestone.completedAt;
+    if (milestone.description) clean.description = milestone.description;
+    if (milestone.dueDate) clean.dueDate = milestone.dueDate;
+    if (milestone.createdAt) clean.createdAt = milestone.createdAt;
+    if (milestone.updatedAt) clean.updatedAt = milestone.updatedAt;
+    if (milestone.completionDate) clean.completionDate = milestone.completionDate;
+    if (milestone.effortEstimate) clean.effortEstimate = milestone.effortEstimate;
+    if (milestone.priority) clean.priority = milestone.priority;
+    if (milestone.notes) clean.notes = milestone.notes;
+    if (milestone.sourceType) clean.sourceType = milestone.sourceType;
+    if (milestone.futureOriginReference) clean.futureOriginReference = milestone.futureOriginReference;
+    if (milestone.futureLinkTargets && Object.keys(milestone.futureLinkTargets).length > 0) {
+      clean.futureLinkTargets = milestone.futureLinkTargets;
+    }
     return clean;
   });
 }
 
-function sanitizeGrowthGoalData(goal: GrowthGoalData): GrowthGoalData {
+function sanitizeGrowthGoalData(goal: GrowthGoalData): Record<string, unknown> {
+  const status = goal.status || 'active';
   const clean: GrowthGoalData = {
-    title: goal.title,
-    area: goal.area,
+    title: goal.title.trim(),
     priority: goal.priority,
     milestones: sanitizeGrowthMilestones(goal.milestones),
-    completed: Boolean(goal.completed),
     createdAt: goal.createdAt,
     updatedAt: goal.updatedAt,
+    status,
+    /** v1 clients still read `completed` — mirror from lifecycle status. */
+    completed: status === 'completed',
   };
   if (goal.description) clean.description = goal.description;
+  if (goal.type) clean.type = goal.type;
   if (goal.targetDate) clean.targetDate = goal.targetDate;
-  return clean;
+  if (goal.startDate) clean.startDate = goal.startDate;
+  if (goal.reasonWhy) clean.reasonWhy = goal.reasonWhy;
+  if (goal.category) clean.category = goal.category;
+  if (goal.tags && goal.tags.length > 0) clean.tags = goal.tags;
+  if (goal.progress !== undefined) clean.progress = goal.progress;
+  if (goal.archived !== undefined) clean.archived = goal.archived;
+  if (goal.completedAt) clean.completedAt = goal.completedAt;
+  if (goal.sourceType) clean.sourceType = goal.sourceType;
+  if (goal.futureOriginReference) clean.futureOriginReference = goal.futureOriginReference;
+  if (goal.futureLinkTargets && Object.keys(goal.futureLinkTargets).length > 0) {
+    clean.futureLinkTargets = goal.futureLinkTargets;
+  }
+  if (goal.schemaVersion !== undefined) clean.schemaVersion = goal.schemaVersion;
+  if (goal.userId) clean.userId = goal.userId;
+  if (goal.completed !== undefined) clean.completed = Boolean(goal.completed);
+  return cleanUndefinedDeep(clean) as Record<string, unknown>;
 }
 
-function sanitizeGrowthGoalUpdates(updates: Partial<GrowthGoalData>): Partial<GrowthGoalData> {
+function sanitizeGrowthGoalUpdates(updates: Partial<GrowthGoalData>): Record<string, unknown> {
   const clean: Partial<GrowthGoalData> = {};
-  if (updates.title !== undefined) clean.title = updates.title;
+  if (updates.title !== undefined) clean.title = updates.title.trim();
   if (updates.description !== undefined) {
     if (updates.description) clean.description = updates.description;
   }
-  if (updates.area !== undefined) clean.area = updates.area;
+  if (updates.type !== undefined) clean.type = updates.type;
+  if (updates.status !== undefined) clean.status = updates.status;
   if (updates.targetDate !== undefined) {
     if (updates.targetDate) clean.targetDate = updates.targetDate;
   }
+  if (updates.startDate !== undefined) {
+    if (updates.startDate) clean.startDate = updates.startDate;
+  }
+  if (updates.reasonWhy !== undefined) {
+    if (updates.reasonWhy) clean.reasonWhy = updates.reasonWhy;
+  }
+  if (updates.category !== undefined) clean.category = updates.category;
+  if (updates.tags !== undefined) clean.tags = updates.tags;
   if (updates.priority !== undefined) clean.priority = updates.priority;
+  if (updates.progress !== undefined) clean.progress = updates.progress;
   if (updates.milestones !== undefined) clean.milestones = sanitizeGrowthMilestones(updates.milestones);
   if (updates.completed !== undefined) clean.completed = Boolean(updates.completed);
+  if (updates.archived !== undefined) clean.archived = Boolean(updates.archived);
   if (updates.createdAt !== undefined) clean.createdAt = updates.createdAt;
   if (updates.updatedAt !== undefined) clean.updatedAt = updates.updatedAt;
-  return clean;
+  if (updates.completedAt !== undefined) {
+    if (updates.completedAt) clean.completedAt = updates.completedAt;
+  }
+  if (updates.sourceType !== undefined) clean.sourceType = updates.sourceType;
+  if (updates.futureOriginReference !== undefined) clean.futureOriginReference = updates.futureOriginReference;
+  if (updates.futureLinkTargets !== undefined) clean.futureLinkTargets = updates.futureLinkTargets;
+  if (updates.schemaVersion !== undefined) clean.schemaVersion = updates.schemaVersion;
+  if (updates.userId !== undefined) clean.userId = updates.userId;
+  return cleanUndefinedDeep(clean) as Record<string, unknown>;
 }
 
 export async function addGrowthGoal(uid: string, goal: GrowthGoalData) {
@@ -622,7 +942,10 @@ export async function addGrowthGoal(uid: string, goal: GrowthGoalData) {
 
 export async function updateGrowthGoal(uid: string, goalId: string, updates: Partial<GrowthGoalData>) {
   const goalRef = ref(db, userPath(uid, `growthGoals/${goalId}`));
-  await update(goalRef, { ...sanitizeGrowthGoalUpdates(updates), updatedAt: new Date().toISOString() });
+  await update(goalRef, {
+    ...sanitizeGrowthGoalUpdates(updates),
+    updatedAt: new Date().toISOString(),
+  });
 }
 
 export async function deleteGrowthGoal(uid: string, goalId: string) {
@@ -672,17 +995,160 @@ export async function addHabitEntry(uid: string, entry: HabitEntryData) {
   return newRef.key!;
 }
 
+// ============ HABITS V2 ============
+
+export interface HabitData extends Omit<HabitRaw, 'id'> {}
+export interface HabitCompletionData extends Omit<HabitCompletionRaw, 'id'> {}
+export interface HabitActivitySignalData extends Omit<HabitActivitySignalRaw, 'id'> {}
+export interface HabitCandidateData extends Omit<HabitCandidateRaw, 'id'> {}
+
+export function subscribeToHabits(uid: string, callback: (habits: Habit[]) => void): Unsubscribe {
+  const habitsRef = ref(db, userPath(uid, 'habits'));
+  return onValue(habitsRef, (snapshot) => {
+    const data = snapshot.val();
+    if (!data) {
+      callback([]);
+      return;
+    }
+    const habits = Object.entries(data).map(([id, raw]) =>
+      normalizeHabit({ ...(raw as HabitRaw), id }, uid)
+    );
+    callback(habits);
+  });
+}
+
+export async function addHabit(uid: string, habit: HabitData) {
+  const habitsRef = ref(db, userPath(uid, 'habits'));
+  const newRef = push(habitsRef);
+  await set(newRef, cleanUndefinedDeep(habit));
+  return newRef.key!;
+}
+
+export async function updateHabit(uid: string, habitId: string, updates: Partial<HabitData>) {
+  const habitRef = ref(db, userPath(uid, `habits/${habitId}`));
+  await update(habitRef, cleanUndefinedDeep({ ...updates, updatedAt: new Date().toISOString() }));
+}
+
+export async function deleteHabit(uid: string, habitId: string) {
+  const habitRef = ref(db, userPath(uid, `habits/${habitId}`));
+  await remove(habitRef);
+}
+
+export function subscribeToHabitCompletions(uid: string, callback: (rows: HabitCompletion[]) => void): Unsubscribe {
+  const refPath = ref(db, userPath(uid, 'habitCompletions'));
+  return onValue(refPath, (snapshot) => {
+    const data = snapshot.val();
+    if (!data) {
+      callback([]);
+      return;
+    }
+    const rows = Object.entries(data).map(([id, raw]) =>
+      normalizeHabitCompletion({ ...(raw as HabitCompletionRaw), id })
+    );
+    callback(rows);
+  });
+}
+
+export async function addHabitCompletion(uid: string, row: HabitCompletionData) {
+  const rowsRef = ref(db, userPath(uid, 'habitCompletions'));
+  const newRef = push(rowsRef);
+  await set(newRef, cleanUndefinedDeep(row));
+  return newRef.key!;
+}
+
+export async function updateHabitCompletion(uid: string, completionId: string, updates: Partial<HabitCompletionData>) {
+  const rowRef = ref(db, userPath(uid, `habitCompletions/${completionId}`));
+  await update(rowRef, cleanUndefinedDeep({ ...updates, updatedAt: new Date().toISOString() }));
+}
+
+export async function deleteHabitCompletion(uid: string, completionId: string) {
+  const rowRef = ref(db, userPath(uid, `habitCompletions/${completionId}`));
+  await remove(rowRef);
+}
+
+export async function clearHabitCompletions(uid: string) {
+  const rowsRef = ref(db, userPath(uid, 'habitCompletions'));
+  await remove(rowsRef);
+}
+
+export function subscribeToHabitActivitySignals(uid: string, callback: (rows: HabitActivitySignal[]) => void): Unsubscribe {
+  const refPath = ref(db, userPath(uid, 'habitActivitySignals'));
+  return onValue(refPath, (snapshot) => {
+    const data = snapshot.val();
+    if (!data) {
+      callback([]);
+      return;
+    }
+    const rows = Object.entries(data).map(([id, raw]) =>
+      normalizeHabitActivitySignal({ ...(raw as HabitActivitySignalRaw), id }, uid)
+    );
+    callback(rows);
+  });
+}
+
+export async function addHabitActivitySignal(uid: string, row: HabitActivitySignalData) {
+  const rowsRef = ref(db, userPath(uid, 'habitActivitySignals'));
+  const newRef = push(rowsRef);
+  await set(newRef, cleanUndefinedDeep(row));
+  return newRef.key!;
+}
+
+export function subscribeToHabitCandidates(uid: string, callback: (rows: HabitCandidate[]) => void): Unsubscribe {
+  const refPath = ref(db, userPath(uid, 'habitCandidates'));
+  return onValue(refPath, (snapshot) => {
+    const data = snapshot.val();
+    if (!data) {
+      callback([]);
+      return;
+    }
+    const rows = Object.entries(data).map(([id, raw]) =>
+      normalizeHabitCandidate({ ...(raw as HabitCandidateRaw), id }, uid)
+    );
+    callback(rows);
+  });
+}
+
+export async function upsertHabitCandidate(uid: string, candidateId: string, row: HabitCandidateData) {
+  const rowRef = ref(db, userPath(uid, `habitCandidates/${candidateId}`));
+  await set(rowRef, cleanUndefinedDeep(row));
+}
+
+export async function updateHabitCandidate(uid: string, candidateId: string, updates: Partial<HabitCandidateData>) {
+  const rowRef = ref(db, userPath(uid, `habitCandidates/${candidateId}`));
+  await update(rowRef, cleanUndefinedDeep(updates));
+}
+
 // ============ JOURNAL ENTRIES (Daily Reflection) ============
 
 export interface JournalEntryData {
   date: string; // YYYY-MM-DD
-  mood: number; // 1-5
+  type?: 'quick' | 'normal' | 'deep';
+  mood?: number; // 1-5
+  title?: string;
+  content?: string;
+  wins?: string;
+  difficulties?: string;
   gratitude?: string;
   lessons?: string;
   feelings?: string;
   growth?: string;
   freeWrite?: string;
   tags?: string[];
+  privateLevel?: 'private' | 'shared-later' | 'sensitive';
+  sourceType?: 'manual' | 'import' | 'suggestion' | 'system' | 'integration';
+  futureOriginReference?: {
+    module?: 'notes' | 'habits' | 'reading' | 'dashboard' | 'goals' | 'guidance' | 'reflection' | 'unknown';
+    entityId?: string;
+    note?: string;
+  };
+  futureLinkTargets?: {
+    noteCandidate?: boolean;
+    habitSignalCandidate?: boolean;
+    dashboardMoodTrendCandidate?: boolean;
+    readingBacklinkCandidate?: boolean;
+    guidanceSignalCandidate?: boolean;
+  };
+  schemaVersion?: number;
   focusArea?: import('@/lib/focusAreas').FocusArea;
   focusAreaSource?: import('@/lib/focusAreas').FocusAreaSource;
   createdAt: string;
@@ -694,10 +1160,9 @@ export function subscribeToJournalEntries(uid: string, callback: (entries: Array
   return onValue(journalRef, (snapshot) => {
     const data = snapshot.val();
     if (!data) { callback([]); return; }
-    const entries = Object.entries(data).map(([id, entry]) => ({
-      ...(entry as JournalEntryData),
-      id,
-    }));
+    const entries = Object.entries(data).map(([id, entry]) =>
+      normalizeReflectionEntry({ ...(entry as ReflectionEntryRaw), id }, uid) as unknown as JournalEntryData & { id: string }
+    );
     callback(entries);
   });
 }

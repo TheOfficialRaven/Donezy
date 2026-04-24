@@ -89,7 +89,7 @@ export default function PWAInstallPrompt() {
 
             {/* Logo & Title */}
             <div className="flex items-center gap-3 mb-4">
-              <DonezyLogo className="w-10 h-10" />
+              <DonezyLogo className="h-10 w-auto" />
               <div>
                 <h3 className="font-heading font-bold text-text-primary text-sm">
                   Telepítsd a Donezy-t!

@@ -15,6 +15,7 @@ import AppShell from "./components/AppShell";
 import Dashboard from "./pages/app/Dashboard";
 import Quests from "./pages/app/Quests";
 import Lists from "./pages/app/Lists";
+import ListDetail from "./pages/app/ListDetail";
 import Notes from "./pages/app/Notes";
 import Calendar from "./pages/app/Calendar";
 import Achievements from "./pages/app/Achievements";
@@ -23,6 +24,7 @@ import HabitTracker from "./pages/app/HabitTracker";
 import ReadingJournal from "./pages/app/ReadingJournal";
 import DailyReflection from "./pages/app/DailyReflection";
 import GrowthGoals from "./pages/app/GrowthGoals";
+import GoalDetail from "./pages/app/GoalDetail";
 import StudentTimetable from "./pages/student/StudentTimetable";
 import Settings from "./pages/Settings";
 import Onboarding from "./pages/Onboarding";
@@ -91,11 +93,13 @@ function AppInner() {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="quests" element={<Quests />} />
               <Route path="lists" element={<Lists />} />
+              <Route path="lists/:listId" element={<ListDetail />} />
               <Route path="notes" element={<Notes />} />
               <Route path="calendar" element={<Calendar />} />
               <Route path="habits" element={<HabitTracker />} />
               <Route path="reading" element={<ReadingJournal />} />
               <Route path="reflection" element={<DailyReflection />} />
+              <Route path="growth/:goalId" element={<GoalDetail />} />
               <Route path="growth" element={<GrowthGoals />} />
               <Route path="achievements" element={<Achievements />} />
               <Route path="shop" element={<Shop />} />

@@ -1,20 +1,27 @@
-import { useState, useMemo, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  BookOpen, Plus, Star, ChevronRight, Pencil, Trash2,
-  Quote, Lightbulb, BarChart3, X,
-} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { BarChart3, BookOpen, ChevronRight, Lightbulb, Pencil, Plus, Quote, Search, Star, Trash2, X } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { READING_STATUS_LABELS } from '@/lib/reading/constants';
+import {
+  getBookCompletionPercent,
+  getBookLessons,
+  getBookQuotes,
+  getBooksByCategory,
+  getBooksBySearch,
+  getBooksByStatus,
+  getReadingProductivityMetrics,
+} from '@/lib/reading/selectors';
+import type { Book, ReadingEntry, ReadingViewFilter } from '@/lib/reading/types';
 import { cn } from '@/lib/utils';
-import { useAppStore, type Book } from '@/stores/useAppStore';
-import ConfirmDialog from '@/components/dialogs/ConfirmDialog';
+import { useAppStore } from '@/stores/useAppStore';
 import { toast } from 'sonner';
 
 // ---- Book cover colors for visual variety ----
@@ -31,66 +38,56 @@ const GENRES = [
   'Egészség', 'Spiritualitás', 'Technológia', 'Egyéb',
 ];
 
-type Tab = 'shelf' | 'reading' | 'completed' | 'wishlist';
+type Tab = ReadingViewFilter;
 
 export default function ReadingJournal() {
-  const { books, readingLogs, addBook, updateBook, deleteBook, logReading } = useAppStore();
-  const [activeTab, setActiveTab] = useState<Tab>('shelf');
+  const {
+    books,
+    readingEntries,
+    readingViewFilter,
+    readingSearchQuery,
+    readingStatusFilter,
+    readingCategoryFilter,
+    selectedBookId,
+    addBook,
+    updateBook,
+    deleteBook,
+    addReadingEntry,
+    setReadingViewFilter,
+    setReadingSearchQuery,
+    setReadingStatusFilter,
+    setReadingCategoryFilter,
+    setSelectedBookId,
+  } = useAppStore();
   const [bookDialogOpen, setBookDialogOpen] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
-  const [detailBook, setDetailBook] = useState<Book | null>(null);
   const [logDialogBook, setLogDialogBook] = useState<Book | null>(null);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [bookToDelete, setBookToDelete] = useState<string | null>(null);
-
-  const reading = books.filter((b) => b.status === 'reading');
-  const completed = books.filter((b) => b.status === 'completed');
-  const wishlist = books.filter((b) => b.status === 'want-to-read');
-
-  const totalPagesRead = useMemo(
-    () => readingLogs.reduce((sum, l) => sum + l.pagesRead, 0),
-    [readingLogs]
+  const detailBook = useMemo(() => books.find((book) => book.id === selectedBookId) || null, [books, selectedBookId]);
+  const metrics = useMemo(() => getReadingProductivityMetrics(books, readingEntries), [books, readingEntries]);
+  const categories = useMemo(
+    () => ['all', ...new Set(books.map((book) => book.category).filter(Boolean))],
+    [books]
   );
 
   const tabs: { key: Tab; label: string; count: number }[] = [
-    { key: 'shelf', label: 'Könyvespolc', count: books.length },
-    { key: 'reading', label: 'Olvasom', count: reading.length },
-    { key: 'completed', label: 'Kész', count: completed.length },
-    { key: 'wishlist', label: 'Olvasnám', count: wishlist.length },
+    { key: 'bookshelf', label: 'Konyvespolc', count: books.length },
+    { key: 'reading', label: 'Olvasom', count: getBooksByStatus(books, 'reading').length },
+    { key: 'finished', label: 'Kesz', count: getBooksByStatus(books, 'finished').length },
+    { key: 'wishlist', label: 'Olvasnam', count: getBooksByStatus(books, 'wishlist').length },
+    { key: 'paused', label: 'Szüneteltetett', count: getBooksByStatus(books, 'paused').length },
   ];
 
-  const displayBooks = activeTab === 'shelf' ? books
-    : activeTab === 'reading' ? reading
-    : activeTab === 'completed' ? completed
-    : wishlist;
-
-  const handleDeleteBook = async () => {
-    if (bookToDelete) {
-      await deleteBook(bookToDelete);
-      toast.success('Könyv törölve.');
-      setDeleteConfirmOpen(false);
-      setBookToDelete(null);
-      if (detailBook?.id === bookToDelete) setDetailBook(null);
-    }
-  };
-
-  // Keep the opened detail panel in sync with live store updates
-  // (e.g. rating update should reflect immediately without reopen).
-  useEffect(() => {
-    if (!detailBook) return;
-    const refreshed = books.find((book) => book.id === detailBook.id);
-    if (!refreshed) {
-      setDetailBook(null);
-      return;
-    }
-    if (refreshed !== detailBook) {
-      setDetailBook(refreshed);
-    }
-  }, [books, detailBook]);
+  const filteredBooks = useMemo(() => {
+    let rows = books;
+    if (readingViewFilter !== 'all' && readingViewFilter !== 'bookshelf') rows = getBooksByStatus(rows, readingViewFilter as any);
+    if (readingStatusFilter !== 'all') rows = getBooksByStatus(rows, readingStatusFilter);
+    rows = getBooksByCategory(rows, readingCategoryFilter);
+    rows = getBooksBySearch(rows, readingSearchQuery);
+    return rows;
+  }, [books, readingViewFilter, readingStatusFilter, readingCategoryFilter, readingSearchQuery]);
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-heading font-bold text-text-primary flex items-center gap-3">
@@ -98,7 +95,7 @@ export default function ReadingJournal() {
             Olvasási napló
           </h1>
           <p className="text-text-secondary mt-1">
-            {books.length} könyv · {totalPagesRead.toLocaleString()} oldal elolvasva
+            {metrics.totalBooks} konyv · {metrics.totalEntries} olvasasi bejegyzes · {metrics.averageCompletionPercent}% atlagos keszultseg
           </p>
         </div>
         <Button
@@ -110,13 +107,12 @@ export default function ReadingJournal() {
         </Button>
       </div>
 
-      {/* Quick stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Éppen olvasom', value: reading.length, color: 'text-primary' },
-          { label: 'Elolvasva', value: completed.length, color: 'text-emerald-400' },
-          { label: 'Összes oldal', value: totalPagesRead.toLocaleString(), color: 'text-blue-400' },
-          { label: 'Olvasnám', value: wishlist.length, color: 'text-orange-400' },
+          { label: 'Olvasom', value: metrics.readingBooks, color: 'text-primary' },
+          { label: 'Kesz', value: metrics.finishedBooks, color: 'text-emerald-400' },
+          { label: 'Olvasnam', value: metrics.wishlistBooks, color: 'text-orange-400' },
+          { label: 'Figyelmet igenyel', value: metrics.booksNeedingAttention, color: 'text-amber-400' },
         ].map((s, i) => (
           <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
             <Card className="glass p-4">
@@ -127,15 +123,14 @@ export default function ReadingJournal() {
         ))}
       </div>
 
-      {/* Tabs */}
       <div className="flex bg-surface-2/50 rounded-lg p-1 gap-1 overflow-x-auto scrollbar-none">
         {tabs.map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => setReadingViewFilter(tab.key)}
             className={cn(
               'flex-1 px-1.5 sm:px-3 py-2 rounded-md text-[11px] sm:text-sm font-medium transition-all',
-              activeTab === tab.key
+              readingViewFilter === tab.key
                 ? 'bg-primary text-surface-0 shadow-lg'
                 : 'text-text-secondary hover:text-text-primary'
             )}
@@ -146,58 +141,59 @@ export default function ReadingJournal() {
         ))}
       </div>
 
-      {/* Bookshelf */}
-      {displayBooks.length > 0 ? (
-        <Bookshelf
-          books={displayBooks}
-          onSelect={setDetailBook}
-          onLogReading={setLogDialogBook}
-        />
-      ) : (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <Card className="glass p-12 text-center">
-            <BookOpen className="h-16 w-16 text-text-disabled mx-auto mb-4" />
-            <h3 className="text-lg font-heading font-semibold text-text-primary mb-2">
-              {activeTab === 'shelf' ? 'A könyvespolcod még üres' : 'Nincs könyv ebben a kategóriában'}
-            </h3>
-            <p className="text-text-muted mb-4">Adj hozzá könyveket és kezdj el olvasni!</p>
-            <Button className="bg-primary hover:bg-primary/90 text-surface-0" onClick={() => { setEditingBook(null); setBookDialogOpen(true); }}>
-              <Plus className="h-4 w-4 mr-2" /> Első könyv hozzáadása
-            </Button>
-          </Card>
-        </motion.div>
-      )}
+      <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
+        <Input value={readingSearchQuery} onChange={(e) => setReadingSearchQuery(e.target.value)} placeholder="Kereses cim, szerzo, tanulsag alapjan..." className="bg-surface-0/50 border-white/10" />
+        <Select value={readingStatusFilter} onValueChange={(v) => setReadingStatusFilter(v as any)}>
+          <SelectTrigger className="bg-surface-0/50 border-white/10 w-full sm:w-[180px]"><Search className="h-4 w-4 mr-2" /><SelectValue /></SelectTrigger>
+          <SelectContent className="bg-surface-1 border-white/10">
+            <SelectItem value="all">Minden statusz</SelectItem>
+            <SelectItem value="reading">Olvasom</SelectItem>
+            <SelectItem value="finished">Kesz</SelectItem>
+            <SelectItem value="wishlist">Olvasnam</SelectItem>
+            <SelectItem value="paused">Szüneteltetett</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={readingCategoryFilter} onValueChange={(v) => setReadingCategoryFilter(v)}>
+          <SelectTrigger className="bg-surface-0/50 border-white/10 w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
+          <SelectContent className="bg-surface-1 border-white/10">
+            {categories.map((category) => <SelectItem key={category} value={category}>{category === 'all' ? 'Minden kategoria' : category}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
 
-      {/* Book detail side panel */}
+      {filteredBooks.length > 0 ? <BookshelfView books={filteredBooks} onSelect={(book) => setSelectedBookId(book.id)} onLogReading={setLogDialogBook} />
+        : <ReadingEmptyState query={readingSearchQuery} />}
+
       <AnimatePresence>
         {detailBook && (
-          <BookDetail
+          <BookDetailPanel
             book={detailBook}
-            readingLogs={readingLogs.filter((l) => l.bookId === detailBook.id)}
-            onClose={() => setDetailBook(null)}
+            readingEntries={readingEntries.filter((entry) => entry.bookId === detailBook.id)}
+            onClose={() => setSelectedBookId(undefined)}
             onEdit={() => { setEditingBook(detailBook); setBookDialogOpen(true); }}
-            onDelete={() => { setBookToDelete(detailBook.id); setDeleteConfirmOpen(true); }}
+            onDelete={async () => {
+              await deleteBook(detailBook.id);
+              toast.success('Konyv torolve.');
+              setSelectedBookId(undefined);
+            }}
             onLogReading={() => setLogDialogBook(detailBook)}
           />
         )}
       </AnimatePresence>
 
-      {/* Dialogs */}
-      <BookDialog
+      <BookEditorDialog
         open={bookDialogOpen}
         onOpenChange={setBookDialogOpen}
         book={editingBook}
-        onSaved={(b) => { if (detailBook?.id === b.id) setDetailBook({ ...detailBook, ...b }); }}
+        onSaved={() => setEditingBook(null)}
       />
-      <LogReadingDialog book={logDialogBook} onClose={() => setLogDialogBook(null)} />
-      <ConfirmDialog
-        open={deleteConfirmOpen}
-        onOpenChange={setDeleteConfirmOpen}
-        title="Könyv törlése"
-        description="Biztosan törölni szeretnéd ezt a könyvet és minden hozzá tartozó olvasási naplót?"
-        confirmLabel="Törlés"
-        onConfirm={handleDeleteBook}
-        destructive
+      <QuickReadingUpdatePanel
+        book={logDialogBook}
+        onClose={() => setLogDialogBook(null)}
+        onSubmit={async (book, payload) => {
+          await addReadingEntry(payload);
+          toast.success(`Olvasasi frissites mentve: ${book.title}`);
+        }}
       />
     </div>
   );
@@ -205,7 +201,7 @@ export default function ReadingJournal() {
 
 // ============ BOOKSHELF COMPONENT ============
 
-function Bookshelf({ books, onSelect, onLogReading }: {
+function BookshelfView({ books, onSelect, onLogReading }: {
   books: Book[];
   onSelect: (b: Book) => void;
   onLogReading: (b: Book) => void;
@@ -228,7 +224,7 @@ function Bookshelf({ books, onSelect, onLogReading }: {
           {/* Books row */}
           <div className="flex items-end gap-3 px-4 pb-0 min-h-[180px] flex-wrap justify-center sm:justify-start">
             {shelf.map((book, bi) => (
-              <BookSpine key={book.id} book={book} index={bi} onSelect={onSelect} onLogReading={onLogReading} />
+              <BookshelfBookSpine key={book.id} book={book} index={bi} onSelect={onSelect} onLogReading={onLogReading} />
             ))}
           </div>
           {/* Shelf board */}
@@ -242,14 +238,14 @@ function Bookshelf({ books, onSelect, onLogReading }: {
   );
 }
 
-function BookSpine({ book, index, onSelect, onLogReading }: {
+function BookshelfBookSpine({ book, index, onSelect, onLogReading }: {
   book: Book;
   index: number;
   onSelect: (b: Book) => void;
   onLogReading: (b: Book) => void;
 }) {
-  const progress = book.totalPages > 0 ? (book.currentPage / book.totalPages) * 100 : 0;
-  const isCompleted = book.status === 'completed';
+  const progress = getBookCompletionPercent(book);
+  const isCompleted = book.status === 'finished';
   const thickness = Math.max(28, Math.min(50, book.totalPages / 8));
 
   return (
@@ -331,9 +327,9 @@ function BookSpine({ book, index, onSelect, onLogReading }: {
 
 // ============ BOOK DETAIL PANEL ============
 
-function BookDetail({ book, readingLogs: logs, onClose, onEdit, onDelete, onLogReading }: {
+function BookDetailPanel({ book, readingEntries, onClose, onEdit, onDelete, onLogReading }: {
   book: Book;
-  readingLogs: { id: string; date: string; pagesRead: number; note?: string }[];
+  readingEntries: ReadingEntry[];
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -341,36 +337,16 @@ function BookDetail({ book, readingLogs: logs, onClose, onEdit, onDelete, onLogR
 }) {
   const { updateBook } = useAppStore();
   const progress = book.totalPages > 0 ? (book.currentPage / book.totalPages) * 100 : 0;
-  const sortedLogs = [...logs].sort((a, b) => b.date.localeCompare(a.date));
+  const sortedLogs = [...readingEntries].sort((a, b) => b.date.localeCompare(a.date));
 
   const [summaryOpen, setSummaryOpen] = useState(false);
-  const [summaryText, setSummaryText] = useState(book.summary || '');
-  const [newQuote, setNewQuote] = useState('');
-  const [newLesson, setNewLesson] = useState('');
+  const [summaryText, setSummaryText] = useState(book.notesSummary || '');
   const [ratingValue, setRatingValue] = useState(book.rating || 0);
 
-  useEffect(() => {
-    setRatingValue(book.rating || 0);
-  }, [book.rating, book.id]);
-
   const saveSummary = async () => {
-    await updateBook(book.id, { summary: summaryText });
+    await updateBook(book.id, { notesSummary: summaryText });
     setSummaryOpen(false);
     toast.success('Összesítő mentve!');
-  };
-
-  const addQuote = async () => {
-    if (!newQuote.trim()) return;
-    const quotes = [...(book.favoriteQuotes || []), newQuote.trim()];
-    await updateBook(book.id, { favoriteQuotes: quotes });
-    setNewQuote('');
-  };
-
-  const addLesson = async () => {
-    if (!newLesson.trim()) return;
-    const lessons = [...(book.keyLessons || []), newLesson.trim()];
-    await updateBook(book.id, { keyLessons: lessons });
-    setNewLesson('');
   };
 
   const setRating = async (r: number) => {
@@ -401,13 +377,14 @@ function BookDetail({ book, readingLogs: logs, onClose, onEdit, onDelete, onLogR
               <h2 className="text-xl font-heading font-bold text-text-primary">{book.title}</h2>
               <p className="text-text-secondary">{book.author}</p>
               <div className="flex items-center gap-2 mt-1">
-                <Badge className="text-xs bg-surface-2/50 text-text-muted border-white/10">{book.genre}</Badge>
+                <Badge className="text-xs bg-surface-2/50 text-text-muted border-white/10">{book.category}</Badge>
                 <Badge className={cn('text-xs',
                   book.status === 'reading' && 'bg-primary/20 text-primary border-primary/30',
-                  book.status === 'completed' && 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-                  book.status === 'want-to-read' && 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+                  book.status === 'finished' && 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+                  book.status === 'wishlist' && 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+                  book.status === 'paused' && 'bg-slate-500/30 text-slate-300 border-slate-400/40',
                 )}>
-                  {book.status === 'reading' ? 'Olvasom' : book.status === 'completed' ? 'Kész' : 'Olvasnám'}
+                  {READING_STATUS_LABELS[book.status]}
                 </Badge>
               </div>
             </div>
@@ -476,8 +453,8 @@ function BookDetail({ book, readingLogs: logs, onClose, onEdit, onDelete, onLogR
             <h3 className="text-sm font-semibold text-text-muted uppercase tracking-wide flex items-center gap-1.5">
               <BarChart3 className="h-4 w-4" /> Összesítő
             </h3>
-            <button onClick={() => { setSummaryText(book.summary || ''); setSummaryOpen(!summaryOpen); }} className="text-xs text-primary hover:underline">
-              {book.summary ? 'Szerkesztés' : 'Hozzáadás'}
+            <button onClick={() => { setSummaryText(book.notesSummary || ''); setSummaryOpen(!summaryOpen); }} className="text-xs text-primary hover:underline">
+              {book.notesSummary ? 'Szerkesztes' : 'Hozzaadas'}
             </button>
           </div>
           {summaryOpen ? (
@@ -494,8 +471,8 @@ function BookDetail({ book, readingLogs: logs, onClose, onEdit, onDelete, onLogR
                 <Button size="sm" className="bg-primary hover:bg-primary/90 text-surface-0" onClick={saveSummary}>Mentés</Button>
               </div>
             </div>
-          ) : book.summary ? (
-            <p className="text-sm text-text-secondary bg-surface-2/30 rounded-lg p-3">{book.summary}</p>
+          ) : book.notesSummary ? (
+            <p className="text-sm text-text-secondary bg-surface-2/30 rounded-lg p-3">{book.notesSummary}</p>
           ) : (
             <p className="text-xs text-text-muted italic">Még nincs összesítő.</p>
           )}
@@ -506,27 +483,15 @@ function BookDetail({ book, readingLogs: logs, onClose, onEdit, onDelete, onLogR
           <h3 className="text-sm font-semibold text-text-muted uppercase tracking-wide mb-2 flex items-center gap-1.5">
             <Quote className="h-4 w-4" /> Kedvenc idézetek
           </h3>
-          {(book.favoriteQuotes || []).length > 0 && (
+          {getBookQuotes(readingEntries, book.id).length > 0 && (
             <div className="space-y-2 mb-3">
-              {book.favoriteQuotes!.map((q, i) => (
+              {getBookQuotes(readingEntries, book.id).map((q, i) => (
                 <div key={i} className="bg-surface-2/30 rounded-lg p-3 text-sm text-text-secondary italic border-l-2 border-primary/40">
                   "{q}"
                 </div>
               ))}
             </div>
           )}
-          <div className="flex gap-2">
-            <Input
-              value={newQuote}
-              onChange={(e) => setNewQuote(e.target.value)}
-              placeholder="Új idézet..."
-              className="bg-surface-0/50 border-white/10 text-text-primary text-sm"
-              onKeyDown={(e) => { if (e.key === 'Enter') addQuote(); }}
-            />
-            <Button size="sm" onClick={addQuote} disabled={!newQuote.trim()} className="bg-primary/20 text-primary hover:bg-primary/30">
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
         </div>
 
         {/* Key Lessons */}
@@ -534,9 +499,9 @@ function BookDetail({ book, readingLogs: logs, onClose, onEdit, onDelete, onLogR
           <h3 className="text-sm font-semibold text-text-muted uppercase tracking-wide mb-2 flex items-center gap-1.5">
             <Lightbulb className="h-4 w-4" /> Tanulságok
           </h3>
-          {(book.keyLessons || []).length > 0 && (
+          {getBookLessons(readingEntries, book.id).length > 0 && (
             <div className="space-y-2 mb-3">
-              {book.keyLessons!.map((l, i) => (
+              {getBookLessons(readingEntries, book.id).map((l, i) => (
                 <div key={i} className="bg-surface-2/30 rounded-lg p-3 text-sm text-text-secondary flex items-start gap-2">
                   <Lightbulb className="h-4 w-4 text-yellow-400 flex-shrink-0 mt-0.5" />
                   {l}
@@ -544,18 +509,6 @@ function BookDetail({ book, readingLogs: logs, onClose, onEdit, onDelete, onLogR
               ))}
             </div>
           )}
-          <div className="flex gap-2">
-            <Input
-              value={newLesson}
-              onChange={(e) => setNewLesson(e.target.value)}
-              placeholder="Új tanulság..."
-              className="bg-surface-0/50 border-white/10 text-text-primary text-sm"
-              onKeyDown={(e) => { if (e.key === 'Enter') addLesson(); }}
-            />
-            <Button size="sm" onClick={addLesson} disabled={!newLesson.trim()} className="bg-primary/20 text-primary hover:bg-primary/30">
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
         </div>
 
         {/* Reading history */}
@@ -569,7 +522,7 @@ function BookDetail({ book, readingLogs: logs, onClose, onEdit, onDelete, onLogR
                 <div key={log.id} className="flex items-center justify-between bg-surface-2/30 rounded-lg p-2 px-3 text-sm">
                   <span className="text-text-muted">{new Date(log.date + 'T00:00:00').toLocaleDateString('hu-HU')}</span>
                   <div className="text-right">
-                    <span className="text-text-primary font-medium">{log.pagesRead} oldal</span>
+                    <span className="text-text-primary font-medium">{Math.max(0, (log.pageTo || 0) - (log.pageFrom || 0))} oldal</span>
                     {log.note && <p className="text-xs text-text-muted">{log.note}</p>}
                   </div>
                 </div>
@@ -584,7 +537,7 @@ function BookDetail({ book, readingLogs: logs, onClose, onEdit, onDelete, onLogR
 
 // ============ BOOK DIALOG (add/edit) ============
 
-function BookDialog({ open, onOpenChange, book, onSaved }: {
+function BookEditorDialog({ open, onOpenChange, book, onSaved }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   book: Book | null;
@@ -593,7 +546,7 @@ function BookDialog({ open, onOpenChange, book, onSaved }: {
   const { addBook, updateBook } = useAppStore();
   const [form, setForm] = useState({
     title: '', author: '', totalPages: '', currentPage: '0',
-    genre: 'Önfejlesztés', coverColor: COVER_COLORS[0], status: 'want-to-read' as Book['status'],
+    category: 'Onfejlesztes', coverColor: COVER_COLORS[0], status: 'wishlist' as Book['status'],
   });
 
   // Keep form in sync with current mode (edit vs new) whenever dialog opens
@@ -606,7 +559,7 @@ function BookDialog({ open, onOpenChange, book, onSaved }: {
         author: book.author,
         totalPages: String(book.totalPages),
         currentPage: String(book.currentPage),
-        genre: book.genre,
+        category: book.category,
         coverColor: book.coverColor,
         status: book.status,
       });
@@ -617,9 +570,9 @@ function BookDialog({ open, onOpenChange, book, onSaved }: {
       author: '',
       totalPages: '',
       currentPage: '0',
-      genre: 'Önfejlesztés',
+      category: 'Onfejlesztes',
       coverColor: COVER_COLORS[Math.floor(Math.random() * COVER_COLORS.length)],
-      status: 'want-to-read',
+      status: 'wishlist',
     });
   }, [open, book]);
 
@@ -632,7 +585,7 @@ function BookDialog({ open, onOpenChange, book, onSaved }: {
       author: form.author.trim(),
       totalPages: Number(form.totalPages),
       currentPage: Number(form.currentPage) || 0,
-      genre: form.genre,
+      category: form.category,
       coverColor: form.coverColor,
       status: form.status,
     };
@@ -677,7 +630,7 @@ function BookDialog({ open, onOpenChange, book, onSaved }: {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Műfaj</Label>
-              <Select value={form.genre} onValueChange={(v) => setForm((f) => ({ ...f, genre: v }))}>
+              <Select value={form.category} onValueChange={(v) => setForm((f) => ({ ...f, category: v }))}>
                 <SelectTrigger className="bg-surface-0/50 border-white/10"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-surface-1 border-white/10">
                   {GENRES.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
@@ -689,9 +642,10 @@ function BookDialog({ open, onOpenChange, book, onSaved }: {
               <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v as Book['status'] }))}>
                 <SelectTrigger className="bg-surface-0/50 border-white/10"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-surface-1 border-white/10">
-                  <SelectItem value="want-to-read">Olvasnám</SelectItem>
+                  <SelectItem value="wishlist">Olvasnam</SelectItem>
                   <SelectItem value="reading">Olvasom</SelectItem>
-                  <SelectItem value="completed">Kész</SelectItem>
+                  <SelectItem value="finished">Kesz</SelectItem>
+                  <SelectItem value="paused">Szüneteltetett</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -725,10 +679,17 @@ function BookDialog({ open, onOpenChange, book, onSaved }: {
 
 // ============ LOG READING DIALOG ============
 
-function LogReadingDialog({ book, onClose }: { book: Book | null; onClose: () => void }) {
-  const { logReading } = useAppStore();
+function QuickReadingUpdatePanel({
+  book, onClose, onSubmit,
+}: {
+  book: Book | null;
+  onClose: () => void;
+  onSubmit: (book: Book, payload: Omit<ReadingEntry, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+}) {
   const [pages, setPages] = useState('');
   const [note, setNote] = useState('');
+  const [quote, setQuote] = useState('');
+  const [lesson, setLesson] = useState('');
 
   if (!book) return null;
 
@@ -738,10 +699,13 @@ function LogReadingDialog({ book, onClose }: { book: Book | null; onClose: () =>
     e.preventDefault();
     const p = Number(pages);
     if (p <= 0) return;
-    await logReading(book.id, p, note.trim() || undefined);
-    toast.success(`${p} oldal naplózva!`);
+    const pageFrom = book.currentPage;
+    const pageTo = Math.min(book.totalPages, book.currentPage + p);
+    await onSubmit(book, { bookId: book.id, date: new Date().toISOString().slice(0, 10), pageFrom, pageTo, note: note.trim() || undefined, quote: quote.trim() || undefined, lesson: lesson.trim() || undefined });
     setPages('');
     setNote('');
+    setQuote('');
+    setLesson('');
     onClose();
   };
 
@@ -774,6 +738,14 @@ function LogReadingDialog({ book, onClose }: { book: Book | null; onClose: () =>
               className="bg-surface-0/50 border-white/10"
             />
           </div>
+          <div className="space-y-2">
+            <Label>Idezet (opcionalis)</Label>
+            <Input value={quote} onChange={(e) => setQuote(e.target.value)} placeholder="Ami megmaradjon" className="bg-surface-0/50 border-white/10" />
+          </div>
+          <div className="space-y-2">
+            <Label>Tanulsag (opcionalis)</Label>
+            <Input value={lesson} onChange={(e) => setLesson(e.target.value)} placeholder="Rovid tanulsag" className="bg-surface-0/50 border-white/10" />
+          </div>
           <div className="flex justify-end gap-3">
             <Button type="button" variant="ghost" onClick={onClose}>Mégse</Button>
             <Button type="submit" className="bg-primary hover:bg-primary/90 text-surface-0" disabled={!pages || Number(pages) <= 0}>
@@ -783,5 +755,17 @@ function LogReadingDialog({ book, onClose }: { book: Book | null; onClose: () =>
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ReadingEmptyState({ query }: { query: string }) {
+  return (
+    <Card className="glass p-12 text-center">
+      <BookOpen className="h-16 w-16 text-text-disabled mx-auto mb-4" />
+      <h3 className="text-lg font-heading font-semibold text-text-primary mb-2">
+        {query ? 'Nincs talalat erre a keresesre' : 'A konyvespolcod meg ures'}
+      </h3>
+      <p className="text-text-muted">Adj hozza legalabb egy konyvet, es kezdodhet az olvasasi tudasnaplo.</p>
+    </Card>
   );
 }

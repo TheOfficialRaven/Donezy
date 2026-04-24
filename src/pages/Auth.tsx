@@ -120,10 +120,7 @@ export default function Auth() {
         >
           <div className="mb-8">
             <div className="flex items-center gap-4 mb-6">
-              <DonezyLogo className="w-14 h-14" />
-              <span className="text-3xl font-heading font-bold text-gradient-primary">
-                Donezy
-              </span>
+              <DonezyLogo className="h-14 w-auto" />
             </div>
 
             <h1 className="text-4xl lg:text-5xl font-heading font-bold text-text-primary mb-4">

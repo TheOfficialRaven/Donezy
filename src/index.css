@@ -64,11 +64,11 @@
     --radius-xl: 24px;
     
     /* Persona color overrides */
-    --persona-student: 213 100% 65%;
+    --persona-student: 167 85% 48%;
     --persona-worker: 167 85% 48%;
-    --persona-selfdev: 260 85% 65%;
-    --persona-freelancer: 142 71% 49%;
-    --persona-organizer: 280 65% 60%;
+    --persona-selfdev: 167 85% 48%;
+    --persona-freelancer: 167 85% 48%;
+    --persona-organizer: 167 85% 48%;
     
     /* Legacy shadcn compatibility */
     --background: var(--surface-0);

@@ -1,40 +1,37 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, MoreHorizontal, Check, Circle, Trash2, Edit3, Pencil, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
-import { useAppStore, type TodoList, type Task } from '@/stores/useAppStore';
+import { useNavigate } from 'react-router-dom';
+import { useAppStore, type Task, type TodoList } from '@/stores/useAppStore';
+import { filterLists, getListsProductivityMetrics } from '@/lib/lists/selectors';
 import ListDialog from '@/components/dialogs/ListDialog';
 import TaskDialog from '@/components/dialogs/TaskDialog';
 import ConfirmDialog from '@/components/dialogs/ConfirmDialog';
+import ListsToolbar from '@/components/lists/ListsToolbar';
+import ListCard from '@/components/lists/ListCard';
+import ListsEmptyState from '@/components/lists/ListsEmptyState';
 import { toast } from 'sonner';
 
-const priorityColors = {
-  low: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  medium: 'bg-warning/20 text-warning border-warning/30',
-  high: 'bg-danger/20 text-danger border-danger/30'
-};
-
-const priorityLabels = {
-  low: 'Alacsony',
-  medium: 'Közepes',
-  high: 'Magas'
-};
-
 export default function Lists() {
-  const { lists, addTask, updateTask, deleteTask, deleteList } = useAppStore();
-  const [newTaskInputs, setNewTaskInputs] = useState<Record<string, string>>({});
-  const [newTaskPriorities, setNewTaskPriorities] = useState<Record<string, Task['priority']>>({});
+  const navigate = useNavigate();
+  const {
+    lists,
+    addTask,
+    updateTask,
+    deleteTask,
+    deleteList,
+    archiveList,
+    pinList,
+    reorderLists,
+    listViewFilter,
+    listSearchQuery,
+    listItemsFilter,
+    listItemsSort,
+    setListViewFilter,
+    setListSearchQuery,
+    setListItemsFilter,
+    setListItemsSort,
+  } = useAppStore();
+
   const [listDialogOpen, setListDialogOpen] = useState(false);
   const [editingList, setEditingList] = useState<TodoList | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -45,339 +42,144 @@ export default function Lists() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [taskDialogListId, setTaskDialogListId] = useState<string>('');
 
+  const visibleLists = useMemo(
+    () => filterLists(lists as any, listViewFilter, listSearchQuery) as TodoList[],
+    [lists, listViewFilter, listSearchQuery]
+  );
+  const metrics = useMemo(() => getListsProductivityMetrics(lists as any), [lists]);
+
+  const handleAddTask = async (list: TodoList, title: string, priority: Task['priority'] = 'medium') => {
+    const shopping = list.type === 'shopping';
+    await addTask(list.id, {
+      title,
+      completed: false,
+      priority,
+      sourceType: 'manual',
+      workflowStatus: 'active',
+      tags: [],
+      futureLinkTargets: {
+        dailyFocusCandidate: false,
+        questCandidate: false,
+        calendarCandidate: false,
+        habitCandidate: false,
+        goalCandidate: false,
+      },
+      ...(shopping ? { shoppingStatus: 'pending' as const } : {}),
+    });
+  };
+
   const handleEditTask = (listId: string, task: Task) => {
     setTaskDialogListId(listId);
     setEditingTask(task);
     setTaskDialogOpen(true);
   };
 
-  const isShoppingList = (list: TodoList) =>
-    list.type === 'shopping' || list.name.toLowerCase().includes('bevásárl');
-
-  const isTaskHandled = (list: TodoList, task: Task) => {
-    if (!isShoppingList(list)) return task.completed;
-    return task.shoppingStatus === 'purchased' || task.shoppingStatus === 'not_available';
-  };
-
-  const toggleTask = async (list: TodoList, task: Task) => {
-    if (isShoppingList(list)) {
-      const currentStatus = task.shoppingStatus || (task.completed ? 'purchased' : 'pending');
-      const nextStatus = currentStatus === 'purchased' ? 'pending' : 'purchased';
-      await updateTask(list.id, task.id, { shoppingStatus: nextStatus });
-      return;
-    }
-    await updateTask(list.id, task.id, { completed: !task.completed });
-  };
-
-  const handleAddTask = async (listId: string) => {
-    const title = newTaskInputs[listId]?.trim();
-    if (!title) return;
-    const list = lists.find((item) => item.id === listId);
-    const shopping = Boolean(list && isShoppingList(list));
-
-    await addTask(listId, {
-      title,
-      completed: false,
-      priority: newTaskPriorities[listId] || 'medium',
-      ...(shopping ? { shoppingStatus: 'pending' as const } : {}),
-    });
-    setNewTaskInputs({ ...newTaskInputs, [listId]: '' });
-    setNewTaskPriorities({ ...newTaskPriorities, [listId]: 'medium' });
-  };
-
-  const confirmDeleteTask = (listId: string, taskId: string) => {
-    setTaskToDelete({ listId, taskId });
-    setTaskDeleteConfirmOpen(true);
-  };
-
   const handleDeleteTask = async () => {
-    if (taskToDelete) {
-      await deleteTask(taskToDelete.listId, taskToDelete.taskId);
-      toast.success('Feladat törölve.');
-      setTaskDeleteConfirmOpen(false);
-      setTaskToDelete(null);
-    }
-  };
-
-  const handleEditList = (list: TodoList) => {
-    setEditingList(list);
-    setListDialogOpen(true);
+    if (!taskToDelete) return;
+    await deleteTask(taskToDelete.listId, taskToDelete.taskId);
+    toast.success('Elem törölve.');
+    setTaskDeleteConfirmOpen(false);
+    setTaskToDelete(null);
   };
 
   const handleDeleteList = async () => {
-    if (listToDelete) {
-      await deleteList(listToDelete);
-      toast.success('Lista törölve.');
-      setDeleteConfirmOpen(false);
-      setListToDelete(null);
-    }
+    if (!listToDelete) return;
+    await deleteList(listToDelete);
+    toast.success('Lista törölve.');
+    setDeleteConfirmOpen(false);
+    setListToDelete(null);
   };
 
-  const getCompletedCount = (list: TodoList) => {
-    return list.tasks.filter((task) => isTaskHandled(list, task)).length;
+  const moveList = async (listId: string, direction: -1 | 1) => {
+    const index = visibleLists.findIndex((l) => l.id === listId);
+    if (index < 0) return;
+    const target = index + direction;
+    if (target < 0 || target >= visibleLists.length) return;
+    const reordered = [...visibleLists];
+    const [item] = reordered.splice(index, 1);
+    reordered.splice(target, 0, item);
+    await reorderLists(reordered.map((l) => l.id));
   };
 
   return (
     <div className="space-y-6 pb-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-heading font-bold text-text-primary">Listák</h1>
-          <p className="text-text-secondary">Szervezd meg teendőidet intelligens listákba</p>
-        </div>
-        <Button className="bg-primary hover:bg-primary/90 text-surface-0" onClick={() => { setEditingList(null); setListDialogOpen(true); }}>
-          <Plus className="h-4 w-4 mr-2" />
-          Új lista
-        </Button>
+      <div>
+        <h1 className="text-3xl font-heading font-bold text-text-primary">Listák</h1>
+        <p className="text-text-secondary">Központi rendszerező felület feladatokhoz, projektekhez, bevásárláshoz és ötletekhez.</p>
+        <p className="text-xs text-text-muted mt-1">
+          Nyitott: {metrics.totalOpenItems} · Kész: {metrics.totalCompletedItems} · Mára jelölt: {metrics.todayMarkedItemsCount} · Később: {metrics.deferredLaterItemsCount}
+        </p>
       </div>
 
-      {/* Lists Grid */}
+      <ListsToolbar
+        query={listSearchQuery}
+        onQueryChange={setListSearchQuery}
+        viewFilter={listViewFilter}
+        onViewFilterChange={setListViewFilter}
+        itemFilter={listItemsFilter}
+        onItemFilterChange={setListItemsFilter}
+        itemSort={listItemsSort}
+        onItemSortChange={setListItemsSort}
+        onCreateList={() => {
+          setEditingList(null);
+          setListDialogOpen(true);
+        }}
+      />
+
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {lists.map((list, index) => (
-          <motion.div key={list.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
-            <Card className="glass p-6 h-fit">
-              {/* List Header */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 rounded-full" style={{ backgroundColor: list.color }} />
-                  <h3 className="font-heading font-semibold text-text-primary">{list.name}</h3>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm"><MoreHorizontal className="h-4 w-4" /></Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-surface-1 border border-white/10">
-                    <DropdownMenuItem className="text-text-primary hover:bg-white/5" onClick={() => handleEditList(list)}>
-                      <Edit3 className="h-4 w-4 mr-2" />Szerkesztés
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-danger hover:bg-danger/10" onClick={() => { setListToDelete(list.id); setDeleteConfirmOpen(true); }}>
-                      <Trash2 className="h-4 w-4 mr-2" />Törlés
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              {/* Progress */}
-              {list.tasks.length > 0 && (
-                <div className="mb-4">
-                  <div className="flex justify-between text-sm text-text-muted mb-2">
-                    <span>{getCompletedCount(list)} / {list.tasks.length} kész</span>
-                    <span>{Math.round((getCompletedCount(list) / list.tasks.length) * 100)}%</span>
-                  </div>
-                  <div className="w-full bg-surface-2 rounded-full h-2">
-                    <div
-                      className="h-2 rounded-full transition-all duration-300"
-                      style={{
-                        backgroundColor: list.color,
-                        width: `${(getCompletedCount(list) / list.tasks.length) * 100}%`
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Tasks */}
-              <div className="space-y-3 mb-4">
-                {list.tasks.map((task) => (
-                  <motion.div key={task.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="group">
-                    <div className={cn(
-                      "flex items-center gap-3 p-3 rounded-lg bg-surface-1/30 hover:bg-surface-1/50 transition-colors",
-                      isTaskHandled(list, task) && "opacity-60"
-                    )}>
-                      {isShoppingList(list) ? (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="text-text-muted hover:text-primary transition-colors">
-                              {task.shoppingStatus === 'not_available' ? (
-                                <div className="w-5 h-5 rounded-full flex items-center justify-center bg-danger/80">
-                                  <X className="h-3 w-3 text-surface-0" />
-                                </div>
-                              ) : task.shoppingStatus === 'purchased' || task.completed ? (
-                                <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: list.color }}>
-                                  <Check className="h-3 w-3 text-surface-0" />
-                                </div>
-                              ) : (
-                                <Circle className="h-5 w-5" />
-                              )}
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start" className="bg-surface-1 border border-white/10 min-w-[180px]">
-                            <DropdownMenuItem
-                              className="text-text-primary hover:bg-white/5 cursor-pointer"
-                              onClick={() => updateTask(list.id, task.id, { shoppingStatus: 'pending' })}
-                            >
-                              <Circle className="h-4 w-4 mr-2" />
-                              Függőben
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-success hover:bg-white/5 cursor-pointer"
-                              onClick={() => updateTask(list.id, task.id, { shoppingStatus: 'purchased' })}
-                            >
-                              <Check className="h-4 w-4 mr-2" />
-                              Megvásárolva
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-danger hover:bg-white/5 cursor-pointer"
-                              onClick={() => updateTask(list.id, task.id, { shoppingStatus: 'not_available' })}
-                            >
-                              <X className="h-4 w-4 mr-2" />
-                              Nem volt a boltban
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      ) : (
-                        <button onClick={() => toggleTask(list, task)} className="text-text-muted hover:text-primary transition-colors">
-                          {task.completed ? (
-                            <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: list.color }}>
-                              <Check className="h-3 w-3 text-surface-0" />
-                            </div>
-                          ) : (
-                            <Circle className="h-5 w-5" />
-                          )}
-                        </button>
-                      )}
-                      <div
-                        className="flex-1 min-w-0 cursor-pointer"
-                        onClick={() => handleEditTask(list.id, task)}
-                      >
-                        <p className={cn("text-sm text-text-primary", isTaskHandled(list, task) && "line-through")}>{task.title}</p>
-                        <div className="flex items-center gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
-                          {isShoppingList(list) && task.shoppingStatus === 'not_available' && (
-                            <Badge className="text-xs bg-danger/20 text-danger border-danger/30">Nem volt a boltban</Badge>
-                          )}
-                          {!isShoppingList(list) && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger className="focus:outline-none">
-                              <Badge className={cn('text-xs cursor-pointer hover:opacity-80 transition-opacity', priorityColors[task.priority])}>
-                                {priorityLabels[task.priority]}
-                              </Badge>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="bg-surface-1 border border-white/10 min-w-[140px]">
-                              <DropdownMenuItem
-                                onClick={() => updateTask(list.id, task.id, { priority: 'low' })}
-                                className="text-blue-400 hover:bg-white/5 cursor-pointer"
-                              >
-                                <div className="w-2 h-2 rounded-full bg-blue-400 mr-2" />
-                                Alacsony
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => updateTask(list.id, task.id, { priority: 'medium' })}
-                                className="text-warning hover:bg-white/5 cursor-pointer"
-                              >
-                                <div className="w-2 h-2 rounded-full bg-warning mr-2" />
-                                Közepes
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => updateTask(list.id, task.id, { priority: 'high' })}
-                                className="text-danger hover:bg-white/5 cursor-pointer"
-                              >
-                                <div className="w-2 h-2 rounded-full bg-danger mr-2" />
-                                Magas
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                          )}
-                          {task.dueDate && (
-                            <Badge variant="outline" className="text-xs border-white/20">{new Date(task.dueDate).toLocaleDateString('hu-HU')}</Badge>
-                          )}
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditTask(list.id, task)}
-                        className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity text-text-muted hover:text-primary flex-shrink-0 w-8 h-8 p-0"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => confirmDeleteTask(list.id, task.id)}
-                        className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity text-text-muted hover:text-danger flex-shrink-0 w-8 h-8 p-0"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-
-              {/* Add Task Input */}
-              <div className="flex gap-2 items-center">
-                {!isShoppingList(list) && (
-                  <Select
-                    value={newTaskPriorities[list.id] || 'medium'}
-                    onValueChange={(v) => setNewTaskPriorities({ ...newTaskPriorities, [list.id]: v as Task['priority'] })}
-                  >
-                    <SelectTrigger className={cn(
-                      "w-9 h-9 flex-shrink-0 border-white/10 px-0 justify-center [&>svg.lucide-chevron-down]:hidden",
-                      (newTaskPriorities[list.id] || 'medium') === 'low' && 'bg-blue-500/10',
-                      (newTaskPriorities[list.id] || 'medium') === 'medium' && 'bg-warning/10',
-                      (newTaskPriorities[list.id] || 'medium') === 'high' && 'bg-danger/10',
-                    )}>
-                      <div className={cn(
-                        "w-3 h-3 rounded-full",
-                        (newTaskPriorities[list.id] || 'medium') === 'low' && 'bg-blue-400',
-                        (newTaskPriorities[list.id] || 'medium') === 'medium' && 'bg-warning',
-                        (newTaskPriorities[list.id] || 'medium') === 'high' && 'bg-danger',
-                      )} />
-                    </SelectTrigger>
-                    <SelectContent className="bg-surface-1 border-white/10">
-                      <SelectItem value="low" className="text-blue-400">Alacsony</SelectItem>
-                      <SelectItem value="medium" className="text-warning">Közepes</SelectItem>
-                      <SelectItem value="high" className="text-danger">Magas</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-                <Input
-                  placeholder={isShoppingList(list) ? 'Új termék hozzáadása...' : 'Új feladat hozzáadása...'}
-                  value={newTaskInputs[list.id] || ''}
-                  onChange={(e) => setNewTaskInputs({ ...newTaskInputs, [list.id]: e.target.value })}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleAddTask(list.id); }}
-                  className="flex-1 bg-surface-1/50 border-white/10 text-text-primary placeholder:text-text-muted"
-                />
-                <Button
-                  onClick={() => handleAddTask(list.id)}
-                  size="sm"
-                  disabled={!newTaskInputs[list.id]?.trim()}
-                  style={{ backgroundColor: list.color }}
-                  className="text-surface-0 hover:opacity-90"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-            </Card>
+        {visibleLists.map((list, index) => (
+          <motion.div key={list.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
+            <ListCard
+              list={list}
+              itemFilter={listItemsFilter}
+              itemSort={listItemsSort}
+              onAddTask={(title, priority) => handleAddTask(list, title, priority || 'medium')}
+              onUpdateTask={(taskId, updates) => updateTask(list.id, taskId, updates)}
+              onEditTask={(task) => handleEditTask(list.id, task)}
+              onDeleteTask={(taskId) => {
+                setTaskToDelete({ listId: list.id, taskId });
+                setTaskDeleteConfirmOpen(true);
+              }}
+              onEditList={() => {
+                setEditingList(list);
+                setListDialogOpen(true);
+              }}
+              onDeleteList={() => {
+                setListToDelete(list.id);
+                setDeleteConfirmOpen(true);
+              }}
+              onArchiveList={() => archiveList(list.id, !list.archived)}
+              onPinList={() => pinList(list.id, !list.pinned)}
+              onMoveListUp={() => moveList(list.id, -1)}
+              onMoveListDown={() => moveList(list.id, 1)}
+              onOpenDetail={() => navigate(`/app/lists/${list.id}`)}
+            />
           </motion.div>
         ))}
 
-        {lists.length === 0 && (
+        {visibleLists.length === 0 && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="col-span-full">
-            <Card className="glass p-12 text-center">
-              <Check className="h-16 w-16 text-text-disabled mx-auto mb-4" />
-              <h3 className="text-lg font-heading font-semibold text-text-primary mb-2">Még nincsenek listáid</h3>
-              <p className="text-text-muted mb-6">Hozd létre az első listádat a teendők szervezéséhez</p>
-              <Button className="bg-primary hover:bg-primary/90 text-surface-0" onClick={() => { setEditingList(null); setListDialogOpen(true); }}>
-                <Plus className="h-4 w-4 mr-2" />
-                Első lista létrehozása
-              </Button>
-            </Card>
+            <ListsEmptyState
+              filtered={Boolean(listSearchQuery.trim()) || listViewFilter !== 'all'}
+              viewFilter={listViewFilter}
+              hasAnyLists={lists.length > 0}
+              hasOverload={metrics.overloadedListsCount > 0}
+              onCreate={() => {
+                setEditingList(null);
+                setListDialogOpen(true);
+              }}
+            />
           </motion.div>
         )}
       </div>
 
       <ListDialog open={listDialogOpen} onOpenChange={setListDialogOpen} list={editingList} />
-      <TaskDialog
-        open={taskDialogOpen}
-        onOpenChange={setTaskDialogOpen}
-        listId={taskDialogListId}
-        task={editingTask}
-      />
+      <TaskDialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen} listId={taskDialogListId} task={editingTask} />
       <ConfirmDialog
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
         title="Lista törlése"
-        description="Biztosan törölni szeretnéd ezt a listát és az összes benne lévő feladatot? Ez a művelet nem vonható vissza."
+        description="Biztosan törölni szeretnéd ezt a listát az elemeivel együtt?"
         confirmLabel="Törlés"
         onConfirm={handleDeleteList}
         destructive
@@ -385,8 +187,8 @@ export default function Lists() {
       <ConfirmDialog
         open={taskDeleteConfirmOpen}
         onOpenChange={setTaskDeleteConfirmOpen}
-        title="Feladat törlése"
-        description="Biztosan törölni szeretnéd ezt a feladatot?"
+        title="Elem törlése"
+        description="Biztosan törölni szeretnéd ezt az elemet?"
         confirmLabel="Törlés"
         onConfirm={handleDeleteTask}
         destructive

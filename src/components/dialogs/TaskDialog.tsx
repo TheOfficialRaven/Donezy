@@ -20,8 +20,12 @@ export default function TaskDialog({ open, onOpenChange, listId, task }: TaskDia
 
   const [formData, setFormData] = useState({
     title: '',
+    description: '',
     priority: 'medium' as Task['priority'],
     dueDate: '',
+    estimatedMinutes: '',
+    notes: '',
+    workflowStatus: 'active' as Task['workflowStatus'],
     focusArea: 'munka_tanulas' as FocusArea,
   });
 
@@ -29,12 +33,25 @@ export default function TaskDialog({ open, onOpenChange, listId, task }: TaskDia
     if (task) {
       setFormData({
         title: task.title,
+        description: task.description || '',
         priority: task.priority,
         dueDate: task.dueDate || '',
+        estimatedMinutes: task.estimatedMinutes ? String(task.estimatedMinutes) : '',
+        notes: task.notes || '',
+        workflowStatus: task.workflowStatus || 'active',
         focusArea: task.focusArea || 'munka_tanulas',
       });
     } else {
-      setFormData({ title: '', priority: 'medium', dueDate: '', focusArea: 'munka_tanulas' });
+      setFormData({
+        title: '',
+        description: '',
+        priority: 'medium',
+        dueDate: '',
+        estimatedMinutes: '',
+        notes: '',
+        workflowStatus: 'active',
+        focusArea: 'munka_tanulas',
+      });
     }
   }, [task, open]);
 
@@ -46,8 +63,12 @@ export default function TaskDialog({ open, onOpenChange, listId, task }: TaskDia
       if (task) {
         await updateTask(listId, task.id, {
           title: formData.title,
+          description: formData.description || undefined,
           priority: formData.priority,
           dueDate: formData.dueDate || undefined,
+          estimatedMinutes: formData.estimatedMinutes ? Number(formData.estimatedMinutes) : undefined,
+          notes: formData.notes || undefined,
+          workflowStatus: formData.workflowStatus,
           focusArea: formData.focusArea,
           focusAreaSource: 'manual',
         });
@@ -55,9 +76,22 @@ export default function TaskDialog({ open, onOpenChange, listId, task }: TaskDia
       } else {
         await addTask(listId, {
           title: formData.title,
+          description: formData.description || undefined,
           completed: false,
           priority: formData.priority,
           dueDate: formData.dueDate || undefined,
+          estimatedMinutes: formData.estimatedMinutes ? Number(formData.estimatedMinutes) : undefined,
+          notes: formData.notes || undefined,
+          workflowStatus: formData.workflowStatus,
+          sourceType: 'manual',
+          tags: [],
+          futureLinkTargets: {
+            dailyFocusCandidate: false,
+            questCandidate: false,
+            calendarCandidate: false,
+            habitCandidate: false,
+            goalCandidate: false,
+          },
           focusArea: formData.focusArea,
           focusAreaSource: 'manual',
         });
@@ -94,6 +128,16 @@ export default function TaskDialog({ open, onOpenChange, listId, task }: TaskDia
             />
           </div>
 
+          <div className="space-y-2">
+            <Label>Leírás</Label>
+            <Input
+              value={formData.description}
+              onChange={(e) => setFormData((f) => ({ ...f, description: e.target.value }))}
+              placeholder="Rövid leírás (opcionális)"
+              className="bg-surface-0/50 border-white/10"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Prioritás</Label>
@@ -121,6 +165,46 @@ export default function TaskDialog({ open, onOpenChange, listId, task }: TaskDia
                 className="bg-surface-0/50 border-white/10"
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Becsült idő (perc)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={formData.estimatedMinutes}
+                onChange={(e) => setFormData((f) => ({ ...f, estimatedMinutes: e.target.value }))}
+                className="bg-surface-0/50 border-white/10"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Munkafolyamat</Label>
+              <Select
+                value={formData.workflowStatus || 'active'}
+                onValueChange={(v) => setFormData((f) => ({ ...f, workflowStatus: v as Task['workflowStatus'] }))}
+              >
+                <SelectTrigger className="bg-surface-0/50 border-white/10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-surface-1 border-white/10">
+                  <SelectItem value="active">Aktív</SelectItem>
+                  <SelectItem value="today">Ma</SelectItem>
+                  <SelectItem value="later">Később</SelectItem>
+                  <SelectItem value="someday">Valamikor</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Rövid jegyzet</Label>
+            <Input
+              value={formData.notes}
+              onChange={(e) => setFormData((f) => ({ ...f, notes: e.target.value }))}
+              placeholder="Jegyzet (opcionális)"
+              className="bg-surface-0/50 border-white/10"
+            />
           </div>
 
           <div className="space-y-2">

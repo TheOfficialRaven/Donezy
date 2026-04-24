@@ -11,11 +11,13 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { useAppStore, type JournalEntry } from '@/stores/useAppStore';
+import { useAppStore } from '@/stores/useAppStore';
 import { getLocalDateString } from '@/lib/dateUtils';
 import ConfirmDialog from '@/components/dialogs/ConfirmDialog';
 import { toast } from 'sonner';
 import { FOCUS_AREAS, FOCUS_AREA_LABELS, type FocusArea } from '@/lib/focusAreas';
+import type { ReflectionEntry } from '@/lib/reflection/types';
+import { getReflectionProductivityMetrics } from '@/lib/reflection/selectors';
 
 const MOOD_CONFIG = [
   { value: 1, icon: Frown, label: 'Nehéz nap', color: 'text-red-400', bg: 'bg-red-500/20', ring: 'ring-red-500/30' },
@@ -56,10 +58,15 @@ function formatShortDate(dateStr: string): string {
 }
 
 export default function DailyReflection() {
-  const { journalEntries, addJournalEntry, updateJournalEntry, deleteJournalEntry } = useAppStore();
+  const {
+    reflections,
+    addReflection,
+    updateReflection,
+    deleteReflection,
+  } = useAppStore();
   const [editorOpen, setEditorOpen] = useState(false);
-  const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
-  const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
+  const [editingEntry, setEditingEntry] = useState<ReflectionEntry | null>(null);
+  const [selectedEntry, setSelectedEntry] = useState<ReflectionEntry | null>(null);
   const [newEntryDate, setNewEntryDate] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
@@ -70,15 +77,16 @@ export default function DailyReflection() {
   const detailRef = useRef<HTMLDivElement>(null);
 
   const today = getLocalDateString();
-  const todaysEntry = journalEntries.find((e) => e.date === today);
+  const todaysEntry = reflections.find((e) => e.date === today);
+  const metrics = useMemo(() => getReflectionProductivityMetrics(reflections), [reflections]);
 
   const sortedEntries = useMemo(
-    () => [...journalEntries].sort((a, b) => b.date.localeCompare(a.date)),
-    [journalEntries]
+    () => [...reflections].sort((a, b) => b.date.localeCompare(a.date)),
+    [reflections]
   );
 
   const currentStreak = useMemo(() => {
-    const dates = new Set(journalEntries.map((e) => e.date));
+    const dates = new Set(reflections.map((e) => e.date));
     let streak = 0;
     const d = new Date();
     while (true) {
@@ -91,17 +99,17 @@ export default function DailyReflection() {
       }
     }
     return streak;
-  }, [journalEntries]);
+  }, [reflections]);
 
   const avgMood = useMemo(() => {
-    if (journalEntries.length === 0) return 0;
-    const last30 = journalEntries.filter((e) => {
+    if (reflections.length === 0) return 0;
+    const last30 = reflections.filter((e) => {
       const diff = (Date.now() - new Date(e.date + 'T12:00:00').getTime()) / 86400000;
       return diff <= 30;
     });
     if (last30.length === 0) return 0;
-    return last30.reduce((s, e) => s + e.mood, 0) / last30.length;
-  }, [journalEntries]);
+    return last30.reduce((s, e) => s + (e.mood || 0), 0) / last30.length;
+  }, [reflections]);
 
   const openNewEntry = (forDate?: string) => {
     setNewEntryDate(forDate || null);
@@ -109,13 +117,13 @@ export default function DailyReflection() {
     setEditorOpen(true);
   };
 
-  const openEditEntry = (entry: JournalEntry) => {
+  const openEditEntry = (entry: ReflectionEntry) => {
     setNewEntryDate(null);
     setEditingEntry(entry);
     setEditorOpen(true);
   };
 
-  const selectAndScrollToEntry = (entry: JournalEntry) => {
+  const selectAndScrollToEntry = (entry: ReflectionEntry) => {
     setSelectedEntry(entry);
     setTimeout(() => {
       detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -123,7 +131,7 @@ export default function DailyReflection() {
   };
 
   const handleCalendarDayClick = (dateStr: string) => {
-    const entry = journalEntries.find((e) => e.date === dateStr);
+    const entry = reflections.find((e) => e.date === dateStr);
     if (entry) {
       selectAndScrollToEntry(entry);
     } else if (dateStr <= today) {
@@ -133,7 +141,7 @@ export default function DailyReflection() {
 
   const handleDelete = async () => {
     if (!entryToDelete) return;
-    await deleteJournalEntry(entryToDelete);
+    await deleteReflection(entryToDelete);
     if (selectedEntry?.id === entryToDelete) setSelectedEntry(null);
     setDeleteConfirmOpen(false);
     setEntryToDelete(null);
@@ -149,13 +157,13 @@ export default function DailyReflection() {
     for (let i = 0; i < startOffset; i++) {
       const d = new Date(year, month, -startOffset + i + 1);
       const ds = d.toISOString().slice(0, 10);
-      const e = journalEntries.find((je) => je.date === ds);
+      const e = reflections.find((je) => je.date === ds);
       days.push({ date: ds, day: d.getDate(), inMonth: false, hasEntry: !!e, mood: e?.mood || 0 });
     }
     for (let i = 1; i <= lastDay.getDate(); i++) {
       const d = new Date(year, month, i);
       const ds = d.toISOString().slice(0, 10);
-      const e = journalEntries.find((je) => je.date === ds);
+      const e = reflections.find((je) => je.date === ds);
       days.push({ date: ds, day: i, inMonth: true, hasEntry: !!e, mood: e?.mood || 0 });
     }
     const remaining = 7 - (days.length % 7);
@@ -163,12 +171,12 @@ export default function DailyReflection() {
       for (let i = 0; i < remaining; i++) {
         const d = new Date(year, month + 1, i + 1);
         const ds = d.toISOString().slice(0, 10);
-        const e = journalEntries.find((je) => je.date === ds);
+        const e = reflections.find((je) => je.date === ds);
         days.push({ date: ds, day: d.getDate(), inMonth: false, hasEntry: !!e, mood: e?.mood || 0 });
       }
     }
     return days;
-  }, [calendarMonth, journalEntries]);
+  }, [calendarMonth, reflections]);
 
   const monthName = new Date(calendarMonth.year, calendarMonth.month).toLocaleDateString('hu-HU', { year: 'numeric', month: 'long' });
 
@@ -221,7 +229,7 @@ export default function DailyReflection() {
         className="grid grid-cols-3 gap-3"
       >
         <Card className="glass p-4 text-center">
-          <div className="text-2xl font-bold text-primary">{journalEntries.length}</div>
+          <div className="text-2xl font-bold text-primary">{metrics.totalEntries}</div>
           <div className="text-xs text-text-muted">Bejegyzés</div>
         </Card>
         <Card className="glass p-4 text-center">
@@ -509,12 +517,12 @@ export default function DailyReflection() {
         defaultDate={newEntryDate}
         onSave={async (data) => {
           if (editingEntry) {
-            await updateJournalEntry(editingEntry.id, data);
+            await updateReflection(editingEntry.id, data);
             const updated = { ...editingEntry, ...data, updatedAt: new Date().toISOString() };
             setSelectedEntry(updated);
             toast.success('Bejegyzés frissítve.');
           } else {
-            await addJournalEntry(data as any);
+            await addReflection(data as any);
             toast.success('Bejegyzés elmentve.');
           }
           setEditorOpen(false);
@@ -546,7 +554,7 @@ function EntryDetailView({
   hasPrev,
   hasNext,
 }: {
-  entry: JournalEntry;
+  entry: ReflectionEntry;
   onEdit: () => void;
   onClose: () => void;
   onDelete: () => void;
@@ -556,7 +564,7 @@ function EntryDetailView({
 }) {
   const mc = MOOD_CONFIG.find((m) => m.value === entry.mood);
   const sections = JOURNAL_PROMPTS.filter((p) => {
-    const val = entry[p.key as keyof JournalEntry];
+    const val = entry[p.key as keyof ReflectionEntry];
     return val && typeof val === 'string' && val.trim().length > 0;
   });
 
@@ -609,7 +617,7 @@ function EntryDetailView({
         {/* Sections */}
         <div className="space-y-5">
           {sections.map((prompt) => {
-            const value = entry[prompt.key as keyof JournalEntry] as string;
+            const value = entry[prompt.key as keyof ReflectionEntry] as string;
             return (
               <div key={prompt.key}>
                 <div className="flex items-center gap-2 mb-2">
@@ -668,11 +676,17 @@ function JournalEditor({
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  editingEntry: JournalEntry | null;
+  editingEntry: ReflectionEntry | null;
   defaultDate?: string | null;
-  onSave: (data: Partial<JournalEntry>) => Promise<void>;
+  onSave: (data: Partial<ReflectionEntry>) => Promise<void>;
 }) {
-  const [mood, setMood] = useState(3);
+  const [mode, setMode] = useState<ReflectionEntry['type']>('normal');
+  const [mood, setMood] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [title, setTitle] = useState('');
+  const [privateLevel, setPrivateLevel] = useState<'private' | 'shared-later' | 'sensitive'>('private');
+  const [content, setContent] = useState('');
+  const [wins, setWins] = useState('');
+  const [difficulties, setDifficulties] = useState('');
   const [gratitude, setGratitude] = useState('');
   const [lessons, setLessons] = useState('');
   const [feelings, setFeelings] = useState('');
@@ -687,7 +701,13 @@ function JournalEditor({
   useEffect(() => {
     if (open) {
       if (editingEntry) {
-        setMood(editingEntry.mood);
+        setMood((editingEntry.mood || 3) as 1 | 2 | 3 | 4 | 5);
+        setMode(editingEntry.type || 'normal');
+        setTitle(editingEntry.title || '');
+        setPrivateLevel(editingEntry.privateLevel || 'private');
+        setContent(editingEntry.content || editingEntry.freeWrite || '');
+        setWins(editingEntry.wins || editingEntry.growth || '');
+        setDifficulties(editingEntry.difficulties || '');
         setGratitude(editingEntry.gratitude || '');
         setLessons(editingEntry.lessons || '');
         setFeelings(editingEntry.feelings || '');
@@ -698,6 +718,12 @@ function JournalEditor({
         setFocusArea(editingEntry.focusArea || 'tudat');
       } else {
         setMood(3);
+        setMode('normal');
+        setTitle('');
+        setPrivateLevel('private');
+        setContent('');
+        setWins('');
+        setDifficulties('');
         setGratitude('');
         setLessons('');
         setFeelings('');
@@ -718,7 +744,23 @@ function JournalEditor({
   const handleSave = async () => {
     setSaving(true);
     try {
-      const data: Partial<JournalEntry> = { date, mood };
+      const deepSignals = [
+        content.trim(),
+        wins.trim(),
+        difficulties.trim(),
+        lessons.trim(),
+        gratitude.trim(),
+      ].filter(Boolean);
+      if (mode === 'deep' && deepSignals.length < 3) {
+        toast.error('Deep modban legalabb 3 reflexios blokkot erdemes kitolteni.');
+        return;
+      }
+
+      const data: Partial<ReflectionEntry> = { date, mood, type: mode, content: content.trim() };
+      if (title.trim()) data.title = title.trim();
+      data.privateLevel = privateLevel;
+      if (wins.trim()) data.wins = wins.trim();
+      if (difficulties.trim()) data.difficulties = difficulties.trim();
       if (gratitude.trim()) data.gratitude = gratitude.trim();
       if (lessons.trim()) data.lessons = lessons.trim();
       if (feelings.trim()) data.feelings = feelings.trim();
@@ -734,6 +776,14 @@ function JournalEditor({
   };
 
   const mc = MOOD_CONFIG.find((m) => m.value === mood);
+  const deepFilledCount = [
+    content.trim(),
+    wins.trim(),
+    difficulties.trim(),
+    lessons.trim(),
+    gratitude.trim(),
+  ].filter(Boolean).length;
+  const deepProgress = Math.min(100, Math.round((deepFilledCount / 5) * 100));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -749,6 +799,120 @@ function JournalEditor({
         </DialogHeader>
 
         <div className="space-y-4 sm:space-y-6 py-1 sm:py-2">
+          {/* Mood selector */}
+          <div>
+            <label className="text-xs sm:text-sm font-medium text-text-primary mb-2 block">Melyseg</label>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { key: 'quick', title: 'Quick', hint: '1-2 perc, rovid check-in', ring: 'ring-emerald-500/40', bg: 'from-emerald-500/20 to-emerald-500/5' },
+                { key: 'normal', title: 'Normal', hint: 'Strukturalt, de konnyu', ring: 'ring-blue-500/40', bg: 'from-blue-500/20 to-blue-500/5' },
+                { key: 'deep', title: 'Deep', hint: 'Melyebb atgondolas', ring: 'ring-purple-500/50', bg: 'from-purple-500/25 to-pink-500/10' },
+              ] as const).map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setMode(item.key)}
+                  className={cn(
+                    'text-left rounded-xl border px-3 py-2 transition-all',
+                    'bg-gradient-to-br',
+                    mode === item.key
+                      ? `${item.bg} ${item.ring} ring-2 border-white/20 scale-[1.01]`
+                      : 'from-white/5 to-transparent border-white/10 hover:border-white/20'
+                  )}
+                >
+                  <p className="text-sm font-semibold text-text-primary">{item.title}</p>
+                  <p className="text-[11px] text-text-muted leading-tight mt-0.5">{item.hint}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {mode === 'deep' && (
+            <Card className="glass p-3 border border-purple-500/25">
+              <div className="flex items-center justify-between text-xs mb-2">
+                <span className="text-purple-200">Deep kitoltottseg</span>
+                <span className="text-purple-300 font-medium">{deepFilledCount}/5 blokk</span>
+              </div>
+              <div className="h-2 rounded-full bg-surface-0/60 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-purple-500 to-pink-400 transition-all duration-300"
+                  style={{ width: `${deepProgress}%` }}
+                />
+              </div>
+            </Card>
+          )}
+
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={mode}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="space-y-3"
+            >
+              <div>
+                <label className="text-xs sm:text-sm font-medium text-text-primary mb-2 block">Rovid reflexio</label>
+                <JournalTextarea
+                  value={content}
+                  onChange={setContent}
+                  placeholder={mode === 'quick' ? '1-2 mondat eleg. Mi maradjon meg?' : mode === 'normal' ? 'Mi maradjon meg a mai napbol?' : 'Melyebb osszegzes: mi tortent benned es korulotted?'}
+                />
+              </div>
+
+              {mode !== 'quick' && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="text-xs sm:text-sm font-medium text-text-primary mb-2 block">Mi ment jol?</label>
+                    <JournalTextarea value={wins} onChange={setWins} placeholder="Kis siker is szamit." />
+                  </div>
+                  <div>
+                    <label className="text-xs sm:text-sm font-medium text-text-primary mb-2 block">Mi volt nehez?</label>
+                    <JournalTextarea value={difficulties} onChange={setDifficulties} placeholder="A nehez resz is hasznos tananyag." />
+                  </div>
+                </div>
+              )}
+
+              {mode === 'deep' && (
+                <>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="text-xs sm:text-sm font-medium text-text-primary mb-2 block">Reflexio cim (opcionalis)</label>
+                      <input
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="Pl. Mire tanitott a mai nehezseg?"
+                        className="w-full bg-surface-0/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs sm:text-sm font-medium text-text-primary mb-2 block">Privat szint</label>
+                      <Select value={privateLevel} onValueChange={(value) => setPrivateLevel(value as 'private' | 'shared-later' | 'sensitive')}>
+                        <SelectTrigger className="bg-surface-0/50 border-white/10">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-surface-1 border-white/10">
+                          <SelectItem value="private">Privat</SelectItem>
+                          <SelectItem value="shared-later">Megoszthato kesobb</SelectItem>
+                          <SelectItem value="sensitive">Erzekeny tartalom</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <Card className="glass p-3 border border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-transparent">
+                    <p className="text-xs text-purple-200/90 mb-2">Deep mod - melyebb kerdesek</p>
+                    <ul className="text-xs text-text-secondary space-y-1">
+                      <li>Mi volt a napod fordulopontja?</li>
+                      <li>Miben reagaltal jobban vagy rosszabbul, mint szeretted volna?</li>
+                      <li>Mi legyen a holnapi tudatos valtoztatas?</li>
+                    </ul>
+                  </Card>
+                </>
+              )}
+            </motion.div>
+          </AnimatePresence>
+
           {/* Mood selector */}
           <div>
             <label className="text-xs sm:text-sm font-medium text-text-primary mb-2 sm:mb-3 block">Hogyan érzed magad?</label>
@@ -792,7 +956,11 @@ function JournalEditor({
           {/* Journal sections */}
           <div className="space-y-1.5 sm:space-y-3">
             <p className="text-[11px] sm:text-xs text-text-muted">
-              Kattints egy kategóriára az íráshoz. Írd azt, ami természetes.
+              {mode === 'normal'
+                ? 'Normal mod: valassz 1-2 blokkot, ami ma leginkabb segit.'
+                : mode === 'deep'
+                  ? 'Deep mod: tobb blokk kitoltese ad jobb visszatekinthetoseget.'
+                  : 'Quick modban ezek teljesen opcionálisak.'}
             </p>
             {JOURNAL_PROMPTS.map((prompt) => {
               const value = prompt.key === 'gratitude' ? gratitude :

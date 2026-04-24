@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAppStore, type TodoList } from '@/stores/useAppStore';
 import { toast } from 'sonner';
 
@@ -22,14 +23,23 @@ export default function ListDialog({ open, onOpenChange, list }: ListDialogProps
 
   const [formData, setFormData] = useState({
     name: '',
+    description: '',
+    type: 'general' as TodoList['type'],
+    icon: 'list',
     color: '#4DA3FF',
   });
 
   useEffect(() => {
     if (list) {
-      setFormData({ name: list.name, color: list.color });
+      setFormData({
+        name: list.title || list.name,
+        description: list.description || '',
+        type: list.type || 'general',
+        icon: list.icon || 'list',
+        color: list.color,
+      });
     } else {
-      setFormData({ name: '', color: '#4DA3FF' });
+      setFormData({ name: '', description: '', type: 'general', icon: 'list', color: '#4DA3FF' });
     }
   }, [list, open]);
 
@@ -39,10 +49,28 @@ export default function ListDialog({ open, onOpenChange, list }: ListDialogProps
 
     try {
       if (list) {
-        await updateList(list.id, { name: formData.name, color: formData.color });
+        await updateList(list.id, {
+          title: formData.name,
+          name: formData.name,
+          description: formData.description,
+          type: formData.type,
+          icon: formData.icon,
+          color: formData.color,
+        });
         toast.success('Lista frissítve!');
       } else {
-        await addList({ name: formData.name, color: formData.color });
+        await addList({
+          title: formData.name,
+          name: formData.name,
+          description: formData.description,
+          type: formData.type,
+          icon: formData.icon,
+          color: formData.color,
+          pinned: false,
+          archived: false,
+          targetGroupVisibility: ['all'],
+          tags: [],
+        });
         toast.success('Új lista létrehozva!');
       }
       onOpenChange(false);
@@ -73,6 +101,45 @@ export default function ListDialog({ open, onOpenChange, list }: ListDialogProps
               className="bg-surface-0/50 border-white/10"
               required
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Leírás</Label>
+            <Input
+              value={formData.description}
+              onChange={(e) => setFormData((f) => ({ ...f, description: e.target.value }))}
+              placeholder="Rövid leírás (opcionális)"
+              className="bg-surface-0/50 border-white/10"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Típus</Label>
+              <Select value={formData.type || 'general'} onValueChange={(value) => setFormData((f) => ({ ...f, type: value as TodoList['type'] }))}>
+                <SelectTrigger className="bg-surface-0/50 border-white/10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-surface-1 border-white/10">
+                  <SelectItem value="general">Általános</SelectItem>
+                  <SelectItem value="todo">Teendők</SelectItem>
+                  <SelectItem value="shopping">Bevásárlás</SelectItem>
+                  <SelectItem value="project">Projekt</SelectItem>
+                  <SelectItem value="ideas">Ötletek</SelectItem>
+                  <SelectItem value="routine">Rutin</SelectItem>
+                  <SelectItem value="self-development">Önfejlesztés</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Ikon kulcs</Label>
+              <Input
+                value={formData.icon}
+                onChange={(e) => setFormData((f) => ({ ...f, icon: e.target.value }))}
+                placeholder="pl. list"
+                className="bg-surface-0/50 border-white/10"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
